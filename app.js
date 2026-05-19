@@ -741,19 +741,31 @@ function conditionClass(c) {
 function ensureLeaflet() {
   if (leafletMap) return leafletMap;
   if (typeof L === 'undefined') return null;
-  leafletMap = L.map('leafletMap', { zoomControl: true }).setView(KTM_DEFAULT, 14);
+  const el = $('leafletMap');
+  if (!el) return null;
+  // Guarantee non-zero height even if CSS is overridden
+  if (!el.style.height) el.style.height = '520px';
+  leafletMap = L.map(el, { zoomControl: true }).setView(KTM_DEFAULT, 14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
+    crossOrigin: true,
     attribution: '© OpenStreetMap contributors',
   }).addTo(leafletMap);
+  // Resize support
+  window.addEventListener('resize', () => leafletMap && leafletMap.invalidateSize());
   return leafletMap;
+}
+
+function kickMapResize() {
+  if (!leafletMap) return;
+  // Ladder of resizes to defeat any layout/animation race conditions
+  [0, 50, 200, 500, 1000].forEach(t => setTimeout(() => leafletMap.invalidateSize(), t));
 }
 
 async function renderMap() {
   const map = ensureLeaflet();
-  if (!map) { toast('Map library not loaded'); return; }
-  // Fix sizing when tab becomes visible
-  setTimeout(() => map.invalidateSize(), 50);
+  if (!map) { toast('Map library not loaded — check internet'); return; }
+  kickMapResize();
 
   // Clear old markers
   leafletMarkers.forEach(m => map.removeLayer(m));
@@ -762,6 +774,7 @@ async function renderMap() {
   const all = (await dbAll()).filter(r => r.gps && isFinite(r.gps.lat) && isFinite(r.gps.lng));
   if (!all.length) {
     map.setView(KTM_DEFAULT, 14);
+    kickMapResize();
     return;
   }
 
@@ -777,7 +790,7 @@ async function renderMap() {
     const marker = L.marker([r.gps.lat, r.gps.lng], { icon }).addTo(map);
 
     const photosHtml = (r.photos || []).slice(0, 4)
-      .map((p, i) => `<img data-pid="${r.id}" data-idx="${i}" src="${p.dataUrl}" alt="">`).join('');
+      .map((p, i) => `<img data-rid="${r.id}" data-pi="${i}" src="${p.dataUrl}" alt="">`).join('');
     const popup = `
       <b>${escapeHtml(r.customer || r.id)}</b><br/>
       <span style="font-size:11px;">${escapeHtml(r.address || '')}</span><br/>
@@ -790,11 +803,6 @@ async function renderMap() {
     marker.bindPopup(popup);
     marker.on('popupopen', (e) => {
       const root = e.popup.getElement();
-      root.querySelectorAll('.popup-photos img').forEach(img => {
-        img.addEventListener('click', () => {
-          openLightbox(r.photos.map(p => p.dataUrl), Number(img.dataset.idx), r.customer || r.id);
-        });
-      });
       const v = root.querySelector('[data-view]');
       if (v) v.addEventListener('click', (ev) => { ev.preventDefault(); showRecordModal(r); });
     });
@@ -804,6 +812,7 @@ async function renderMap() {
   // Fit bounds
   const bounds = L.latLngBounds(all.map(r => [r.gps.lat, r.gps.lng]));
   map.fitBounds(bounds.pad(0.2), { maxZoom: 18 });
+  kickMapResize();
 }
 
 $('btnFitMap')?.addEventListener('click', () => {
@@ -1117,5 +1126,23 @@ lb.addEventListener('touchend', (e) => {
   if (Math.abs(dx) > 50 && lbList.length > 1) (dx < 0 ? lbNext : lbPrev)();
   touchX0 = null;
 }, { passive: true });
+
+/* Global event delegation: any thumb image with [data-rid] / [data-pi] anywhere
+   in the app opens the lightbox. Safety net so clicks always work. */
+document.addEventListener('click', async (e) => {
+  const img = e.target.closest('.mini-thumbs img[data-rid], .popup-photos img[data-rid]');
+  if (!img) return;
+  e.preventDefault();
+  e.stopPropagation();
+  try {
+    const rec = await dbGet(img.dataset.rid);
+    if (rec && rec.photos && rec.photos.length) {
+      const idx = Number(img.dataset.pi) || 0;
+      openLightbox(rec.photos.map(p => p.dataUrl), idx, rec.customer || rec.id);
+    }
+  } catch (err) {
+    console.warn('thumb click failed:', err);
+  }
+});
 
 
