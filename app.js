@@ -336,7 +336,8 @@ function snapPhoto() {
   ctx.fillText(stamp[0], 12, h - 36);
   ctx.fillText(stamp[1], 12, h - 12);
 
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+  let dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+  dataUrl = injectExif(dataUrl, state.gps, $('surveyId').value);
   addPhoto(dataUrl);
 }
 function addPhoto(dataUrl) {
@@ -359,14 +360,15 @@ function renderThumbs() {
       state.photos = state.photos.filter(x => x.id !== p.id);
       renderThumbs();
     });
-    div.querySelector('img').addEventListener('click', () => openImageModal(p.dataUrl));
+    div.querySelector('img').addEventListener('click', () =>
+      openLightbox(state.photos.map(x => x.dataUrl), state.photos.findIndex(x => x.id === p.id), 'Captured photo')
+    );
     strip.appendChild(div);
   });
 }
 function openImageModal(src) {
-  $('modalTitle').textContent = 'Photo';
-  $('modalBody').innerHTML = `<img src="${src}" style="max-width:100%;border:2px solid #000;">`;
-  $('modal').hidden = false;
+  // Legacy — now routes to lightbox
+  openLightbox([src], 0);
 }
 
 $('btnStartCam').addEventListener('click', startCamera);
@@ -380,7 +382,13 @@ $('fileInput').addEventListener('change', (e) => {
   const files = Array.from(e.target.files || []);
   files.forEach(f => {
     const reader = new FileReader();
-    reader.onload = () => addPhoto(reader.result);
+    reader.onload = () => {
+      let url = reader.result;
+      if (typeof url === 'string' && url.startsWith('data:image/jpeg')) {
+        url = injectExif(url, state.gps, $('surveyId').value);
+      }
+      addPhoto(url);
+    };
     reader.readAsDataURL(f);
   });
   e.target.value = '';
@@ -475,7 +483,7 @@ async function renderRecords() {
   $('emptyState').style.display = list.length ? 'none' : 'block';
   list.forEach((r, i) => {
     const tr = document.createElement('tr');
-    const photos = (r.photos || []).slice(0, 3).map(p => `<img src="${p.dataUrl}">`).join('');
+    const photos = (r.photos || []).slice(0, 3).map((p, pi) => `<img src="${p.dataUrl}" data-rid="${r.id}" data-pi="${pi}">`).join('');
     const more = (r.photos?.length > 3) ? `<span style="font-size:10px;align-self:center;">+${r.photos.length - 3}</span>` : '';
     tr.innerHTML = `
       <td data-label="#">${i + 1}</td>
@@ -499,6 +507,12 @@ async function renderRecords() {
 
   body.querySelectorAll('button[data-act]').forEach(b => {
     b.addEventListener('click', () => handleRowAction(b.dataset.act, b.dataset.id));
+  });
+  body.querySelectorAll('.mini-thumbs img').forEach(img => {
+    img.addEventListener('click', async () => {
+      const rec = await dbGet(img.dataset.rid);
+      if (rec) openLightbox(rec.photos.map(p => p.dataUrl), Number(img.dataset.pi), rec.customer || rec.id);
+    });
   });
 }
 
@@ -588,8 +602,14 @@ function showRecordModal(r) {
     ['Google Maps', r.gps ? `<a href="https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}" target="_blank" rel="noopener">OPEN ↗</a>` : ''],
   ];
   const kv = rows.map(([k, v]) => `<div class="kv"><b>${k}</b><span>${v ?? '—'}</span></div>`).join('');
-  const photos = (r.photos || []).map(p => `<img src="${p.dataUrl}" alt="">`).join('');
+  const photos = (r.photos || []).map((p, i) => `<img src="${p.dataUrl}" data-idx="${i}" alt="">`).join('');
   $('modalBody').innerHTML = kv + (photos ? `<div class="modal-photos">${photos}</div>` : '');
+  // Wire photo clicks → lightbox
+  $('modalBody').querySelectorAll('.modal-photos img').forEach(img => {
+    img.addEventListener('click', () => {
+      openLightbox(r.photos.map(p => p.dataUrl), Number(img.dataset.idx), r.customer || r.id);
+    });
+  });
   $('modal').hidden = false;
 }
 $('modalClose').addEventListener('click', () => $('modal').hidden = true);
@@ -702,30 +722,99 @@ $('btnClearAll').addEventListener('click', async () => {
   toast('All records deleted');
 });
 
-// ---------- Map Tab ----------
+// ---------- Map Tab (Leaflet + OpenStreetMap) ----------
+let leafletMap = null;
+let leafletMarkers = [];
+const KTM_DEFAULT = [27.7053, 85.3414]; // Kathmandu Baneshwor approx
+
+function conditionClass(c) {
+  switch ((c || '').toLowerCase()) {
+    case 'excellent': return 'excellent';
+    case 'good':      return 'good';
+    case 'fair':      return 'fair';
+    case 'poor':      return 'poor';
+    case 'critical':  return 'critical';
+    default:          return 'good';
+  }
+}
+
+function ensureLeaflet() {
+  if (leafletMap) return leafletMap;
+  if (typeof L === 'undefined') return null;
+  leafletMap = L.map('leafletMap', { zoomControl: true }).setView(KTM_DEFAULT, 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors',
+  }).addTo(leafletMap);
+  return leafletMap;
+}
+
 async function renderMap() {
-  const grid = $('mapGrid');
-  const all = (await dbAll()).filter(r => r.gps);
+  const map = ensureLeaflet();
+  if (!map) { toast('Map library not loaded'); return; }
+  // Fix sizing when tab becomes visible
+  setTimeout(() => map.invalidateSize(), 50);
+
+  // Clear old markers
+  leafletMarkers.forEach(m => map.removeLayer(m));
+  leafletMarkers = [];
+
+  const all = (await dbAll()).filter(r => r.gps && isFinite(r.gps.lat) && isFinite(r.gps.lng));
   if (!all.length) {
-    grid.innerHTML = '<div class="empty-state">No locations captured yet.</div>';
+    map.setView(KTM_DEFAULT, 14);
     return;
   }
-  grid.innerHTML = all.map(r => `
-    <div class="map-card">
-      <h4>${escapeHtml(r.customer || r.id)}</h4>
-      <div class="meta">${escapeHtml(r.address || '')}</div>
-      <div class="coord">LAT ${r.gps.lat.toFixed(7)}</div>
-      <div class="coord">LNG ${r.gps.lng.toFixed(7)}</div>
-      <div class="meta">Accuracy: ${r.gps.acc?.toFixed?.(2) ?? '—'} m  ·  ${r.gps.samples ?? '—'} samples</div>
-      <a href="https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}" target="_blank" rel="noopener">OPEN IN GOOGLE MAPS ↗</a>
-    </div>
-  `).join('');
+
+  all.forEach(r => {
+    const cls = conditionClass(r.condition);
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="kukl-marker ${cls}"></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 22],
+      popupAnchor: [0, -20],
+    });
+    const marker = L.marker([r.gps.lat, r.gps.lng], { icon }).addTo(map);
+
+    const photosHtml = (r.photos || []).slice(0, 4)
+      .map((p, i) => `<img data-pid="${r.id}" data-idx="${i}" src="${p.dataUrl}" alt="">`).join('');
+    const popup = `
+      <b>${escapeHtml(r.customer || r.id)}</b><br/>
+      <span style="font-size:11px;">${escapeHtml(r.address || '')}</span><br/>
+      <span style="font-family:monospace;font-size:11px;">${r.gps.lat.toFixed(6)}, ${r.gps.lng.toFixed(6)}  ±${r.gps.acc?.toFixed?.(1) ?? '?'}m</span><br/>
+      <span style="font-size:11px;">Condition: <b>${escapeHtml(r.condition || '—')}</b>  ·  Priority: <b>${escapeHtml(r.priority || '—')}</b></span>
+      ${photosHtml ? `<div class="popup-photos">${photosHtml}</div>` : ''}
+      <a class="popup-link" href="https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}" target="_blank" rel="noopener">GOOGLE MAPS ↗</a>
+      <a class="popup-link" href="#" data-view="${r.id}">VIEW DETAILS</a>
+    `;
+    marker.bindPopup(popup);
+    marker.on('popupopen', (e) => {
+      const root = e.popup.getElement();
+      root.querySelectorAll('.popup-photos img').forEach(img => {
+        img.addEventListener('click', () => {
+          openLightbox(r.photos.map(p => p.dataUrl), Number(img.dataset.idx), r.customer || r.id);
+        });
+      });
+      const v = root.querySelector('[data-view]');
+      if (v) v.addEventListener('click', (ev) => { ev.preventDefault(); showRecordModal(r); });
+    });
+    leafletMarkers.push(marker);
+  });
+
+  // Fit bounds
+  const bounds = L.latLngBounds(all.map(r => [r.gps.lat, r.gps.lng]));
+  map.fitBounds(bounds.pad(0.2), { maxZoom: 18 });
 }
+
+$('btnFitMap')?.addEventListener('click', () => {
+  if (!leafletMap || !leafletMarkers.length) { toast('No locations'); return; }
+  const bounds = L.latLngBounds(leafletMarkers.map(m => m.getLatLng()));
+  leafletMap.fitBounds(bounds.pad(0.2), { maxZoom: 18 });
+});
 
 $('btnOpenGmaps').addEventListener('click', async () => {
   const all = (await dbAll()).filter(r => r.gps);
   if (!all.length) { toast('No locations'); return; }
-  // Open first; opening many tabs is usually blocked by browsers.
   const r = all[0];
   window.open(`https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}`, '_blank');
 });
@@ -914,4 +1003,119 @@ async function closeScanner() {
 $('btnScanQr').addEventListener('click', openScanner);
 $('scanClose').addEventListener('click', closeScanner);
 scanModal.addEventListener('click', (e) => { if (e.target.id === 'scanModal') closeScanner(); });
+
+/* ============================================================
+   EXIF — Write GPS coordinates + survey ID into JPEG
+   ============================================================ */
+function injectExif(jpegDataUrl, gps, surveyId) {
+  if (typeof piexif === 'undefined') return jpegDataUrl;
+  if (typeof jpegDataUrl !== 'string' || !jpegDataUrl.startsWith('data:image/jpeg')) return jpegDataUrl;
+  try {
+    let exif;
+    try { exif = piexif.load(jpegDataUrl); }
+    catch { exif = { '0th': {}, 'Exif': {}, 'GPS': {}, 'Interop': {}, '1st': {}, 'thumbnail': null }; }
+    exif['0th'] = exif['0th'] || {};
+    exif['Exif'] = exif['Exif'] || {};
+    exif['GPS']  = exif['GPS']  || {};
+
+    if (gps && isFinite(gps.lat) && isFinite(gps.lng)) {
+      const toDms = piexif.GPSHelper.degToDmsRational;
+      exif.GPS[piexif.GPSIFD.GPSLatitudeRef]  = gps.lat >= 0 ? 'N' : 'S';
+      exif.GPS[piexif.GPSIFD.GPSLatitude]     = toDms(Math.abs(gps.lat));
+      exif.GPS[piexif.GPSIFD.GPSLongitudeRef] = gps.lng >= 0 ? 'E' : 'W';
+      exif.GPS[piexif.GPSIFD.GPSLongitude]    = toDms(Math.abs(gps.lng));
+      if (gps.alt != null && isFinite(gps.alt)) {
+        exif.GPS[piexif.GPSIFD.GPSAltitudeRef] = gps.alt >= 0 ? 0 : 1;
+        exif.GPS[piexif.GPSIFD.GPSAltitude]    = [Math.round(Math.abs(gps.alt) * 100), 100];
+      }
+      if (gps.acc != null && isFinite(gps.acc)) {
+        // Use DOP field to store accuracy radius (rational, 2-decimal)
+        exif.GPS[piexif.GPSIFD.GPSDOP] = [Math.round(gps.acc * 100), 100];
+      }
+      const d = new Date(gps.time || Date.now());
+      exif.GPS[piexif.GPSIFD.GPSDateStamp] = `${d.getUTCFullYear()}:${pad(d.getUTCMonth()+1)}:${pad(d.getUTCDate())}`;
+      exif.GPS[piexif.GPSIFD.GPSTimeStamp] = [
+        [d.getUTCHours(), 1], [d.getUTCMinutes(), 1], [d.getUTCSeconds(), 1]
+      ];
+      exif.GPS[piexif.GPSIFD.GPSMapDatum] = 'WGS-84';
+    }
+
+    exif['0th'][piexif.ImageIFD.ImageDescription] = `KUKL Survey ${surveyId || ''}`.trim();
+    exif['0th'][piexif.ImageIFD.Software] = 'KUKL Baneshwor Site Survey System';
+    exif['0th'][piexif.ImageIFD.DateTime] = fmtDateTime().replace(/-/g, ':');
+    // UserComment requires 8-byte charset prefix (ASCII\0\0\0)
+    const uc = `SurveyID:${surveyId || ''}` +
+               (gps ? ` | ${gps.lat?.toFixed(7)},${gps.lng?.toFixed(7)} ±${gps.acc?.toFixed(2)}m` : '');
+    exif.Exif[piexif.ExifIFD.UserComment] = 'ASCII\0\0\0' + uc;
+
+    return piexif.insert(piexif.dump(exif), jpegDataUrl);
+  } catch (e) {
+    console.warn('EXIF inject failed:', e);
+    return jpegDataUrl;
+  }
+}
+
+/* ============================================================
+   LIGHTBOX — full-screen photo viewer with prev/next/download
+   ============================================================ */
+const lb = $('lightbox');
+const lbImg = $('lbImg');
+const lbMeta = $('lbMeta');
+let lbList = [];
+let lbIdx = 0;
+let lbLabel = '';
+
+function openLightbox(urls, idx = 0, label = '') {
+  if (!urls?.length) return;
+  lbList = urls;
+  lbIdx = Math.max(0, Math.min(idx, urls.length - 1));
+  lbLabel = label || '';
+  showLbImage();
+  lb.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  lb.hidden = true;
+  lbImg.src = '';
+  document.body.style.overflow = '';
+}
+function showLbImage() {
+  lbImg.src = lbList[lbIdx];
+  lbMeta.textContent = `${lbLabel ? lbLabel + ' — ' : ''}${lbIdx + 1} / ${lbList.length}`;
+  $('lbPrev').style.display = lbList.length > 1 ? '' : 'none';
+  $('lbNext').style.display = lbList.length > 1 ? '' : 'none';
+}
+function lbNext() { lbIdx = (lbIdx + 1) % lbList.length; showLbImage(); }
+function lbPrev() { lbIdx = (lbIdx - 1 + lbList.length) % lbList.length; showLbImage(); }
+
+$('lbClose').addEventListener('click', closeLightbox);
+$('lbNext').addEventListener('click', lbNext);
+$('lbPrev').addEventListener('click', lbPrev);
+$('lbDownload').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = lbList[lbIdx];
+  const safe = (lbLabel || 'photo').replace(/[^a-z0-9\-_]/gi, '_');
+  a.download = `${safe}_${lbIdx + 1}.jpg`;
+  a.click();
+});
+lb.addEventListener('click', (e) => {
+  // Click on backdrop (not image or buttons) closes
+  if (e.target === lb) closeLightbox();
+});
+document.addEventListener('keydown', (e) => {
+  if (lb.hidden) return;
+  if (e.key === 'Escape') closeLightbox();
+  else if (e.key === 'ArrowRight') lbNext();
+  else if (e.key === 'ArrowLeft') lbPrev();
+});
+// swipe on mobile
+let touchX0 = null;
+lb.addEventListener('touchstart', (e) => { touchX0 = e.touches[0].clientX; }, { passive: true });
+lb.addEventListener('touchend', (e) => {
+  if (touchX0 == null) return;
+  const dx = (e.changedTouches[0].clientX - touchX0);
+  if (Math.abs(dx) > 50 && lbList.length > 1) (dx < 0 ? lbNext : lbPrev)();
+  touchX0 = null;
+}, { passive: true });
+
 

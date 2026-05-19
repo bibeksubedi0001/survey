@@ -7,11 +7,16 @@
 <title>KUKL Baneshwor — Site Survey System</title>
 <link rel="icon" type="image/png" href="Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png" />
 <link rel="apple-touch-icon" href="Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="styles.css" />
 <!-- SheetJS for Excel export -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- html5-qrcode for camera-based QR / barcode scanning -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<!-- piexifjs for writing GPS EXIF into JPEGs -->
+<script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js"></script>
+<!-- Leaflet for interactive map -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -277,11 +282,17 @@
       <div class="card-head">
         <h2>Surveyed Locations</h2>
         <div class="btn-row">
-          <button id="btnOpenGmaps" class="btn btn-outline">OPEN ALL IN GOOGLE MAPS</button>
+          <button id="btnFitMap" class="btn btn-outline">FIT ALL</button>
+          <button id="btnOpenGmaps" class="btn btn-outline">OPEN FIRST IN GOOGLE MAPS</button>
         </div>
       </div>
-      <div class="map-grid" id="mapGrid">
-        <div class="empty-state">No locations captured yet.</div>
+      <div id="leafletMap" class="leaflet-map"></div>
+      <div class="map-legend">
+        <span><i class="pin pin-excellent"></i>Excellent</span>
+        <span><i class="pin pin-good"></i>Good</span>
+        <span><i class="pin pin-fair"></i>Fair</span>
+        <span><i class="pin pin-poor"></i>Poor</span>
+        <span><i class="pin pin-critical"></i>Critical</span>
       </div>
     </div>
   </section>
@@ -305,6 +316,16 @@
 
 <!-- ============ TOAST ============ -->
 <div id="toast" class="toast"></div>
+
+<!-- ============ LIGHTBOX ============ -->
+<div id="lightbox" class="lightbox" hidden>
+  <button id="lbClose" class="lb-btn lb-close" title="Close">×</button>
+  <button id="lbDownload" class="lb-btn lb-download" title="Download">↓ DOWNLOAD</button>
+  <button id="lbPrev" class="lb-btn lb-prev" title="Previous">‹</button>
+  <button id="lbNext" class="lb-btn lb-next" title="Next">›</button>
+  <img id="lbImg" alt="" />
+  <div id="lbMeta" class="lb-meta"></div>
+</div>
 
 <!-- ============ DRAFT BANNER ============ -->
 <div id="draftBanner" class="draft-banner" hidden>
