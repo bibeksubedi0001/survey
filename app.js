@@ -129,12 +129,15 @@ window.addEventListener('online', updateOnline);
 window.addEventListener('offline', updateOnline);
 updateOnline();
 
-// ---------- GPS (high precision — watch until ≤ TARGET_ACC m or user stops) ----------
-const TARGET_ACC = 2;       // meters — desired accuracy
-const MAX_WAIT_MS = 90000;  // 90s cap
+// ---------- GPS (multi-sample fusion — weighted average for ≤ 2 m precision) ----------
+const TARGET_ACC = 2;          // meters — desired final fused accuracy
+const MIN_GOOD_SAMPLES = 3;    // need this many samples ≤ TARGET_ACC*1.5 before lock
+const MAX_WAIT_MS = 120000;    // 120s cap
+const MAX_SAMPLES_KEPT = 60;   // ring buffer
 
 let gpsWatchId = null;
-let gpsBest = null;
+let gpsSamples = [];           // [{lat,lng,acc,alt,hdg,t}]
+let gpsBestAcc = Infinity;
 let gpsStartTs = 0;
 let gpsTickTimer = null;
 
@@ -145,19 +148,48 @@ function setGpsBtn(label, busy) {
   b.classList.toggle('btn-primary', !busy);
 }
 
-function updateGpsView(c, status) {
-  $('lat').textContent = c.latitude.toFixed(6);
-  $('lng').textContent = c.longitude.toFixed(6);
-  $('acc').textContent = c.accuracy ? c.accuracy.toFixed(1) : '—';
-  $('alt').textContent = (c.altitude != null) ? c.altitude.toFixed(1) : '—';
-  $('hdg').textContent = (c.heading != null && !isNaN(c.heading)) ? c.heading.toFixed(0) + '°' : '—';
-  $('gpsTime').textContent = fmtDateTime();
-  // Visual accuracy indicator
-  const accEl = $('acc');
-  accEl.classList.remove('acc-good','acc-ok','acc-bad');
-  if (c.accuracy != null) {
-    if (c.accuracy <= TARGET_ACC) accEl.classList.add('acc-good');
-    else if (c.accuracy <= 10) accEl.classList.add('acc-ok');
+// Weighted-average of the BEST samples (weight = 1/acc²).
+// Only uses samples whose accuracy is within 2× of the best sample → ignores outliers.
+function fuseSamples(samples) {
+  if (!samples.length) return null;
+  const best = Math.min(...samples.map(s => s.acc));
+  const keep = samples.filter(s => s.acc <= best * 2 && isFinite(s.acc) && s.acc > 0);
+  let sw = 0, slat = 0, slng = 0, salt = 0, saltW = 0, shdg = 0, shdgW = 0;
+  for (const s of keep) {
+    const w = 1 / (s.acc * s.acc);
+    sw += w;
+    slat += s.lat * w;
+    slng += s.lng * w;
+    if (s.alt != null && !isNaN(s.alt)) { salt += s.alt * w; saltW += w; }
+    if (s.hdg != null && !isNaN(s.hdg)) { shdg += s.hdg * w; shdgW += w; }
+  }
+  // Fused theoretical accuracy ≈ 1/sqrt(sum of weights)
+  const fusedAcc = 1 / Math.sqrt(sw);
+  return {
+    lat: slat / sw,
+    lng: slng / sw,
+    acc: Math.max(fusedAcc, best * 0.6),   // don't claim better than 60% of best raw fix
+    alt: saltW > 0 ? salt / saltW : null,
+    hdg: shdgW > 0 ? shdg / shdgW : null,
+    samples: keep.length,
+    rawBest: best,
+    time: new Date().toISOString(),
+  };
+}
+
+function updateGpsView(fused, status) {
+  if (fused) {
+    $('lat').textContent = fused.lat.toFixed(7);
+    $('lng').textContent = fused.lng.toFixed(7);
+    $('acc').textContent = fused.acc.toFixed(2);
+    $('bestAcc').textContent = isFinite(fused.rawBest) ? fused.rawBest.toFixed(2) : '—';
+    $('samples').textContent = gpsSamples.length;
+    $('gpsTime').textContent = fmtDateTime();
+
+    const accEl = $('acc');
+    accEl.classList.remove('acc-good','acc-ok','acc-bad');
+    if (fused.acc <= TARGET_ACC) accEl.classList.add('acc-good');
+    else if (fused.acc <= 5) accEl.classList.add('acc-ok');
     else accEl.classList.add('acc-bad');
   }
   if (status) $('gpsStatus').textContent = status;
@@ -173,72 +205,71 @@ function stopGpsWatch(finalMsg) {
   if (finalMsg) $('gpsStatus').textContent = finalMsg;
 }
 
+function commitFused(reason) {
+  const fused = fuseSamples(gpsSamples);
+  if (!fused) { stopGpsWatch('No usable fix.'); return; }
+  state.gps = fused;
+  updateGpsView(fused);
+  stopGpsWatch(`${reason}  ·  fused ${fused.acc.toFixed(2)} m from ${fused.samples}/${gpsSamples.length} samples (best raw ${fused.rawBest.toFixed(2)} m)`);
+  toast(`GPS locked at ${fused.acc.toFixed(2)} m`);
+}
+
 $('btnGetLocation').addEventListener('click', () => {
-  // If already watching → user wants to stop & accept best so far
+  // If watching → user wants to stop & accept best so far
   if (gpsWatchId != null) {
-    if (gpsBest) {
-      state.gps = gpsBest;
-      updateGpsView({
-        latitude: gpsBest.lat, longitude: gpsBest.lng,
-        accuracy: gpsBest.acc, altitude: gpsBest.alt, heading: gpsBest.hdg
-      });
-      stopGpsWatch(`Stopped — best accuracy ${gpsBest.acc.toFixed(1)} m accepted.`);
-      toast(`GPS accepted (${gpsBest.acc.toFixed(1)} m)`);
-    } else {
-      stopGpsWatch('Cancelled — no fix obtained.');
-    }
+    if (gpsSamples.length) commitFused('Stopped by user');
+    else stopGpsWatch('Cancelled — no fix obtained.');
     return;
   }
 
   if (!navigator.geolocation) { toast('Geolocation not supported'); return; }
 
-  gpsBest = null;
+  gpsSamples = [];
+  gpsBestAcc = Infinity;
   gpsStartTs = Date.now();
   setGpsBtn('STOP & USE BEST', true);
-  $('gpsStatus').textContent = `Acquiring high-precision GPS… target ≤ ${TARGET_ACC} m. Stand outdoors with clear sky.`;
+  $('gpsStatus').textContent = `Acquiring high-precision GPS… target ≤ ${TARGET_ACC} m. Stand outdoors, hold device flat & still.`;
+  $('samples').textContent = '0';
+  $('bestAcc').textContent = '—';
 
-  // Live "elapsed" ticker
+  // Live ticker
   gpsTickTimer = setInterval(() => {
-    if (!gpsBest) return;
+    if (!gpsSamples.length) return;
     const sec = Math.round((Date.now() - gpsStartTs) / 1000);
+    const fused = fuseSamples(gpsSamples);
+    const goodCount = gpsSamples.filter(s => s.acc <= TARGET_ACC * 1.5).length;
     $('gpsStatus').textContent =
-      `Refining… best so far ${gpsBest.acc.toFixed(1)} m  ·  elapsed ${sec}s  ·  target ≤ ${TARGET_ACC} m  (tap STOP to accept)`;
+      `Refining…  fused ${fused.acc.toFixed(2)} m  ·  best raw ${gpsBestAcc.toFixed(2)} m  ·  ${gpsSamples.length} samples (${goodCount} good)  ·  ${sec}s elapsed  ·  tap STOP to accept`;
+    updateGpsView(fused);
   }, 500);
 
   gpsWatchId = navigator.geolocation.watchPosition(
     (pos) => {
       const c = pos.coords;
-      const cand = {
+      if (!isFinite(c.accuracy) || c.accuracy <= 0) return;
+
+      const s = {
         lat: c.latitude, lng: c.longitude,
         acc: c.accuracy, alt: c.altitude, hdg: c.heading,
-        time: new Date().toISOString(),
+        t: Date.now(),
       };
-      // Keep the best (lowest accuracy radius) sample
-      if (!gpsBest || cand.acc < gpsBest.acc) {
-        gpsBest = cand;
-        state.gps = cand;
-        updateGpsView({
-          latitude: cand.lat, longitude: cand.lng,
-          accuracy: cand.acc, altitude: cand.alt, heading: cand.hdg
-        });
-      }
+      gpsSamples.push(s);
+      if (gpsSamples.length > MAX_SAMPLES_KEPT) gpsSamples.shift();
+      if (s.acc < gpsBestAcc) gpsBestAcc = s.acc;
 
-      // Target reached → finalize
-      if (cand.acc <= TARGET_ACC) {
-        stopGpsWatch(`Location locked ✓  accuracy ${cand.acc.toFixed(1)} m (target ≤ ${TARGET_ACC} m)`);
-        toast(`GPS locked at ${cand.acc.toFixed(1)} m`);
+      const fused = fuseSamples(gpsSamples);
+      updateGpsView(fused);
+
+      const goodCount = gpsSamples.filter(x => x.acc <= TARGET_ACC * 1.5).length;
+
+      // Auto-lock when fused accuracy meets target AND we have enough agreeing samples
+      if (fused.acc <= TARGET_ACC && goodCount >= MIN_GOOD_SAMPLES) {
+        commitFused('Location locked ✓');
         return;
       }
 
-      // Hard timeout — accept best
       if (Date.now() - gpsStartTs > MAX_WAIT_MS) {
-        if (gpsBest) {
-          state.gps = gpsBest;
-          stopGpsWatch(`Timeout — best accuracy ${gpsBest.acc.toFixed(1)} m accepted (couldn't reach ${TARGET_ACC} m).`);
-          toast(`GPS accepted (${gpsBest.acc.toFixed(1)} m)`);
-        } else {
-          stopGpsWatch('Timeout — no usable fix.');
-        }
+        commitFused('Timeout — best available accepted');
       }
     },
     (err) => {
@@ -295,7 +326,7 @@ function snapPhoto() {
   // Stamp GPS + time
   const stamp = [
     fmtDateTime(),
-    state.gps ? `LAT ${state.gps.lat.toFixed(6)}  LNG ${state.gps.lng.toFixed(6)}` : 'GPS: not captured'
+    state.gps ? `LAT ${state.gps.lat.toFixed(7)}  LNG ${state.gps.lng.toFixed(7)}  ±${state.gps.acc.toFixed(2)}m` : 'GPS: not captured'
   ];
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(0, h - 60, w, 60);
@@ -365,7 +396,9 @@ function resetForm(confirmReset = false) {
   $('surveyForm').reset();
   state.photos = [];
   state.gps = null;
-  ['lat','lng','acc','alt','hdg','gpsTime'].forEach(id => $(id).textContent = '—');
+  ['lat','lng','acc','bestAcc','gpsTime'].forEach(id => $(id).textContent = '—');
+  $('samples').textContent = '0';
+  $('acc').classList.remove('acc-good','acc-ok','acc-bad');
   $('gpsStatus').textContent = 'Tap CAPTURE LOCATION to fetch precise GPS coordinates.';
   renderThumbs();
   newSurveyId();
@@ -442,7 +475,7 @@ async function renderRecords() {
       <td data-label="Date">${(r.createdAt || '').replace('T',' ').slice(0,16)}</td>
       <td data-label="Customer">${escapeHtml(r.customer || '')}</td>
       <td data-label="Address">${escapeHtml(r.address || '')}</td>
-      <td data-label="Lat, Lng" style="font-family:monospace;font-size:11px;">${r.gps ? r.gps.lat.toFixed(5)+', '+r.gps.lng.toFixed(5) : '—'}</td>
+      <td data-label="Lat, Lng" style="font-family:monospace;font-size:11px;">${r.gps ? r.gps.lat.toFixed(6)+', '+r.gps.lng.toFixed(6) : '—'}</td>
       <td data-label="Condition">${escapeHtml(r.condition || '')}</td>
       <td data-label="Photos"><div class="mini-thumbs">${photos}${more}</div></td>
       <td data-label="Actions">
@@ -504,11 +537,11 @@ function loadIntoForm(r) {
   $('remarks').value = r.remarks || '';
   if (r.gps) {
     state.gps = r.gps;
-    $('lat').textContent = r.gps.lat?.toFixed?.(6) ?? '—';
-    $('lng').textContent = r.gps.lng?.toFixed?.(6) ?? '—';
-    $('acc').textContent = r.gps.acc?.toFixed?.(1) ?? '—';
-    $('alt').textContent = (r.gps.alt != null) ? r.gps.alt.toFixed(1) : '—';
-    $('hdg').textContent = (r.gps.hdg != null) ? Math.round(r.gps.hdg) + '°' : '—';
+    $('lat').textContent = r.gps.lat?.toFixed?.(7) ?? '—';
+    $('lng').textContent = r.gps.lng?.toFixed?.(7) ?? '—';
+    $('acc').textContent = r.gps.acc?.toFixed?.(2) ?? '—';
+    $('bestAcc').textContent = r.gps.rawBest?.toFixed?.(2) ?? '—';
+    $('samples').textContent = r.gps.samples ?? '—';
     $('gpsTime').textContent = (r.gps.time || '').replace('T',' ').slice(0,19);
   }
   state.photos = (r.photos || []).slice();
@@ -539,10 +572,11 @@ function showRecordModal(r) {
     ['Condition', r.condition],
     ['Priority', r.priority],
     ['Remarks', r.remarks],
-    ['Latitude', r.gps?.lat?.toFixed?.(6)],
-    ['Longitude', r.gps?.lng?.toFixed?.(6)],
-    ['Accuracy (m)', r.gps?.acc?.toFixed?.(1)],
-    ['Altitude (m)', r.gps?.alt],
+    ['Latitude', r.gps?.lat?.toFixed?.(7)],
+    ['Longitude', r.gps?.lng?.toFixed?.(7)],
+    ['Accuracy (m)', r.gps?.acc?.toFixed?.(2)],
+    ['Best Raw (m)', r.gps?.rawBest?.toFixed?.(2)],
+    ['Samples', r.gps?.samples],
     ['Google Maps', r.gps ? `<a href="https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}" target="_blank" rel="noopener">OPEN ↗</a>` : ''],
   ];
   const kv = rows.map(([k, v]) => `<div class="kv"><b>${k}</b><span>${v ?? '—'}</span></div>`).join('');
@@ -584,7 +618,8 @@ $('btnExport').addEventListener('click', async () => {
     'Latitude': r.gps?.lat ?? '',
     'Longitude': r.gps?.lng ?? '',
     'GPS Accuracy (m)': r.gps?.acc ?? '',
-    'Altitude (m)': r.gps?.alt ?? '',
+    'Best Raw Accuracy (m)': r.gps?.rawBest ?? '',
+    'GPS Samples': r.gps?.samples ?? '',
     'Google Maps Link': r.gps ? `https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}` : '',
     'Photo Count': (r.photos || []).length,
   }));
@@ -671,9 +706,9 @@ async function renderMap() {
     <div class="map-card">
       <h4>${escapeHtml(r.customer || r.id)}</h4>
       <div class="meta">${escapeHtml(r.address || '')}</div>
-      <div class="coord">LAT ${r.gps.lat.toFixed(6)}</div>
-      <div class="coord">LNG ${r.gps.lng.toFixed(6)}</div>
-      <div class="meta">Accuracy: ${r.gps.acc?.toFixed?.(1) ?? '—'} m</div>
+      <div class="coord">LAT ${r.gps.lat.toFixed(7)}</div>
+      <div class="coord">LNG ${r.gps.lng.toFixed(7)}</div>
+      <div class="meta">Accuracy: ${r.gps.acc?.toFixed?.(2) ?? '—'} m  ·  ${r.gps.samples ?? '—'} samples</div>
       <a href="https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}" target="_blank" rel="noopener">OPEN IN GOOGLE MAPS ↗</a>
     </div>
   `).join('');
