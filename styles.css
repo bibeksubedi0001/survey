@@ -122,6 +122,13 @@ body{
 .card-head h2{
   font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
 }
+.req{
+  display:inline-block;margin-left:10px;
+  background:#fff;color:#000;
+  font-size:9px;font-weight:800;letter-spacing:1.5px;
+  padding:2px 6px;border:1px solid #fff;
+  vertical-align:middle;
+}
 
 /* ===== BUTTONS ===== */
 .btn{

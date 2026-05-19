@@ -413,6 +413,12 @@ $('surveyForm').addEventListener('submit', async (e) => {
   if (!rec.surveyor || !rec.customer || !rec.address) {
     toast('Please fill required fields'); return;
   }
+  if (!rec.gps || rec.gps.lat == null || rec.gps.lng == null) {
+    toast('GPS coordinates required — tap CAPTURE LOCATION first', 3500);
+    document.querySelector('#tab-capture .card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('btnGetLocation').focus();
+    return;
+  }
   try {
     await dbPut(rec);
     toast(state.editingId ? 'Survey updated' : 'Survey saved');
