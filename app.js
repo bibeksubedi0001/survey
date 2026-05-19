@@ -212,6 +212,7 @@ function commitFused(reason) {
   updateGpsView(fused);
   stopGpsWatch(`${reason}  ·  fused ${fused.acc.toFixed(2)} m from ${fused.samples}/${gpsSamples.length} samples (best raw ${fused.rawBest.toFixed(2)} m)`);
   toast(`GPS locked at ${fused.acc.toFixed(2)} m`);
+  if (typeof scheduleDraftSave === 'function') scheduleDraftSave();
 }
 
 $('btnGetLocation').addEventListener('click', () => {
@@ -415,6 +416,7 @@ $('surveyForm').addEventListener('submit', async (e) => {
   try {
     await dbPut(rec);
     toast(state.editingId ? 'Survey updated' : 'Survey saved');
+    clearDraft();
     resetForm(false);
     await refreshCount();
   } catch (err) {
@@ -733,3 +735,177 @@ window.addEventListener('beforeunload', (e) => {
 
 // ---------- Init ----------
 renderThumbs();
+
+/* ============================================================
+   AUTO-SAVE DRAFTS  (localStorage, debounced)
+   ============================================================ */
+const DRAFT_KEY = 'kukl_survey_draft_v1';
+let draftTimer = null;
+
+const FORM_FIELDS = [
+  'surveyId','surveyor','customer','customerId','address','ward','contact',
+  'connType','pipeMat','meterStatus','meterReading','meterSerial',
+  'pressure','leakage','supplyHrs','condition','priority','remarks'
+];
+
+function saveDraftNow() {
+  // Don't draft while editing existing record
+  if (state.editingId) return;
+  const data = {};
+  FORM_FIELDS.forEach(id => { data[id] = $(id)?.value ?? ''; });
+  const hasContent = data.customer || data.address || data.surveyor || data.remarks
+                  || state.gps || state.photos.length;
+  if (!hasContent) {
+    localStorage.removeItem(DRAFT_KEY);
+    return;
+  }
+  const draft = { data, gps: state.gps, photos: state.photos, savedAt: new Date().toISOString() };
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }
+  catch (e) { /* quota: drop photos */
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, photos: [] })); } catch {}
+  }
+}
+function scheduleDraftSave() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(saveDraftNow, 400);
+}
+function clearDraft() { localStorage.removeItem(DRAFT_KEY); $('draftBanner').hidden = true; }
+
+// Hook every form input
+FORM_FIELDS.forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener('input', scheduleDraftSave);
+});
+
+// Also save when photos / GPS change
+const _addPhoto = addPhoto;
+window.addPhoto = function(d){ _addPhoto(d); scheduleDraftSave(); };
+// patch the photo array delete (renderThumbs rebuilds; hook the click via mutation isn't needed — just save on any thumb interaction by re-listening here)
+new MutationObserver(scheduleDraftSave).observe($('thumbStrip'), { childList: true });
+
+// Restore draft on load
+function restoreDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return;
+  try {
+    const draft = JSON.parse(raw);
+    if (!draft || !draft.data) return;
+    FORM_FIELDS.forEach(id => { if ($(id) && draft.data[id] != null) $(id).value = draft.data[id]; });
+    if (draft.gps) {
+      state.gps = draft.gps;
+      $('lat').textContent = draft.gps.lat?.toFixed?.(7) ?? '—';
+      $('lng').textContent = draft.gps.lng?.toFixed?.(7) ?? '—';
+      $('acc').textContent = draft.gps.acc?.toFixed?.(2) ?? '—';
+      $('bestAcc').textContent = draft.gps.rawBest?.toFixed?.(2) ?? '—';
+      $('samples').textContent = draft.gps.samples ?? '—';
+      $('gpsTime').textContent = (draft.gps.time || '').replace('T',' ').slice(0,19);
+      if (draft.gps.acc <= TARGET_ACC) $('acc').classList.add('acc-good');
+    }
+    if (Array.isArray(draft.photos)) {
+      state.photos = draft.photos;
+      renderThumbs();
+    }
+    const when = (draft.savedAt || '').replace('T',' ').slice(0,16);
+    $('draftMsg').textContent = `Draft restored from ${when}`;
+    $('draftBanner').hidden = false;
+  } catch {}
+}
+$('btnDiscardDraft').addEventListener('click', () => {
+  if (!confirm('Discard the restored draft?')) return;
+  clearDraft();
+  resetForm(false);
+});
+restoreDraft();
+
+/* ============================================================
+   VOICE → TEXT for Remarks  (Web Speech API)
+   ============================================================ */
+const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+const btnVoice = $('btnVoice');
+let recog = null, recogActive = false;
+
+if (!Speech) {
+  btnVoice.disabled = true;
+  btnVoice.title = 'Voice recognition not supported in this browser';
+  btnVoice.textContent = 'NO MIC';
+} else {
+  btnVoice.addEventListener('click', () => {
+    if (recogActive) { try { recog.stop(); } catch {} return; }
+    recog = new Speech();
+    recog.lang = $('voiceLang').value || 'en-US';
+    recog.continuous = true;
+    recog.interimResults = true;
+
+    let finalAdd = '';
+    recog.onstart = () => {
+      recogActive = true;
+      btnVoice.classList.add('active');
+      btnVoice.textContent = '■ STOP';
+      toast('Listening… speak now');
+    };
+    recog.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalAdd += t + ' ';
+        else interim += t;
+      }
+      const ta = $('remarks');
+      const base = (ta.dataset.voiceBase ?? ta.value);
+      if (!ta.dataset.voiceBase) ta.dataset.voiceBase = base;
+      const sep = ta.dataset.voiceBase && !/\s$/.test(ta.dataset.voiceBase) ? ' ' : '';
+      ta.value = ta.dataset.voiceBase + sep + finalAdd + interim;
+      scheduleDraftSave();
+    };
+    recog.onerror = (e) => { toast('Voice error: ' + e.error, 3000); };
+    recog.onend = () => {
+      recogActive = false;
+      btnVoice.classList.remove('active');
+      btnVoice.textContent = '● MIC';
+      const ta = $('remarks');
+      delete ta.dataset.voiceBase;
+    };
+    try { recog.start(); } catch (e) { toast('Mic failed: ' + e.message, 3000); }
+  });
+}
+
+/* ============================================================
+   QR / BARCODE SCAN for Customer ID  (html5-qrcode)
+   ============================================================ */
+let qrScanner = null;
+const scanModal = $('scanModal');
+
+async function openScanner() {
+  if (typeof Html5Qrcode === 'undefined') {
+    toast('Scanner library failed to load (need internet)', 3500); return;
+  }
+  scanModal.hidden = false;
+  try {
+    qrScanner = new Html5Qrcode('scanRegion');
+    await qrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 12, qrbox: { width: 260, height: 160 } },
+      (decodedText) => {
+        $('customerId').value = decodedText;
+        scheduleDraftSave();
+        toast('Scanned: ' + decodedText);
+        closeScanner();
+      },
+      () => { /* per-frame errors silenced */ }
+    );
+  } catch (e) {
+    toast('Camera error: ' + e.message, 3500);
+    closeScanner();
+  }
+}
+async function closeScanner() {
+  scanModal.hidden = true;
+  if (qrScanner) {
+    try { await qrScanner.stop(); await qrScanner.clear(); } catch {}
+    qrScanner = null;
+  }
+}
+$('btnScanQr').addEventListener('click', openScanner);
+$('scanClose').addEventListener('click', closeScanner);
+scanModal.addEventListener('click', (e) => { if (e.target.id === 'scanModal') closeScanner(); });
+

@@ -37,7 +37,7 @@ body{
   background:#fff;
   position:sticky;top:0;z-index:50;
 }
-.brand{display:flex;align-items:center;gap:14px;}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 auto;}
 .brand-mark{
   width:46px;height:46px;
   border:2px solid #000;
@@ -46,13 +46,14 @@ body{
   background:#000;color:#fff;
 }
 .brand-logo{
-  width:52px;height:52px;
+  width:48px;height:48px;
   object-fit:contain;
-  background:#fff;
-  border:2px solid #000;
-  padding:3px;
   display:block;
+  flex-shrink:0;
 }
+.brand-text{min-width:0;overflow:hidden;}
+.brand-text h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.brand-text p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .brand-text h1{font-size:18px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;}
 .brand-text p{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
 .header-actions{display:flex;align-items:center;gap:12px;}
@@ -399,6 +400,40 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
 }
 
+/* ===== INPUT WITH INLINE ACTION ===== */
+.input-with-action{display:flex;gap:6px;}
+.input-with-action input{flex:1;min-width:0;}
+.btn-mini{
+  font-size:10px;font-weight:800;letter-spacing:1.2px;
+  padding:6px 10px;min-height:auto;
+  text-transform:uppercase;
+  border:2px solid #000;background:#fff;color:#000;cursor:pointer;
+  font-family:inherit;
+}
+.btn-mini:hover{background:#000;color:#fff;}
+.btn-mini.active{background:#B00020;color:#fff;border-color:#B00020;}
+
+/* ===== LABEL WITH INLINE ACTIONS (mic) ===== */
+.field label{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.label-actions{display:flex;gap:6px;align-items:center;}
+.mini-select{
+  font-family:inherit;font-size:11px;font-weight:700;
+  padding:4px 6px;border:1px solid #000;background:#fff;color:#000;
+  text-transform:uppercase;
+}
+
+/* ===== DRAFT RESTORE BANNER ===== */
+.draft-banner{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%);
+  background:#fff;border:2px solid #000;
+  padding:8px 14px;
+  display:flex;align-items:center;gap:12px;
+  font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  z-index:150;
+  box-shadow:4px 4px 0 #000;
+}
+.draft-banner[hidden]{display:none !important;}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width:780px){
   .app-header{padding:12px 14px;}
@@ -422,6 +457,9 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   .gps-cell{border-right:none !important;border-bottom:1px solid #000 !important;}
   .gps-cell:last-child{border-bottom:none !important;}
   .header-actions .clock{display:none;}
+  .brand-text p{display:none;}
+  .brand-text h1{font-size:13px;}
+  .brand-logo{width:36px;height:36px;}
 }
 
 /* ===== PRINT ===== */
@@ -451,6 +489,9 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   .btn{min-height:46px;padding:12px 14px;font-size:11px;}
   .tab{min-height:48px;}
   .brand-mark{width:38px;height:38px;font-size:12px;}
+  .brand-logo{width:40px;height:40px;}
+  .brand-text h1{font-size:14px;letter-spacing:.3px;}
+  .brand-text p{font-size:9px;letter-spacing:.8px;}
   .gps-val{font-size:18px;}
   /* full-width primary action on small screens */
   .form-actions{flex-direction:column-reverse;}

@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="styles.css" />
 <!-- SheetJS for Excel export -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- html5-qrcode for camera-based QR / barcode scanning -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
@@ -105,7 +107,10 @@
         </div>
         <div class="field">
           <label>KUKL Customer ID</label>
-          <input type="text" id="customerId" placeholder="e.g. BNS-12345" />
+          <div class="input-with-action">
+            <input type="text" id="customerId" placeholder="e.g. BNS-12345" />
+            <button type="button" id="btnScanQr" class="btn btn-mini" title="Scan QR / Barcode">SCAN</button>
+          </div>
         </div>
 
         <div class="field full">
@@ -207,7 +212,17 @@
         </div>
 
         <div class="field full">
-          <label>Remarks / Observations</label>
+          <label>
+            Remarks / Observations
+            <span class="label-actions">
+              <select id="voiceLang" class="mini-select" title="Voice language">
+                <option value="en-US">EN</option>
+                <option value="ne-NP">ने (Nepali)</option>
+                <option value="hi-IN">HI</option>
+              </select>
+              <button type="button" id="btnVoice" class="btn btn-mini" title="Voice to text">● MIC</button>
+            </span>
+          </label>
           <textarea id="remarks" rows="3" placeholder="Describe leakage points, illegal connections, damages, etc."></textarea>
         </div>
 
@@ -290,6 +305,26 @@
 
 <!-- ============ TOAST ============ -->
 <div id="toast" class="toast"></div>
+
+<!-- ============ DRAFT BANNER ============ -->
+<div id="draftBanner" class="draft-banner" hidden>
+  <span id="draftMsg">Unsaved draft restored.</span>
+  <button id="btnDiscardDraft" class="btn btn-mini">DISCARD DRAFT</button>
+</div>
+
+<!-- ============ SCANNER MODAL ============ -->
+<div id="scanModal" class="modal" hidden>
+  <div class="modal-card" style="max-width:520px;">
+    <div class="modal-head">
+      <h3>Scan QR / Barcode</h3>
+      <button id="scanClose" class="btn btn-outline">CLOSE</button>
+    </div>
+    <div class="modal-body">
+      <div id="scanRegion" style="width:100%;"></div>
+      <p class="hint" style="border:none;background:none;padding:10px 0 0;">Point camera at the meter sticker. Result auto-fills the Customer ID.</p>
+    </div>
+  </div>
+</div>
 
 <!-- ============ MODAL (View record) ============ -->
 <div id="modal" class="modal" hidden>
