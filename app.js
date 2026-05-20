@@ -274,10 +274,46 @@ $('btnGetLocation').addEventListener('click', () => {
       }
     },
     (err) => {
-      stopGpsWatch('GPS error: ' + err.message);
-      toast('GPS error: ' + err.message, 3500);
+      // err.code: 1=PERMISSION_DENIED, 2=POSITION_UNAVAILABLE, 3=TIMEOUT
+      const elapsed = Math.round((Date.now() - gpsStartTs) / 1000);
+
+      if (err.code === 1) {
+        // Permission denied — must stop, user action required
+        stopGpsWatch('GPS permission denied. Enable Location for this site in browser settings.');
+        toast('GPS permission denied', 4000);
+        return;
+      }
+
+      if (err.code === 3) {
+        // TIMEOUT — keep waiting. watchPosition will keep emitting; don't kill it.
+        if (gpsSamples.length > 0) {
+          // We already have a fix — accept it
+          commitFused('Timeout — best available accepted');
+        } else {
+          $('gpsStatus').textContent =
+            `GPS slow (${elapsed}s) — still searching satellites. Go outdoors or near a window. Tap STOP to cancel.`;
+          // Auto-give-up only after the hard cap
+          if (Date.now() - gpsStartTs > MAX_WAIT_MS) {
+            stopGpsWatch('Timeout — no GPS fix obtained. Check Location services are ON in device settings.');
+          }
+        }
+        return;
+      }
+
+      if (err.code === 2) {
+        // POSITION_UNAVAILABLE — device unable to determine right now; retry implicitly via watch
+        $('gpsStatus').textContent =
+          `GPS unavailable (${elapsed}s) — searching… check Location services & try outdoors. Tap STOP to cancel.`;
+        if (gpsSamples.length === 0 && Date.now() - gpsStartTs > MAX_WAIT_MS) {
+          stopGpsWatch('Unable to obtain GPS. Verify Location is ON for this browser & try outdoors.');
+        }
+        return;
+      }
+
+      // Unknown error — show it but keep watching
+      $('gpsStatus').textContent = `GPS: ${err.message || 'unknown error'} — still trying…`;
     },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 60000 }
   );
 });
 
@@ -1581,8 +1617,44 @@ async function generateSurveyPdf(rec) {
   }
 
   const safeName = (rec.customer || rec.id).replace(/[^a-z0-9_-]+/gi, '_').slice(0, 40);
-  doc.save(`KUKL-Survey-${safeName}-${rec.id.slice(-8)}.pdf`);
-  toast('PDF generated');
+  const fileName = `KUKL-Survey-${safeName}-${rec.id.slice(-8)}.pdf`;
+
+  // Mobile-friendly delivery: prefer Web Share API (gives WhatsApp / Email / Save options)
+  try {
+    const blob = doc.output('blob');
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+
+    const canShareFile = navigator.canShare && navigator.canShare({ files: [file] });
+    if (canShareFile && /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: `KUKL Survey — ${rec.customer || rec.id}`,
+          text: `KUKL Site Survey Report\nSurvey ID: ${rec.id}`,
+        });
+        toast('PDF shared');
+        return;
+      } catch (e) {
+        // User cancelled or share failed — fall through to direct download
+        if (e && e.name !== 'AbortError') console.warn('share failed', e);
+      }
+    }
+
+    // Fallback: direct download via blob URL (works on desktop + mobile browsers without share)
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 4000);
+    toast('PDF downloaded');
+  } catch (err) {
+    console.warn('PDF blob/share failed, falling back to doc.save()', err);
+    doc.save(fileName);
+    toast('PDF generated');
+  }
 }
 
 // Modal PDF button
