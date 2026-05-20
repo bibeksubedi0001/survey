@@ -804,7 +804,11 @@ async function renderMap() {
     marker.on('popupopen', (e) => {
       const root = e.popup.getElement();
       const v = root.querySelector('[data-view]');
-      if (v) v.addEventListener('click', (ev) => { ev.preventDefault(); showRecordModal(r); });
+      if (v) v.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        marker.closePopup();
+        showRecordModal(r);
+      });
     });
     leafletMarkers.push(marker);
   });

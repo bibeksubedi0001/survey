@@ -406,7 +406,7 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .lightbox{
   position:fixed;inset:0;
   background:#000;
-  z-index:500;
+  z-index:11000;
   display:flex;align-items:center;justify-content:center;
   padding:20px;
 }
@@ -477,14 +477,17 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   position:fixed;inset:0;
   background:rgba(0,0,0,.85);
   display:flex;align-items:center;justify-content:center;
-  z-index:300;padding:20px;
+  z-index:10000;padding:20px;
 }
 .modal[hidden]{display:none !important;}
 .modal-card{
   background:#fff;border:2px solid #000;
   width:100%;max-width:900px;max-height:90vh;
   display:flex;flex-direction:column;
+  position:relative;
+  isolation:isolate;
 }
+.modal-body{background:#fff;}
 .modal-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:14px 18px;
