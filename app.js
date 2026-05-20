@@ -1347,24 +1347,59 @@ if ('serviceWorker' in navigator) {
 }
 
 let deferredInstallPrompt = null;
+const installBtn = $('btnInstall');
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+}
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+function showInstallInstructions() {
+  const ios = isIOS();
+  const android = /Android/i.test(navigator.userAgent);
+  let msg;
+  if (ios) {
+    msg = 'To install on iOS:\n\n1. Tap the SHARE button (□↑) in Safari\n2. Scroll down and tap "Add to Home Screen"\n3. Tap ADD';
+  } else if (android) {
+    msg = 'To install:\n\n1. Tap the ⋮ menu (top-right) in Chrome\n2. Tap "Install app" or "Add to Home screen"\n\nIf you don\'t see it, the app may already be installed, or your browser doesn\'t support PWA install on this site yet (try reloading once or twice).';
+  } else {
+    msg = 'To install:\n\nLook for the install icon (⊕ or ⤓) in your browser\'s address bar, or open the browser menu and choose "Install app".';
+  }
+  alert(msg);
+}
+
+// Show button unless already installed
+if (installBtn) {
+  if (!isStandalone()) installBtn.hidden = false;
+}
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
-  const btn = $('btnInstall');
-  if (btn) btn.hidden = false;
+  if (installBtn) installBtn.hidden = false;
 });
-$('btnInstall')?.addEventListener('click', async () => {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  const { outcome } = await deferredInstallPrompt.userChoice;
-  if (outcome === 'accepted') {
-    toast('App installed');
-    $('btnInstall').hidden = true;
+
+installBtn?.addEventListener('click', async () => {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') {
+      toast('App installed');
+      installBtn.hidden = true;
+    }
+    deferredInstallPrompt = null;
+  } else {
+    // No native prompt available (iOS, or criteria not yet met) — show guidance.
+    showInstallInstructions();
   }
-  deferredInstallPrompt = null;
 });
+
 window.addEventListener('appinstalled', () => {
-  $('btnInstall') && ($('btnInstall').hidden = true);
+  if (installBtn) installBtn.hidden = true;
+  toast('App installed');
 });
 
 
