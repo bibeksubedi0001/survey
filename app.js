@@ -1168,154 +1168,419 @@ function loadImage(src) {
 async function generateSurveyPdf(rec) {
   if (typeof window.jspdf === 'undefined') { toast('PDF library not loaded'); return; }
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const W = doc.internal.pageSize.getWidth();
-  const H = doc.internal.pageSize.getHeight();
-  const M = 36;             // page margin
-  let y = M;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const W = doc.internal.pageSize.getWidth();   // 595.28
+  const H = doc.internal.pageSize.getHeight();  // 841.89
+  const M = 40;                                 // page margin
+  const CW = W - 2 * M;                         // content width
+  let y;
 
-  // ---- Header band ----
-  doc.setFillColor(0, 0, 0);
-  doc.rect(0, 0, W, 70, 'F');
-  try {
-    const logo = await loadImage('Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png');
-    doc.addImage(logo, 'PNG', M, 12, 46, 46);
-  } catch {}
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('KUKL — SITE SURVEY REPORT', M + 60, 32);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text('Kathmandu Upatyaka Khanepani Limited · Baneshwor Branch', M + 60, 48);
-  doc.text(`Generated: ${fmtDateTime(new Date())}`, M + 60, 60);
-  doc.setTextColor(0, 0, 0);
-  y = 90;
+  // ---------- THEME ----------
+  const BLACK = [0, 0, 0];
+  const WHITE = [255, 255, 255];
+  const GREY_TEXT = [90, 90, 90];
+  const GREY_LIGHT = [235, 235, 235];
+  const GREY_LINE = [200, 200, 200];
+  const ZEBRA = [248, 248, 248];
+  const BLUE = [0, 87, 168];
 
-  // ---- Survey ID strip ----
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setDrawColor(0);
-  doc.setLineWidth(1);
-  doc.rect(M, y, W - 2 * M, 24);
-  doc.text(`SURVEY ID:  ${rec.id}`, M + 8, y + 16);
-  y += 36;
+  const COND_COLORS = {
+    'Excellent': [26, 127, 26],
+    'Good':      [27, 111, 214],
+    'Fair':      [230, 194, 0],
+    'Poor':      [224, 122, 0],
+    'Critical':  [193, 0, 31],
+  };
+  const PRIO_COLORS = {
+    'Normal':   [120, 120, 120],
+    'Medium':   [224, 122, 0],
+    'High':     [193, 0, 31],
+    'Urgent':   [120, 0, 0],
+  };
 
-  // ---- KV table ----
-  const rows = [
-    ['Created', (rec.createdAt || '').replace('T', ' ').slice(0, 19)],
-    ['Surveyor', rec.surveyor],
-    ['Customer', rec.customer],
-    ['Customer ID', rec.customerId],
-    ['Address', rec.address],
-    ['Ward', rec.ward],
-    ['Contact', rec.contact],
-    ['Connection Type', rec.connType],
-    ['Pipe Material', rec.pipeMat],
-    ['Meter Status', rec.meterStatus],
-    ['Meter Reading', rec.meterReading],
-    ['Meter Serial', rec.meterSerial],
-    ['Pressure (psi)', rec.pressure],
-    ['Leakage', rec.leakage],
-    ['Supply (hrs/day)', rec.supplyHrs],
-    ['Condition', rec.condition],
-    ['Priority', rec.priority],
-    ['Remarks', rec.remarks],
-  ];
+  const setFill = (rgb) => doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  const setText = (rgb) => doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+  const setDraw = (rgb) => doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
 
-  doc.setFontSize(9);
-  const labelW = 130;
-  const lineH = 16;
-  rows.forEach(([k, v]) => {
-    if (y > H - M - 40) { doc.addPage(); y = M; }
+  // ---------- HELPERS ----------
+  function drawHeader() {
+    setFill(BLACK);
+    doc.rect(0, 0, W, 86, 'F');
+    // logo
+    try {
+      // synchronous-safe: logoImg captured before drawHeader is called
+      if (logoImg) doc.addImage(logoImg, 'PNG', M, 16, 54, 54);
+    } catch {}
+    setText(WHITE);
     doc.setFont('helvetica', 'bold');
-    doc.text(String(k).toUpperCase(), M, y);
+    doc.setFontSize(16);
+    doc.text('KUKL — SITE SURVEY REPORT', M + 68, 38);
     doc.setFont('helvetica', 'normal');
-    const val = (v == null || v === '') ? '—' : String(v);
-    const wrapped = doc.splitTextToSize(val, W - 2 * M - labelW);
-    doc.text(wrapped, M + labelW, y);
-    const usedH = Math.max(lineH, wrapped.length * 11 + 4);
-    y += usedH;
-    doc.setDrawColor(220);
-    doc.line(M, y - 4, W - M, y - 4);
-  });
-
-  // ---- GPS block ----
-  if (y > H - M - 110) { doc.addPage(); y = M; }
-  y += 10;
-  doc.setFillColor(0, 0, 0);
-  doc.rect(M, y, W - 2 * M, 18, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('GPS COORDINATES', M + 8, y + 13);
-  doc.setTextColor(0, 0, 0);
-  y += 28;
-  if (rec.gps) {
-    const g = rec.gps;
-    doc.setFont('courier', 'normal');
+    doc.setFontSize(9);
+    doc.text('Kathmandu Upatyaka Khanepani Limited', M + 68, 54);
+    doc.setFontSize(8);
+    setText([200, 200, 200]);
+    doc.text('Baneshwor Branch · Site Survey System', M + 68, 66);
+    // top-right meta
+    setText(WHITE);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('REPORT GENERATED', W - M, 32, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text(`Latitude   : ${g.lat?.toFixed(7)}`, M + 8, y); y += 14;
-    doc.text(`Longitude  : ${g.lng?.toFixed(7)}`, M + 8, y); y += 14;
-    doc.text(`Accuracy   : ±${g.acc?.toFixed(2)} m   (best raw ${g.rawBest?.toFixed?.(2) ?? '—'} m, samples ${g.samples ?? '—'})`, M + 8, y); y += 14;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 87, 168);
-    const mapsUrl = `https://maps.google.com/?q=${g.lat},${g.lng}`;
-    doc.textWithLink('OPEN IN GOOGLE MAPS ↗', M + 8, y + 4, { url: mapsUrl });
-    doc.setTextColor(0, 0, 0);
-    y += 20;
-  } else {
-    doc.setFont('helvetica', 'italic');
-    doc.text('No GPS recorded.', M + 8, y); y += 16;
+    doc.text(fmtDateTime(new Date()), W - M, 46, { align: 'right' });
+    setText(BLACK);
   }
 
-  // ---- Photos ----
+  function drawFooter(pageNo, total) {
+    setDraw(GREY_LINE);
+    doc.setLineWidth(0.5);
+    doc.line(M, H - 30, W - M, H - 30);
+    setText(GREY_TEXT);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`KUKL BANESHWOR · SURVEY ${rec.id}`, M, H - 18);
+    doc.text('CONFIDENTIAL — INTERNAL USE ONLY', W / 2, H - 18, { align: 'center' });
+    doc.text(`Page ${pageNo} / ${total}`, W - M, H - 18, { align: 'right' });
+    setText(BLACK);
+  }
+
+  function ensure(spaceNeeded) {
+    if (y + spaceNeeded > H - 40) {
+      doc.addPage();
+      drawHeader();
+      y = 100;
+    }
+  }
+
+  function sectionHeader(label) {
+    ensure(34);
+    setFill(BLACK);
+    doc.rect(M, y, CW, 20, 'F');
+    setText(WHITE);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text(label.toUpperCase(), M + 10, y + 14);
+    setText(BLACK);
+    y += 26;
+  }
+
+  function dash(v) {
+    if (v == null || v === '' || v === undefined) return '—';
+    return String(v);
+  }
+
+  // Render a two-column row of key/value pairs. Each side: [label, value].
+  // Zebra-striped background based on a counter we keep in closure.
+  let _zebra = 0;
+  function kvRow(leftPair, rightPair) {
+    const colW = (CW - 12) / 2;
+    const labelW = 92;
+    const padX = 8;
+    const padY = 6;
+
+    // Estimate height
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const leftVal = doc.splitTextToSize(dash(leftPair[1]), colW - labelW - padX * 2);
+    const rightVal = rightPair ? doc.splitTextToSize(dash(rightPair[1]), colW - labelW - padX * 2) : [''];
+    const rowH = Math.max(22, Math.max(leftVal.length, rightVal.length) * 11 + padY * 2);
+
+    ensure(rowH + 4);
+
+    if (_zebra % 2 === 1) {
+      setFill(ZEBRA);
+      doc.rect(M, y, CW, rowH, 'F');
+    }
+    _zebra++;
+
+    // border
+    setDraw(GREY_LINE);
+    doc.setLineWidth(0.4);
+    doc.line(M, y + rowH, M + CW, y + rowH);
+
+    // Left
+    setText(GREY_TEXT);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text(String(leftPair[0]).toUpperCase(), M + padX, y + padY + 8);
+    setText(BLACK);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.text(leftVal, M + padX + labelW, y + padY + 8);
+
+    // Right
+    if (rightPair) {
+      const rx = M + colW + 12;
+      setText(GREY_TEXT);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.text(String(rightPair[0]).toUpperCase(), rx + padX, y + padY + 8);
+      setText(BLACK);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.text(rightVal, rx + padX + labelW, y + padY + 8);
+    }
+
+    y += rowH;
+  }
+
+  // Full-width row (long values like address, remarks)
+  function fullRow(label, value) {
+    const padX = 8;
+    const padY = 8;
+    const labelH = 14;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const wrapped = doc.splitTextToSize(dash(value), CW - padX * 2);
+    const rowH = Math.max(36, labelH + wrapped.length * 12 + padY * 2);
+    ensure(rowH + 4);
+
+    if (_zebra % 2 === 1) {
+      setFill(ZEBRA);
+      doc.rect(M, y, CW, rowH, 'F');
+    }
+    _zebra++;
+    setDraw(GREY_LINE);
+    doc.setLineWidth(0.4);
+    doc.line(M, y + rowH, M + CW, y + rowH);
+
+    setText(GREY_TEXT);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text(String(label).toUpperCase(), M + padX, y + padY + 6);
+    setText(BLACK);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(wrapped, M + padX, y + padY + labelH + 6);
+    y += rowH;
+  }
+
+  function chip(text, color, x, yPos, opts = {}) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    const padX = 8, padY = 4;
+    const w = doc.getTextWidth(text) + padX * 2;
+    const h = 16;
+    setFill(color);
+    doc.rect(x, yPos - h + 4, w, h, 'F');
+    setText(WHITE);
+    doc.text(text, x + padX, yPos);
+    setText(BLACK);
+    return w;
+  }
+
+  // ---------- PRE-LOAD logo ----------
+  let logoImg = null;
+  try { logoImg = await loadImage('Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png'); } catch {}
+
+  // ============================================================
+  // PAGE 1
+  // ============================================================
+  drawHeader();
+  y = 104;
+
+  // -------- HERO SUMMARY CARD --------
+  const heroH = 78;
+  setDraw(BLACK);
+  doc.setLineWidth(1.2);
+  doc.rect(M, y, CW, heroH);
+  // left thick accent bar
+  setFill(BLACK);
+  doc.rect(M, y, 6, heroH, 'F');
+
+  // Customer (big)
+  setText(BLACK);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  const customerText = dash(rec.customer);
+  doc.text(doc.splitTextToSize(customerText, CW - 200)[0], M + 18, y + 26);
+
+  // sub-line: customer ID + address
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  setText(GREY_TEXT);
+  const subLine = [rec.customerId, rec.address].filter(Boolean).join('  ·  ') || '—';
+  doc.text(doc.splitTextToSize(subLine, CW - 200)[0], M + 18, y + 42);
+
+  // survey id (monospace) + date
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(8.5);
+  setText(BLACK);
+  doc.text(rec.id, M + 18, y + 60);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  setText(GREY_TEXT);
+  const created = (rec.createdAt || '').replace('T', ' ').slice(0, 19);
+  doc.text(`Surveyed: ${created}   ·   Surveyor: ${dash(rec.surveyor)}`, M + 18, y + 72);
+  setText(BLACK);
+
+  // chips on the right (condition + priority)
+  let chipX = W - M - 10;
+  if (rec.priority) {
+    const c = PRIO_COLORS[rec.priority] || GREY_TEXT;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+    const tw = doc.getTextWidth(`PRIORITY: ${rec.priority.toUpperCase()}`) + 16;
+    chipX -= tw;
+    chip(`PRIORITY: ${rec.priority.toUpperCase()}`, c, chipX, y + 28);
+    chipX -= 8;
+  }
+  if (rec.condition) {
+    const c = COND_COLORS[rec.condition] || GREY_TEXT;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+    const tw = doc.getTextWidth(`CONDITION: ${rec.condition.toUpperCase()}`) + 16;
+    chipX -= tw;
+    chip(`CONDITION: ${rec.condition.toUpperCase()}`, c, chipX, y + 28);
+  }
+  y += heroH + 16;
+
+  // -------- CUSTOMER INFORMATION --------
+  _zebra = 0;
+  sectionHeader('1. Customer Information');
+  kvRow(['Customer Name', rec.customer], ['Customer ID', rec.customerId]);
+  kvRow(['Contact', rec.contact], ['Ward No.', rec.ward]);
+  fullRow('Address', rec.address);
+  kvRow(['Surveyor', rec.surveyor], ['Survey Date', created]);
+  y += 10;
+
+  // -------- CONNECTION & METER --------
+  _zebra = 0;
+  sectionHeader('2. Connection & Meter Details');
+  kvRow(['Connection Type', rec.connType], ['Pipe Material', rec.pipeMat]);
+  kvRow(['Meter Status', rec.meterStatus], ['Meter Serial No.', rec.meterSerial]);
+  kvRow(['Meter Reading', rec.meterReading], ['Pressure (psi)', rec.pressure]);
+  kvRow(['Leakage', rec.leakage], ['Supply (hrs/day)', rec.supplyHrs]);
+  kvRow(['Condition', rec.condition], ['Priority', rec.priority]);
+  y += 10;
+
+  // -------- GPS COORDINATES --------
+  _zebra = 0;
+  sectionHeader('3. GPS Coordinates');
+  if (rec.gps) {
+    const g = rec.gps;
+    const boxH = 92;
+    ensure(boxH + 8);
+    setDraw(GREY_LINE);
+    doc.setLineWidth(0.6);
+    doc.rect(M, y, CW, boxH);
+
+    // Left: coords (monospace)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    setText(GREY_TEXT);
+    doc.text('LATITUDE', M + 12, y + 18);
+    doc.text('LONGITUDE', M + 12, y + 48);
+
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(14);
+    setText(BLACK);
+    doc.text(`${g.lat?.toFixed(7)}°`, M + 12, y + 34);
+    doc.text(`${g.lng?.toFixed(7)}°`, M + 12, y + 64);
+
+    // Right: accuracy block
+    const rx = M + CW / 2 + 8;
+    setDraw(GREY_LINE);
+    doc.line(M + CW / 2, y + 8, M + CW / 2, y + boxH - 8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    setText(GREY_TEXT);
+    doc.text('ACCURACY', rx, y + 18);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    setText(BLACK);
+    doc.text(`± ${g.acc?.toFixed(1) ?? '?'} m`, rx, y + 40);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    setText(GREY_TEXT);
+    doc.text(`Best raw: ${g.rawBest?.toFixed?.(2) ?? '—'} m   ·   Samples: ${g.samples ?? '—'}`, rx, y + 54);
+    if (g.time) {
+      const t = String(g.time).replace('T', ' ').slice(0, 19);
+      doc.text(`Captured at: ${t}`, rx, y + 68);
+    }
+    setText(BLACK);
+    y += boxH + 6;
+
+    // Google Maps link
+    ensure(20);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    setText(BLUE);
+    const mapsUrl = `https://maps.google.com/?q=${g.lat},${g.lng}`;
+    doc.textWithLink('▸ OPEN LOCATION IN GOOGLE MAPS', M + 4, y + 10, { url: mapsUrl });
+    setText(BLACK);
+    y += 22;
+  } else {
+    ensure(28);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    setText(GREY_TEXT);
+    doc.text('No GPS coordinates recorded for this survey.', M + 4, y + 12);
+    setText(BLACK);
+    y += 24;
+  }
+  y += 8;
+
+  // -------- REMARKS --------
+  if (rec.remarks && rec.remarks.trim()) {
+    _zebra = 0;
+    sectionHeader('4. Field Remarks');
+    fullRow('Observations', rec.remarks);
+    y += 10;
+  }
+
+  // -------- PHOTO EVIDENCE --------
   const photos = rec.photos || [];
   if (photos.length) {
-    if (y > H - M - 60) { doc.addPage(); y = M; }
-    y += 10;
-    doc.setFillColor(0, 0, 0);
-    doc.rect(M, y, W - 2 * M, 18, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text(`PHOTO EVIDENCE  (${photos.length})`, M + 8, y + 13);
-    doc.setTextColor(0, 0, 0);
-    y += 28;
+    _zebra = 0;
+    sectionHeader(`5. Photo Evidence  (${photos.length})`);
 
     const cols = 2;
     const gap = 12;
-    const cellW = (W - 2 * M - gap) / cols;
-    const cellH = cellW * 0.75;
+    const cellW = (CW - gap) / cols;
+    const cellH = cellW * 0.72;
+    const captionH = 14;
+    const blockH = cellH + captionH;
+
     let col = 0;
-    for (const p of photos) {
-      if (y + cellH > H - M) { doc.addPage(); y = M; col = 0; }
+    for (let i = 0; i < photos.length; i++) {
+      if (y + blockH > H - 40) {
+        doc.addPage();
+        drawHeader();
+        y = 100;
+        sectionHeader(`5. Photo Evidence  (continued)`);
+        col = 0;
+      }
       const x = M + col * (cellW + gap);
       try {
-        const img = await loadImage(p.dataUrl);
+        const img = await loadImage(photos[i].dataUrl);
         doc.addImage(img, 'JPEG', x, y, cellW, cellH, undefined, 'FAST');
-        doc.setDrawColor(0);
-        doc.setLineWidth(0.8);
+        setDraw(BLACK);
+        doc.setLineWidth(0.6);
         doc.rect(x, y, cellW, cellH);
       } catch {}
+      // caption
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      setText(GREY_TEXT);
+      const ts = photos[i].time ? String(photos[i].time).replace('T', ' ').slice(0, 19) : '';
+      doc.text(`PHOTO ${i + 1}${ts ? '  ·  ' + ts : ''}`, x, y + cellH + 10);
+      setText(BLACK);
+
       col++;
-      if (col >= cols) { col = 0; y += cellH + gap; }
+      if (col >= cols) { col = 0; y += blockH + 4; }
     }
-    if (col !== 0) y += cellH + gap;
+    if (col !== 0) y += blockH + 4;
   }
 
-  // ---- Footer on each page ----
+  // ---------- Apply footer on every page ----------
   const totalPages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(120);
-    doc.text(`KUKL Baneshwor · Survey ${rec.id}`, M, H - 16);
-    doc.text(`Page ${i} / ${totalPages}`, W - M, H - 16, { align: 'right' });
+    drawFooter(i, totalPages);
   }
 
-  const safeName = (rec.customer || rec.id).replace(/[^a-z0-9_-]+/gi, '_');
+  const safeName = (rec.customer || rec.id).replace(/[^a-z0-9_-]+/gi, '_').slice(0, 40);
   doc.save(`KUKL-Survey-${safeName}-${rec.id.slice(-8)}.pdf`);
   toast('PDF generated');
 }
