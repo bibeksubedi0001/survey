@@ -325,19 +325,67 @@ const camOverlay = $('camOverlay');
 async function startCamera() {
   try {
     stopCamera();
-    const constraints = {
-      video: { facingMode: state.facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false,
-    };
-    state.stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = state.stream;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast('Camera API not available. Use HTTPS and a modern browser.', 4500);
+      return;
+    }
+
+    // Mobile-safe constraints: facingMode as exact when possible, fall back gracefully.
+    const tryConstraints = [
+      { video: { facingMode: { exact: state.facing }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+      { video: { facingMode: state.facing, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+      { video: { facingMode: state.facing }, audio: false },
+      { video: true, audio: false },
+    ];
+
+    let stream = null;
+    let lastErr = null;
+    for (const c of tryConstraints) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(c);
+        if (stream) break;
+      } catch (e) { lastErr = e; }
+    }
+    if (!stream) throw (lastErr || new Error('Unable to open camera'));
+
+    state.stream = stream;
+
+    // iOS-safe video attributes (must be set BEFORE srcObject)
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.muted = true;
+    video.autoplay = true;
+    video.srcObject = stream;
+
+    // Wait for metadata so videoWidth/Height are non-zero BEFORE enabling snap
+    await new Promise((resolve, reject) => {
+      let done = false;
+      const ok = () => { if (done) return; done = true; resolve(); };
+      const fail = (e) => { if (done) return; done = true; reject(e); };
+      video.addEventListener('loadedmetadata', ok, { once: true });
+      video.addEventListener('canplay', ok, { once: true });
+      video.addEventListener('error', fail, { once: true });
+      // safety timeout — resolve anyway, we'll re-check at snap time
+      setTimeout(ok, 4000);
+    });
+
+    // Force play() — required on iOS Safari and some Android browsers
+    try { await video.play(); } catch (e) { /* user gesture already, but ignore if browser auto-resolved */ }
+
     camOverlay.classList.add('hidden');
     $('btnSnap').disabled = false;
     $('btnStopCam').disabled = false;
     $('btnSwitchCam').disabled = false;
     $('btnStartCam').disabled = true;
+    toast('Camera ready');
   } catch (e) {
-    toast('Camera error: ' + e.message, 3500);
+    const msg = (e && e.name === 'NotAllowedError') ? 'Camera permission denied. Enable Camera for this site in browser settings.'
+              : (e && e.name === 'NotFoundError') ? 'No camera found on this device.'
+              : (e && e.name === 'NotReadableError') ? 'Camera is in use by another app — close other apps and try again.'
+              : (e && e.name === 'OverconstrainedError') ? 'Requested camera not available — try SWITCH.'
+              : ('Camera error: ' + (e && e.message ? e.message : e));
+    toast(msg, 5000);
   }
 }
 function stopCamera() {
@@ -352,10 +400,26 @@ function stopCamera() {
   $('btnSwitchCam').disabled = true;
   $('btnStartCam').disabled = false;
 }
-function snapPhoto() {
+async function snapPhoto() {
   if (!state.stream) { toast('Camera not started'); return; }
-  const w = video.videoWidth, h = video.videoHeight;
-  if (!w || !h) { toast('Camera not ready'); return; }
+
+  // If dimensions aren't ready yet (mobile timing), wait briefly for the next frame.
+  let w = video.videoWidth, h = video.videoHeight;
+  if (!w || !h) {
+    await new Promise((resolve) => {
+      let tries = 0;
+      const tick = () => {
+        w = video.videoWidth; h = video.videoHeight;
+        if (w && h) return resolve();
+        if (++tries > 30) return resolve();   // ~1s max wait
+        requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    w = video.videoWidth; h = video.videoHeight;
+  }
+  if (!w || !h) { toast('Camera not ready — tap START CAMERA again'); return; }
+
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0, w, h);
