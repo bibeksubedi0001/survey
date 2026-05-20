@@ -497,6 +497,7 @@ async function renderRecords() {
       <td data-label="Actions">
         <div class="row-actions">
           <button class="btn" data-act="view" data-id="${r.id}">VIEW</button>
+          <button class="btn" data-act="pdf" data-id="${r.id}">PDF</button>
           <button class="btn" data-act="edit" data-id="${r.id}">EDIT</button>
           <button class="btn btn-danger" data-act="del" data-id="${r.id}">DEL</button>
         </div>
@@ -524,6 +525,7 @@ async function handleRowAction(act, id) {
   const rec = await dbGet(id);
   if (!rec) return;
   if (act === 'view') showRecordModal(rec);
+  else if (act === 'pdf') generateSurveyPdf(rec);
   else if (act === 'del') {
     if (!confirm(`Delete record ${id}?`)) return;
     await dbDel(id);
@@ -1148,5 +1150,222 @@ document.addEventListener('click', async (e) => {
     console.warn('thumb click failed:', err);
   }
 });
+
+/* ============================================================
+   PDF REPORT (jsPDF) — one-tap per-survey PDF
+   ============================================================ */
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function generateSurveyPdf(rec) {
+  if (typeof window.jspdf === 'undefined') { toast('PDF library not loaded'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 36;             // page margin
+  let y = M;
+
+  // ---- Header band ----
+  doc.setFillColor(0, 0, 0);
+  doc.rect(0, 0, W, 70, 'F');
+  try {
+    const logo = await loadImage('Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png');
+    doc.addImage(logo, 'PNG', M, 12, 46, 46);
+  } catch {}
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('KUKL — SITE SURVEY REPORT', M + 60, 32);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('Kathmandu Upatyaka Khanepani Limited · Baneshwor Branch', M + 60, 48);
+  doc.text(`Generated: ${fmtDateTime(new Date())}`, M + 60, 60);
+  doc.setTextColor(0, 0, 0);
+  y = 90;
+
+  // ---- Survey ID strip ----
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setDrawColor(0);
+  doc.setLineWidth(1);
+  doc.rect(M, y, W - 2 * M, 24);
+  doc.text(`SURVEY ID:  ${rec.id}`, M + 8, y + 16);
+  y += 36;
+
+  // ---- KV table ----
+  const rows = [
+    ['Created', (rec.createdAt || '').replace('T', ' ').slice(0, 19)],
+    ['Surveyor', rec.surveyor],
+    ['Customer', rec.customer],
+    ['Customer ID', rec.customerId],
+    ['Address', rec.address],
+    ['Ward', rec.ward],
+    ['Contact', rec.contact],
+    ['Connection Type', rec.connType],
+    ['Pipe Material', rec.pipeMat],
+    ['Meter Status', rec.meterStatus],
+    ['Meter Reading', rec.meterReading],
+    ['Meter Serial', rec.meterSerial],
+    ['Pressure (psi)', rec.pressure],
+    ['Leakage', rec.leakage],
+    ['Supply (hrs/day)', rec.supplyHrs],
+    ['Condition', rec.condition],
+    ['Priority', rec.priority],
+    ['Remarks', rec.remarks],
+  ];
+
+  doc.setFontSize(9);
+  const labelW = 130;
+  const lineH = 16;
+  rows.forEach(([k, v]) => {
+    if (y > H - M - 40) { doc.addPage(); y = M; }
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(k).toUpperCase(), M, y);
+    doc.setFont('helvetica', 'normal');
+    const val = (v == null || v === '') ? '—' : String(v);
+    const wrapped = doc.splitTextToSize(val, W - 2 * M - labelW);
+    doc.text(wrapped, M + labelW, y);
+    const usedH = Math.max(lineH, wrapped.length * 11 + 4);
+    y += usedH;
+    doc.setDrawColor(220);
+    doc.line(M, y - 4, W - M, y - 4);
+  });
+
+  // ---- GPS block ----
+  if (y > H - M - 110) { doc.addPage(); y = M; }
+  y += 10;
+  doc.setFillColor(0, 0, 0);
+  doc.rect(M, y, W - 2 * M, 18, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('GPS COORDINATES', M + 8, y + 13);
+  doc.setTextColor(0, 0, 0);
+  y += 28;
+  if (rec.gps) {
+    const g = rec.gps;
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Latitude   : ${g.lat?.toFixed(7)}`, M + 8, y); y += 14;
+    doc.text(`Longitude  : ${g.lng?.toFixed(7)}`, M + 8, y); y += 14;
+    doc.text(`Accuracy   : ±${g.acc?.toFixed(2)} m   (best raw ${g.rawBest?.toFixed?.(2) ?? '—'} m, samples ${g.samples ?? '—'})`, M + 8, y); y += 14;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 87, 168);
+    const mapsUrl = `https://maps.google.com/?q=${g.lat},${g.lng}`;
+    doc.textWithLink('OPEN IN GOOGLE MAPS ↗', M + 8, y + 4, { url: mapsUrl });
+    doc.setTextColor(0, 0, 0);
+    y += 20;
+  } else {
+    doc.setFont('helvetica', 'italic');
+    doc.text('No GPS recorded.', M + 8, y); y += 16;
+  }
+
+  // ---- Photos ----
+  const photos = rec.photos || [];
+  if (photos.length) {
+    if (y > H - M - 60) { doc.addPage(); y = M; }
+    y += 10;
+    doc.setFillColor(0, 0, 0);
+    doc.rect(M, y, W - 2 * M, 18, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(`PHOTO EVIDENCE  (${photos.length})`, M + 8, y + 13);
+    doc.setTextColor(0, 0, 0);
+    y += 28;
+
+    const cols = 2;
+    const gap = 12;
+    const cellW = (W - 2 * M - gap) / cols;
+    const cellH = cellW * 0.75;
+    let col = 0;
+    for (const p of photos) {
+      if (y + cellH > H - M) { doc.addPage(); y = M; col = 0; }
+      const x = M + col * (cellW + gap);
+      try {
+        const img = await loadImage(p.dataUrl);
+        doc.addImage(img, 'JPEG', x, y, cellW, cellH, undefined, 'FAST');
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.8);
+        doc.rect(x, y, cellW, cellH);
+      } catch {}
+      col++;
+      if (col >= cols) { col = 0; y += cellH + gap; }
+    }
+    if (col !== 0) y += cellH + gap;
+  }
+
+  // ---- Footer on each page ----
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`KUKL Baneshwor · Survey ${rec.id}`, M, H - 16);
+    doc.text(`Page ${i} / ${totalPages}`, W - M, H - 16, { align: 'right' });
+  }
+
+  const safeName = (rec.customer || rec.id).replace(/[^a-z0-9_-]+/gi, '_');
+  doc.save(`KUKL-Survey-${safeName}-${rec.id.slice(-8)}.pdf`);
+  toast('PDF generated');
+}
+
+// Modal PDF button
+$('modalPdf')?.addEventListener('click', async () => {
+  const idText = $('modalTitle').textContent;
+  const rec = await dbGet(idText);
+  if (rec) generateSurveyPdf(rec);
+});
+
+/* ============================================================
+   PWA — service worker registration + install prompt
+   ============================================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            toast('Update ready — reload to apply', 3500);
+          }
+        });
+      });
+    }).catch(err => console.warn('SW register failed', err));
+  });
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = $('btnInstall');
+  if (btn) btn.hidden = false;
+});
+$('btnInstall')?.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') {
+    toast('App installed');
+    $('btnInstall').hidden = true;
+  }
+  deferredInstallPrompt = null;
+});
+window.addEventListener('appinstalled', () => {
+  $('btnInstall') && ($('btnInstall').hidden = true);
+});
+
 
 

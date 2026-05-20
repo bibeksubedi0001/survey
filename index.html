@@ -7,14 +7,20 @@
 <title>KUKL Baneshwor — Site Survey System</title>
 <link rel="icon" type="image/png" href="Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png" />
 <link rel="apple-touch-icon" href="Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<meta name="apple-mobile-web-app-title" content="KUKL Survey" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="styles.css?v=6" />
+<link rel="stylesheet" href="styles.css?v=7" />
 <!-- SheetJS for Excel export -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" data-cfasync="false"></script>
 <!-- html5-qrcode for camera-based QR / barcode scanning -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" data-cfasync="false"></script>
 <!-- piexifjs for writing GPS EXIF into JPEGs -->
 <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js" data-cfasync="false"></script>
+<!-- jsPDF for one-tap PDF reports -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" data-cfasync="false"></script>
 <!-- Leaflet for interactive map -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" data-cfasync="false"></script>
 </head>
@@ -30,6 +36,7 @@
     </div>
   </div>
   <div class="header-actions">
+    <button id="btnInstall" class="btn btn-mini" hidden title="Install app">INSTALL</button>
     <span id="onlineStatus" class="status-pill">● ONLINE</span>
     <span id="clock" class="clock">--:--:--</span>
   </div>
@@ -352,7 +359,10 @@
   <div class="modal-card">
     <div class="modal-head">
       <h3 id="modalTitle">Survey Details</h3>
-      <button id="modalClose" class="btn btn-outline">CLOSE</button>
+      <div class="btn-row">
+        <button id="modalPdf" class="btn btn-outline">PDF</button>
+        <button id="modalClose" class="btn btn-outline">CLOSE</button>
+      </div>
     </div>
     <div id="modalBody" class="modal-body"></div>
   </div>
@@ -362,6 +372,6 @@
   <span>KUKL Baneshwor &middot; Site Survey System &middot; Built for field engineers</span>
 </footer>
 
-<script src="app.js?v=6" data-cfasync="false"></script>
+<script src="app.js?v=7" data-cfasync="false"></script>
 </body>
 </html>
