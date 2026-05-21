@@ -206,6 +206,7 @@ def main():
 
         # --- devices = valves + hydrants + flowmeters + loggers ---
         device_kinds = ['valve', 'hydrant', 'flowmeter', 'logger']
+        devices_gdf = None
         if any(k in bucket for k in device_kinds):
             gdfs = []
             for k in device_kinds:
@@ -220,6 +221,7 @@ def main():
                 n, sz = write_geojson(merged, out_dir / 'devices.geojson')
                 counts['devices'] = n
                 layers_avail.append('devices')
+                devices_gdf = merged
 
         # --- boundary (real polygon if present, else convex hull of connections) ---
         boundary_gdf = None
@@ -234,38 +236,79 @@ def main():
             if gdfs:
                 boundary_gdf = gpd.GeoDataFrame(geopandas_concat(gdfs), crs='EPSG:4326')
         if (boundary_gdf is None or boundary_gdf.empty):
-            # Derive a tight "service area" boundary by buffering & unioning
-            # the pipe network in projected metres, then simplifying.
+            # Derive a *very tight* service-area boundary by computing the
+            # concave hull (alpha shape) of every connection point + every
+            # pipe vertex + every device point. Requires shapely >= 2.0.
             import numpy as np
-            from shapely.geometry import Polygon
+            from shapely.geometry import Polygon, MultiPoint, Point
             derived_poly = None
-            if pipes_gdf is not None and not pipes_gdf.empty:
-                try:
-                    pp_proj = pipes_gdf.to_crs(32645)
-                    geoms = [g for g in pp_proj.geometry if g is not None and not g.is_empty]
-                    if geoms:
-                        # Buffer each pipe by 25 m (covers typical service-line reach),
-                        # union, close small gaps with buffer(+10)/buffer(-10), simplify.
-                        buf = [g.buffer(25) for g in geoms]
-                        u = buf[0]
-                        for b in buf[1:]:
-                            u = u.union(b)
-                        u = u.buffer(10).buffer(-10).simplify(5, preserve_topology=True)
-                        derived_poly = u
-                except Exception as e:
-                    print(f'    boundary-from-pipes failed: {e}')
+            try:
+                pts = []  # (x, y) in EPSG:32645 metres — strictly 2D
+                if connections_gdf is not None and not connections_gdf.empty:
+                    cp = connections_gdf.to_crs(32645)
+                    for g in cp.geometry:
+                        if g is None or g.is_empty: continue
+                        pts.append((float(g.x), float(g.y)))
+                if pipes_gdf is not None and not pipes_gdf.empty:
+                    pp = pipes_gdf.to_crs(32645)
+                    for g in pp.geometry:
+                        if g is None or g.is_empty: continue
+                        if g.geom_type == 'LineString':
+                            pts.extend((float(c[0]), float(c[1])) for c in g.coords)
+                        elif g.geom_type == 'MultiLineString':
+                            for ln in g.geoms:
+                                pts.extend((float(c[0]), float(c[1])) for c in ln.coords)
+                if devices_gdf is not None and not devices_gdf.empty:
+                    dv = devices_gdf.to_crs(32645)
+                    for g in dv.geometry:
+                        if g is None or g.is_empty: continue
+                        pts.append((float(g.x), float(g.y)))
+                if len(pts) >= 4:
+                    arr = np.array(pts, dtype=float)
+                    # Dedupe close points (1 m grid) so concave_hull runs fast
+                    keys = np.round(arr, 0).astype(np.int64)
+                    _, uniq = np.unique(keys, axis=0, return_index=True)
+                    arr = arr[np.sort(uniq)]
+                    mp = MultiPoint(arr.tolist())
+                    # ratio=0.0 = tightest possible; 1.0 = convex hull
+                    try:
+                        hull = shapely.concave_hull(mp, ratio=0.02, allow_holes=False)
+                    except TypeError:
+                        hull = shapely.concave_hull(mp, ratio=0.02)
+                    if hull is None or hull.is_empty or hull.geom_type not in ('Polygon', 'MultiPolygon'):
+                        # Loosen ratio if tight one fails to produce a polygon
+                        hull = shapely.concave_hull(mp, ratio=0.1)
+                    if hull is not None and not hull.is_empty:
+                        # Tiny outward buffer so every connection sits strictly inside;
+                        # union with a thin pipe buffer to guarantee no pipe is clipped.
+                        hull = hull.buffer(4)
+                        if pipes_gdf is not None and not pipes_gdf.empty:
+                            pp2 = pipes_gdf.to_crs(32645)
+                            pbuf = shapely.union_all(
+                                np.array([shapely.force_2d(g).buffer(4)
+                                          for g in pp2.geometry
+                                          if g is not None and not g.is_empty],
+                                         dtype=object)
+                            )
+                            hull = hull.union(pbuf)
+                        hull = hull.simplify(1.0, preserve_topology=True)
+                        if hull.geom_type in ('Polygon', 'MultiPolygon'):
+                            derived_poly = hull
+            except Exception as e:
+                print(f'    concave-hull boundary failed: {e}')
+
+            # Last-ditch fallback: convex hull of connection points
             if derived_poly is None and connections_gdf is not None and not connections_gdf.empty:
-                # Fallback: convex hull of connection points.
                 cp_proj = connections_gdf.to_crs(32645)
                 pts = np.array([(p.x, p.y) for p in cp_proj.geometry if p is not None and not p.is_empty])
                 if len(pts) >= 3:
                     try:
                         from scipy.spatial import ConvexHull
                         hull_idx = ConvexHull(pts).vertices
-                        derived_poly = Polygon(pts[hull_idx]).buffer(30)
+                        derived_poly = Polygon(pts[hull_idx]).buffer(15)
                     except ImportError:
                         xmin, ymin = pts.min(axis=0); xmax, ymax = pts.max(axis=0)
-                        pad = 30
+                        pad = 15
                         derived_poly = Polygon([
                             (xmin - pad, ymin - pad), (xmax + pad, ymin - pad),
                             (xmax + pad, ymax + pad), (xmin - pad, ymax + pad),
