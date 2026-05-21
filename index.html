@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title"          content="KUKL Survey" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=17" />
+  <link rel="stylesheet" href="css/styles.css?v=18" />
 
   <!-- Third-party libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"   data-cfasync="false"></script>
@@ -33,14 +33,15 @@
     <button id="btnNav" class="nav-toggle" aria-label="Open menu" aria-controls="appDrawer" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
-    <div class="brand">
+    <a href="#home" id="brandHome" class="brand" aria-label="Go to Home">
       <img src="assets/kukl-logo.png" alt="KUKL Logo" class="brand-logo" />
       <div class="brand-text">
         <h1>Site Survey System</h1>
-        <p>Kathmandu Upatyaka Khanepani Limited &middot; Baneshwor Branch</p>
+        <p><span id="currentSection">Home Hub</span></p>
       </div>
-    </div>
+    </a>
     <div class="header-actions">
+      <button id="btnHomeQuick" class="btn btn-mini" title="Home (Alt+H)" aria-label="Home">⌂ HOME</button>
       <button id="btnInstall" class="btn btn-mini" hidden title="Install app">INSTALL</button>
       <span id="onlineStatus" class="status-pill">● ONLINE</span>
       <span id="clock" class="clock">--:--:--</span>
@@ -568,6 +569,9 @@
     <span>KUKL Baneshwor &middot; Site Survey System &middot; Built for field engineers</span>
   </footer>
 
+  <!-- Floating back-to-top button (appears on scroll) -->
+  <button id="btnBackToTop" class="fab fab-top" aria-label="Back to top" title="Back to top" hidden>▲</button>
+
   <!-- ============================================================
        SCRIPTS
        ============================================================ -->
@@ -577,26 +581,99 @@
   <script src="js/nrw-builder.js?v=2"      data-cfasync="false"></script>
   <script src="js/extra-sections.js?v=6"   data-cfasync="false"></script>
 
-  <!-- Drawer wiring (small inline glue) -->
+  <!-- Drawer + global navigation wiring -->
   <script>
     (function () {
       var drawer  = document.getElementById('appDrawer');
       var overlay = document.getElementById('drawerOverlay');
       var btnOpen = document.getElementById('btnNav');
       var btnClose= document.getElementById('btnNavClose');
-      function open()  { drawer.hidden = false; overlay.hidden = false; document.body.classList.add('drawer-open'); btnOpen.setAttribute('aria-expanded','true');  }
-      function close() { document.body.classList.remove('drawer-open'); btnOpen.setAttribute('aria-expanded','false'); setTimeout(function(){ drawer.hidden = true; overlay.hidden = true; }, 220); }
+      var brand   = document.getElementById('brandHome');
+      var btnHomeQuick = document.getElementById('btnHomeQuick');
+      var btnTop  = document.getElementById('btnBackToTop');
+      var sectionLabel = document.getElementById('currentSection');
+
+      // ---- Section labels (shown in header subtitle) ----
+      var SECTION_TITLES = {
+        home: 'Home Hub',
+        capture: 'New Survey',
+        records: 'New Survey · Records',
+        map: 'New Survey · Map',
+        chief: 'Chief Officer Report',
+        leak: 'Leakage Survey',
+        pressure: 'Pressure Measurement',
+        area: 'Area Survey',
+        nrw: 'NRW Report Builder',
+        about: 'Help & About',
+      };
+      // Which drawer entry should appear "active" for each route.
+      // records/map collapse into the NEW SURVEY entry.
+      var DRAWER_FOR_ROUTE = {
+        records: 'capture',
+        map: 'capture',
+      };
+
+      function isRail() {
+        return document.body.classList.contains('rail-mode');
+      }
+      function open()  {
+        if (isRail()) return;
+        drawer.hidden = false; overlay.hidden = false;
+        document.body.classList.add('drawer-open');
+        btnOpen.setAttribute('aria-expanded','true');
+      }
+      function close() {
+        if (isRail()) return;
+        document.body.classList.remove('drawer-open');
+        btnOpen.setAttribute('aria-expanded','false');
+        setTimeout(function(){
+          if (!isRail()) { drawer.hidden = true; overlay.hidden = true; }
+        }, 220);
+      }
       btnOpen .addEventListener('click', open);
       btnClose.addEventListener('click', close);
       overlay .addEventListener('click', close);
       document.querySelectorAll('#appDrawer .tab').forEach(function (b) {
         b.addEventListener('click', close);
       });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) close();
-      });
 
-      // Main-panel SURVEY/REPORT/MAP switcher → routes to the existing tabs.
+      // ---- Responsive: turn drawer into a permanent side-rail on wide screens ----
+      var mql = window.matchMedia('(min-width: 1100px)');
+      function applyRail(on) {
+        if (on) {
+          document.body.classList.add('rail-mode');
+          document.body.classList.remove('drawer-open');
+          drawer.hidden = false;
+          overlay.hidden = true;
+        } else {
+          document.body.classList.remove('rail-mode');
+          drawer.hidden = true;
+          overlay.hidden = true;
+        }
+      }
+      applyRail(mql.matches);
+      (mql.addEventListener ? mql.addEventListener.bind(mql, 'change')
+                            : mql.addListener.bind(mql))(function (e) { applyRail(e.matches); });
+
+      // ---- Update section label + drawer active state on every tab activation ----
+      function syncActive(route) {
+        if (SECTION_TITLES[route] && sectionLabel) {
+          sectionLabel.textContent = SECTION_TITLES[route];
+          document.title = 'KUKL · ' + SECTION_TITLES[route];
+        }
+        var drawerKey = DRAWER_FOR_ROUTE[route] || route;
+        document.querySelectorAll('#appDrawer .tab').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-tab') === drawerKey);
+        });
+      }
+      // Hook EVERY tab button (including hidden routing anchors)
+      document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
+        b.addEventListener('click', function () { syncActive(b.getAttribute('data-tab')); });
+      });
+      // Initial state
+      syncActive('home');
+
+      // ---- Main-panel SURVEY/REPORT/MAP switcher → activate the matching tab ----
       document.addEventListener('click', function (e) {
         var btn = e.target.closest('.main-switcher .vs-btn');
         if (!btn) return;
@@ -604,6 +681,50 @@
         var drawerBtn = document.querySelector('.tab[data-tab="' + route + '"]');
         if (drawerBtn) drawerBtn.click();
       });
+
+      // ---- Brand → HOME ----
+      function gotoHome(e) {
+        if (e) e.preventDefault();
+        var t = document.querySelector('.tab[data-tab="home"]');
+        if (t) t.click();
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0,0); }
+      }
+      brand.addEventListener('click', gotoHome);
+      if (btnHomeQuick) btnHomeQuick.addEventListener('click', gotoHome);
+
+      // ---- Keyboard shortcuts ----
+      // Esc closes drawer; Alt+H = Home, Alt+N = New Survey, Alt+R = Records,
+      // Alt+M = Map, Alt+C = Chief, Alt+L = Leakage, Alt+P = Pressure,
+      // Alt+A = Area, Alt+B = NRW (B for Builder), Alt+? = Help.
+      var SHORTCUTS = {
+        h: 'home',  n: 'capture',  r: 'records',  m: 'map',
+        c: 'chief', l: 'leak',     p: 'pressure', a: 'area',
+        b: 'nrw',   '/': 'about',
+      };
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) close();
+        if (!e.altKey || e.ctrlKey || e.metaKey) return;
+        // Don't hijack inside form fields
+        var tag = (e.target && e.target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        var key = (e.key || '').toLowerCase();
+        var route = SHORTCUTS[key];
+        if (!route) return;
+        var t = document.querySelector('.tab[data-tab="' + route + '"]');
+        if (t) { e.preventDefault(); t.click(); }
+      });
+
+      // ---- Back-to-top FAB ----
+      function updateFab() {
+        if (!btnTop) return;
+        var show = (window.scrollY || window.pageYOffset || 0) > 400;
+        btnTop.hidden = !show;
+      }
+      window.addEventListener('scroll', updateFab, { passive: true });
+      if (btnTop) btnTop.addEventListener('click', function () {
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0,0); }
+      });
+      updateFab();
     })();
   </script>
 </body>
