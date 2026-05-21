@@ -1,444 +1,497 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="theme-color" content="#000000" />
-<title>KUKL Baneshwor — Site Survey System</title>
-<link rel="icon" type="image/png" href="Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png" />
-<link rel="apple-touch-icon" href="Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png" />
-<link rel="manifest" href="manifest.webmanifest" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black" />
-<meta name="apple-mobile-web-app-title" content="KUKL Survey" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="styles.css?v=11" />
-<!-- SheetJS for Excel export -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" data-cfasync="false"></script>
-<!-- html5-qrcode for camera-based QR / barcode scanning -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" data-cfasync="false"></script>
-<!-- piexifjs for writing GPS EXIF into JPEGs -->
-<script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js" data-cfasync="false"></script>
-<!-- jsPDF for one-tap PDF reports -->
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" data-cfasync="false"></script>
-<!-- Leaflet for interactive map -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" data-cfasync="false"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <title>KUKL Baneshwor — Site Survey System</title>
+
+  <link rel="icon"            type="image/png" href="assets/kukl-logo.png" />
+  <link rel="apple-touch-icon"                  href="assets/kukl-logo.png" />
+  <link rel="manifest"                          href="manifest.webmanifest" />
+
+  <meta name="apple-mobile-web-app-capable"        content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title"          content="KUKL Survey" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/styles.css?v=12" />
+
+  <!-- Third-party libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"   data-cfasync="false"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"          data-cfasync="false"></script>
+  <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js"         data-cfasync="false"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"    data-cfasync="false"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"                   data-cfasync="false"></script>
 </head>
 <body>
 
-<!-- ============ HEADER ============ -->
-<header class="app-header">
-  <div class="brand">
-    <img src="Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png" alt="KUKL Logo" class="brand-logo" />
-    <div class="brand-text">
-      <h1>Site Survey System</h1>
-      <p>Kathmandu Upatyaka Khanepani Limited &middot; Baneshwor Branch</p>
-    </div>
-  </div>
-  <div class="header-actions">
-    <button id="btnInstall" class="btn btn-mini" hidden title="Install app">INSTALL</button>
-    <span id="onlineStatus" class="status-pill">● ONLINE</span>
-    <span id="clock" class="clock">--:--:--</span>
-  </div>
-</header>
-
-<!-- ============ TABS ============ -->
-<nav class="tabs" role="tablist">
-  <button class="tab active" data-tab="capture">NEW SURVEY</button>
-  <button class="tab" data-tab="records">RECORDS <span id="recordCount" class="badge">0</span></button>
-  <button class="tab" data-tab="map">LOCATION MAP</button>
-  <button class="tab" data-tab="nrw">NRW REPORT</button>
-  <button class="tab" data-tab="chief">CHIEF OFFICER</button>
-  <button class="tab" data-tab="leak">LEAKAGE</button>
-  <button class="tab" data-tab="pressure">PRESSURE</button>
-  <button class="tab" data-tab="area">AREA SURVEY</button>
-  <button class="tab" data-tab="about">HELP</button>
-</nav>
-
-<main class="container">
-
-  <!-- ============ TAB: CAPTURE ============ -->
-  <section id="tab-capture" class="tab-panel active">
-
-    <!-- GPS PANEL -->
-    <div class="card">
-      <div class="card-head">
-        <h2>1. GPS Coordinates <span class="req">REQUIRED</span></h2>
-        <button id="btnGetLocation" class="btn btn-capture">CAPTURE LOCATION</button>
-      </div>
-      <div class="gps-grid">
-        <div class="gps-cell"><label>Latitude</label><div id="lat" class="gps-val">—</div></div>
-        <div class="gps-cell"><label>Longitude</label><div id="lng" class="gps-val">—</div></div>
-        <div class="gps-cell"><label>Accuracy (m)</label><div id="acc" class="gps-val">—</div></div>
-        <div class="gps-cell"><label>Best (m)</label><div id="bestAcc" class="gps-val">—</div></div>
-        <div class="gps-cell"><label>Samples</label><div id="samples" class="gps-val">0</div></div>
-        <div class="gps-cell"><label>Captured At</label><div id="gpsTime" class="gps-val">—</div></div>
-      </div>
-      <div id="gpsStatus" class="hint">Tap CAPTURE LOCATION to fetch precise GPS coordinates.</div>
-    </div>
-
-    <!-- CAMERA PANEL -->
-    <div class="card">
-      <div class="card-head">
-        <h2>2. Photo Evidence</h2>
-        <div class="btn-row">
-          <button id="btnStartCam" class="btn">START CAMERA</button>
-          <button id="btnSwitchCam" class="btn" disabled>SWITCH</button>
-          <button id="btnSnap" class="btn btn-primary" disabled>CAPTURE PHOTO</button>
-          <button id="btnStopCam" class="btn" disabled>STOP</button>
-          <label class="btn btn-outline">
-            UPLOAD
-            <input id="fileInput" type="file" accept="image/*" multiple hidden />
-          </label>
-        </div>
-      </div>
-      <div class="camera-stage">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="canvas" hidden></canvas>
-        <div id="camOverlay" class="cam-overlay">CAMERA OFF</div>
-      </div>
-      <div class="thumb-strip" id="thumbStrip">
-        <div class="thumb-empty">No photos captured yet.</div>
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="app-header">
+    <button id="btnNav" class="nav-toggle" aria-label="Open menu" aria-controls="appDrawer" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="brand">
+      <img src="assets/kukl-logo.png" alt="KUKL Logo" class="brand-logo" />
+      <div class="brand-text">
+        <h1>Site Survey System</h1>
+        <p>Kathmandu Upatyaka Khanepani Limited &middot; Baneshwor Branch</p>
       </div>
     </div>
+    <div class="header-actions">
+      <button id="btnInstall" class="btn btn-mini" hidden title="Install app">INSTALL</button>
+      <span id="onlineStatus" class="status-pill">● ONLINE</span>
+      <span id="clock" class="clock">--:--:--</span>
+    </div>
+  </header>
 
-    <!-- DETAILS FORM -->
-    <div class="card">
-      <div class="card-head">
-        <h2>3. Site &amp; Connection Details</h2>
+  <!-- ============================================================
+       SIDE DRAWER (replaces tab bar)
+       Buttons keep the .tab class so the existing tab handler in
+       app.js continues to switch panels automatically.
+       ============================================================ -->
+  <aside id="appDrawer" class="drawer" role="dialog" aria-label="Sections" aria-modal="true" hidden>
+    <div class="drawer-head">
+      <img src="assets/kukl-logo.png" alt="" class="drawer-logo" />
+      <div class="drawer-title">
+        <strong>KUKL Survey</strong>
+        <small>Field Sections</small>
       </div>
-      <form id="surveyForm" class="form-grid" autocomplete="off">
+      <button id="btnNavClose" class="nav-close" aria-label="Close menu">×</button>
+    </div>
+    <nav class="drawer-nav" role="tablist">
+      <button class="tab active" data-tab="capture"  data-icon="◉">NEW SURVEY</button>
+      <button class="tab"        data-tab="records"  data-icon="❑">RECORDS <span id="recordCount" class="badge">0</span></button>
+      <button class="tab"        data-tab="map"      data-icon="◎">LOCATION MAP</button>
+      <button class="tab"        data-tab="nrw"      data-icon="∑">NRW REPORT</button>
+      <div class="drawer-divider">FIELD REPORTS</div>
+      <button class="tab"        data-tab="chief"    data-icon="★">CHIEF OFFICER</button>
+      <button class="tab"        data-tab="leak"     data-icon="◆">LEAKAGE SURVEY</button>
+      <button class="tab"        data-tab="pressure" data-icon="↯">PRESSURE</button>
+      <button class="tab"        data-tab="area"     data-icon="⬢">AREA SURVEY</button>
+      <div class="drawer-divider">OTHER</div>
+      <button class="tab"        data-tab="about"    data-icon="?">HELP</button>
+    </nav>
+  </aside>
+  <div id="drawerOverlay" class="drawer-overlay" hidden></div>
 
-        <div class="field">
-          <label>Survey ID</label>
-          <input type="text" id="surveyId" readonly />
-        </div>
-        <div class="field">
-          <label>Surveyor Name *</label>
-          <input type="text" id="surveyor" required placeholder="e.g. Bibek Sharma" />
-        </div>
+  <!-- ============================================================
+       MAIN CONTENT
+       ============================================================ -->
+  <main class="container">
 
-        <div class="field">
-          <label>Customer / Consumer Name *</label>
-          <input type="text" id="customer" required />
+    <!-- ===== TAB: NEW SURVEY ===== -->
+    <section id="tab-capture" class="tab-panel active">
+
+      <!-- GPS PANEL -->
+      <div class="card">
+        <div class="card-head">
+          <h2>1. GPS Coordinates <span class="req">REQUIRED</span></h2>
+          <button id="btnGetLocation" class="btn btn-capture">CAPTURE LOCATION</button>
         </div>
-        <div class="field">
-          <label>KUKL Customer ID</label>
-          <div class="input-with-action">
-            <input type="text" id="customerId" placeholder="e.g. BNS-12345" />
-            <button type="button" id="btnScanQr" class="btn btn-mini" title="Scan QR / Barcode">SCAN</button>
+        <div class="gps-grid">
+          <div class="gps-cell"><label>Latitude</label>     <div id="lat"     class="gps-val">—</div></div>
+          <div class="gps-cell"><label>Longitude</label>    <div id="lng"     class="gps-val">—</div></div>
+          <div class="gps-cell"><label>Accuracy (m)</label> <div id="acc"     class="gps-val">—</div></div>
+          <div class="gps-cell"><label>Best (m)</label>     <div id="bestAcc" class="gps-val">—</div></div>
+          <div class="gps-cell"><label>Samples</label>      <div id="samples" class="gps-val">0</div></div>
+          <div class="gps-cell"><label>Captured At</label>  <div id="gpsTime" class="gps-val">—</div></div>
+        </div>
+        <div id="gpsStatus" class="hint">Tap CAPTURE LOCATION to fetch precise GPS coordinates.</div>
+      </div>
+
+      <!-- CAMERA PANEL -->
+      <div class="card">
+        <div class="card-head">
+          <h2>2. Photo Evidence</h2>
+          <div class="btn-row">
+            <button id="btnStartCam"  class="btn">START CAMERA</button>
+            <button id="btnSwitchCam" class="btn" disabled>SWITCH</button>
+            <button id="btnSnap"      class="btn btn-primary" disabled>CAPTURE PHOTO</button>
+            <button id="btnStopCam"   class="btn" disabled>STOP</button>
+            <label class="btn btn-outline">
+              UPLOAD
+              <input id="fileInput" type="file" accept="image/*" multiple hidden />
+            </label>
+          </div>
+        </div>
+        <div class="camera-stage">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="canvas" hidden></canvas>
+          <div id="camOverlay" class="cam-overlay">CAMERA OFF</div>
+        </div>
+        <div id="thumbStrip" class="thumb-strip">
+          <div class="thumb-empty">No photos captured yet.</div>
+        </div>
+      </div>
+
+      <!-- DETAILS FORM -->
+      <div class="card">
+        <div class="card-head">
+          <h2>3. Site &amp; Connection Details</h2>
+        </div>
+        <form id="surveyForm" class="form-grid" autocomplete="off">
+
+          <div class="field">
+            <label>Survey ID</label>
+            <input type="text" id="surveyId" readonly />
+          </div>
+          <div class="field">
+            <label>Surveyor Name *</label>
+            <input type="text" id="surveyor" required placeholder="e.g. Bibek Sharma" />
+          </div>
+
+          <div class="field">
+            <label>Customer / Consumer Name *</label>
+            <input type="text" id="customer" required />
+          </div>
+          <div class="field">
+            <label>KUKL Customer ID</label>
+            <div class="input-with-action">
+              <input type="text" id="customerId" placeholder="e.g. BNS-12345" />
+              <button type="button" id="btnScanQr" class="btn btn-mini" title="Scan QR / Barcode">SCAN</button>
+            </div>
+          </div>
+
+          <div class="field full">
+            <label>Address / Tole *</label>
+            <input type="text" id="address" required placeholder="Ward No, Tole, Landmark" />
+          </div>
+
+          <div class="field">
+            <label>Ward No.</label>
+            <input type="number" id="ward" min="1" max="35" />
+          </div>
+          <div class="field">
+            <label>Contact Number</label>
+            <input type="tel" id="contact" pattern="[0-9+\- ]*" />
+          </div>
+
+          <div class="field">
+            <label>Connection Type</label>
+            <select id="connType">
+              <option value="">— Select —</option>
+              <option>Domestic (½")</option>
+              <option>Domestic (¾")</option>
+              <option>Commercial (1")</option>
+              <option>Commercial (1.5")</option>
+              <option>Industrial (2"+)</option>
+              <option>Institutional</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Pipe Material</label>
+            <select id="pipeMat">
+              <option value="">— Select —</option>
+              <option>GI (Galvanized Iron)</option>
+              <option>HDPE</option>
+              <option>PPR</option>
+              <option>PVC</option>
+              <option>Copper</option>
+              <option>Unknown</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Meter Status</label>
+            <select id="meterStatus">
+              <option value="">— Select —</option>
+              <option>Working</option>
+              <option>Faulty</option>
+              <option>Stuck</option>
+              <option>Missing</option>
+              <option>Bypassed</option>
+              <option>Tampered</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Meter Reading</label>
+            <input type="number" id="meterReading" step="0.01" />
+          </div>
+
+          <div class="field">
+            <label>Meter Serial No.</label>
+            <input type="text" id="meterSerial" />
+          </div>
+          <div class="field">
+            <label>Pressure (psi)</label>
+            <input type="number" id="pressure" step="0.1" />
+          </div>
+
+          <div class="field">
+            <label>Leakage Detected</label>
+            <select id="leakage">
+              <option>No</option>
+              <option>Minor</option>
+              <option>Major</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Supply Hours / Day</label>
+            <input type="number" id="supplyHrs" min="0" max="24" />
+          </div>
+
+          <div class="field">
+            <label>Overall Condition</label>
+            <select id="condition">
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Poor</option>
+              <option>Critical</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Priority</label>
+            <select id="priority">
+              <option>Normal</option>
+              <option>Medium</option>
+              <option>High</option>
+              <option>Urgent</option>
+            </select>
+          </div>
+
+          <div class="field full">
+            <label>
+              Remarks / Observations
+              <span class="label-actions">
+                <select id="voiceLang" class="mini-select" title="Voice language">
+                  <option value="en-US">EN</option>
+                  <option value="ne-NP">ने (Nepali)</option>
+                  <option value="hi-IN">HI</option>
+                </select>
+                <button type="button" id="btnVoice" class="btn btn-mini" title="Voice to text">● MIC</button>
+              </span>
+            </label>
+            <textarea id="remarks" rows="3" placeholder="Describe leakage points, illegal connections, damages, etc."></textarea>
+          </div>
+
+          <div class="form-actions full">
+            <button type="button" id="btnReset" class="btn btn-outline">RESET</button>
+            <button type="submit"  id="btnSave"  class="btn btn-primary">SAVE SURVEY</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===== TAB: RECORDS ===== -->
+    <section id="tab-records" class="tab-panel">
+      <div class="card">
+        <div class="card-head">
+          <h2>Saved Survey Records</h2>
+          <div class="btn-row">
+            <input id="searchBox" class="search" type="search" placeholder="Search by name, address, ID…" />
+            <button id="btnExport"     class="btn btn-primary">EXPORT EXCEL</button>
+            <button id="btnExportJson" class="btn btn-outline">EXPORT JSON</button>
+            <button id="btnImportJson" class="btn btn-outline">
+              IMPORT JSON
+              <input id="importFile" type="file" accept="application/json" hidden />
+            </button>
+            <button id="btnClearAll"   class="btn btn-danger">DELETE ALL</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="recordTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Survey ID</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Address</th>
+                <th>Lat, Lng</th>
+                <th>Condition</th>
+                <th>Photos</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="recordBody"></tbody>
+          </table>
+          <div id="emptyState" class="empty-state">No records yet. Capture your first survey.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB: MAP ===== -->
+    <section id="tab-map" class="tab-panel">
+      <div class="card">
+        <div class="card-head">
+          <h2>Surveyed Locations</h2>
+          <div class="btn-row">
+            <button id="btnFitMap"    class="btn btn-outline">FIT ALL</button>
+            <button id="btnOpenGmaps" class="btn btn-outline">OPEN FIRST IN GOOGLE MAPS</button>
+          </div>
+        </div>
+        <div id="leafletMap" class="leaflet-map"></div>
+        <div class="map-legend">
+          <span><i class="pin pin-excellent"></i>Excellent</span>
+          <span><i class="pin pin-good"></i>Good</span>
+          <span><i class="pin pin-fair"></i>Fair</span>
+          <span><i class="pin pin-poor"></i>Poor</span>
+          <span><i class="pin pin-critical"></i>Critical</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB: NRW REPORT ===== -->
+    <section id="tab-nrw" class="tab-panel">
+      <div class="card">
+        <div class="card-head"><h2>NRW Baishakh Report Builder</h2></div>
+        <p class="hint">
+          Upload the customer reading file (e.g. <b>9.1.xlsx</b>) and the SCADA workbook
+          (e.g. <b>2083 Baisakh SCADA.xlsx</b>). The app produces an Excel file mirroring
+          <b>4.1.2.xlsx</b> structure: billable column, totals, daily SCADA block, and
+          meter-status summary.
+        </p>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Customer reading file (.xlsx)</label>
+            <input type="file" id="nrwCustFile" accept=".xlsx,.xlsm" />
+          </div>
+          <div class="field">
+            <label>SCADA workbook (.xlsx)</label>
+            <input type="file" id="nrwScadaFile" accept=".xlsx,.xlsm" />
+          </div>
+          <div class="field">
+            <label>DMA name (auto-detected from filename)</label>
+            <input type="text" id="nrwDma" placeholder="e.g. 9.1" />
+          </div>
+          <div class="field">
+            <label>Output file name</label>
+            <input type="text" id="nrwOut" placeholder="9.1_baisakh.xlsx" />
+          </div>
+          <div class="field">
+            <label>Start date (Baisakh 1)</label>
+            <input type="date" id="nrwStart" value="2026-04-14" />
+          </div>
+          <div class="field">
+            <label>End date (Baisakh 31)</label>
+            <input type="date" id="nrwEnd"   value="2026-05-14" />
           </div>
         </div>
 
-        <div class="field full">
-          <label>Address / Tole *</label>
-          <input type="text" id="address" required placeholder="Ward No, Tole, Landmark" />
+        <div class="btn-row" style="margin-top:14px;">
+          <button id="nrwGenerate" class="btn btn-primary">GENERATE REPORT</button>
+          <button id="nrwReset"    class="btn btn-outline">RESET</button>
         </div>
 
-        <div class="field">
-          <label>Ward No.</label>
-          <input type="number" id="ward" min="1" max="35" />
-        </div>
-        <div class="field">
-          <label>Contact Number</label>
-          <input type="tel" id="contact" pattern="[0-9+\- ]*" />
-        </div>
-
-        <div class="field">
-          <label>Connection Type</label>
-          <select id="connType">
-            <option value="">— Select —</option>
-            <option>Domestic (½")</option>
-            <option>Domestic (¾")</option>
-            <option>Commercial (1")</option>
-            <option>Commercial (1.5")</option>
-            <option>Industrial (2"+)</option>
-            <option>Institutional</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Pipe Material</label>
-          <select id="pipeMat">
-            <option value="">— Select —</option>
-            <option>GI (Galvanized Iron)</option>
-            <option>HDPE</option>
-            <option>PPR</option>
-            <option>PVC</option>
-            <option>Copper</option>
-            <option>Unknown</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Meter Status</label>
-          <select id="meterStatus">
-            <option value="">— Select —</option>
-            <option>Working</option>
-            <option>Faulty</option>
-            <option>Stuck</option>
-            <option>Missing</option>
-            <option>Bypassed</option>
-            <option>Tampered</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Meter Reading</label>
-          <input type="number" id="meterReading" step="0.01" />
-        </div>
-
-        <div class="field">
-          <label>Meter Serial No.</label>
-          <input type="text" id="meterSerial" />
-        </div>
-        <div class="field">
-          <label>Pressure (psi)</label>
-          <input type="number" id="pressure" step="0.1" />
-        </div>
-
-        <div class="field">
-          <label>Leakage Detected</label>
-          <select id="leakage">
-            <option>No</option>
-            <option>Minor</option>
-            <option>Major</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Supply Hours / Day</label>
-          <input type="number" id="supplyHrs" min="0" max="24" />
-        </div>
-
-        <div class="field">
-          <label>Overall Condition</label>
-          <select id="condition">
-            <option>Excellent</option>
-            <option>Good</option>
-            <option>Fair</option>
-            <option>Poor</option>
-            <option>Critical</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Priority</label>
-          <select id="priority">
-            <option>Normal</option>
-            <option>Medium</option>
-            <option>High</option>
-            <option>Urgent</option>
-          </select>
-        </div>
-
-        <div class="field full">
-          <label>
-            Remarks / Observations
-            <span class="label-actions">
-              <select id="voiceLang" class="mini-select" title="Voice language">
-                <option value="en-US">EN</option>
-                <option value="ne-NP">ने (Nepali)</option>
-                <option value="hi-IN">HI</option>
-              </select>
-              <button type="button" id="btnVoice" class="btn btn-mini" title="Voice to text">● MIC</button>
-            </span>
-          </label>
-          <textarea id="remarks" rows="3" placeholder="Describe leakage points, illegal connections, damages, etc."></textarea>
-        </div>
-
-        <div class="form-actions full">
-          <button type="button" id="btnReset" class="btn btn-outline">RESET</button>
-          <button type="submit" id="btnSave" class="btn btn-primary">SAVE SURVEY</button>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <!-- ============ TAB: RECORDS ============ -->
-  <section id="tab-records" class="tab-panel">
-    <div class="card">
-      <div class="card-head">
-        <h2>Saved Survey Records</h2>
-        <div class="btn-row">
-          <input id="searchBox" class="search" type="search" placeholder="Search by name, address, ID…" />
-          <button id="btnExport" class="btn btn-primary">EXPORT EXCEL</button>
-          <button id="btnExportJson" class="btn btn-outline">EXPORT JSON</button>
-          <button id="btnImportJson" class="btn btn-outline">IMPORT JSON
-            <input id="importFile" type="file" accept="application/json" hidden />
-          </button>
-          <button id="btnClearAll" class="btn btn-danger">DELETE ALL</button>
+        <div id="nrwLog" class="hint" style="margin-top:14px;white-space:pre-wrap;">
+          Select both files to begin.
         </div>
       </div>
-      <div class="table-wrap">
-        <table id="recordTable">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Survey ID</th>
-              <th>Date</th>
-              <th>Customer</th>
-              <th>Address</th>
-              <th>Lat, Lng</th>
-              <th>Condition</th>
-              <th>Photos</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="recordBody"></tbody>
-        </table>
-        <div id="emptyState" class="empty-state">No records yet. Capture your first survey.</div>
+    </section>
+
+    <!-- ===== TAB: CHIEF OFFICER ===== -->
+    <section id="tab-chief"    class="tab-panel" data-extra-section="chief"></section>
+
+    <!-- ===== TAB: PIPE LEAKAGE ===== -->
+    <section id="tab-leak"     class="tab-panel" data-extra-section="leak"></section>
+
+    <!-- ===== TAB: PRESSURE ===== -->
+    <section id="tab-pressure" class="tab-panel" data-extra-section="pressure"></section>
+
+    <!-- ===== TAB: GENERAL SURVEY AREA ===== -->
+    <section id="tab-area"     class="tab-panel" data-extra-section="area"></section>
+
+    <!-- ===== TAB: HELP ===== -->
+    <section id="tab-about" class="tab-panel">
+      <div class="card">
+        <div class="card-head"><h2>How to Use</h2></div>
+        <ol class="help-list">
+          <li>Open the menu (☰) to switch between sections. Allow <b>Location</b>, <b>Camera</b>, and <b>Microphone</b> permissions when prompted.</li>
+          <li><b>NEW SURVEY</b> — Tap CAPTURE LOCATION; the app refines GPS until accuracy reaches ≤ 2 m. Tap START CAMERA, then CAPTURE PHOTO. Fill the form, then SAVE SURVEY.</li>
+          <li><b>RECORDS</b> — view, edit, delete, or EXPORT EXCEL. Data is stored locally on this device (offline-safe).</li>
+          <li><b>FIELD REPORTS</b> (Chief Officer, Leakage, Pressure, Area Survey) — each works the same way: fill the form, capture stamped photos, dictate remarks via MIC, and export to Excel.</li>
+          <li><b>NRW REPORT</b> — Upload customer reading + SCADA workbooks to auto-build a Baishakh-style report.</li>
+        </ol>
+        <p class="hint">Tip: For best GPS accuracy, stand outdoors with clear sky for 10–15 seconds before capturing location.</p>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- ============ TAB: MAP ============ -->
-  <section id="tab-map" class="tab-panel">
-    <div class="card">
-      <div class="card-head">
-        <h2>Surveyed Locations</h2>
-        <div class="btn-row">
-          <button id="btnFitMap" class="btn btn-outline">FIT ALL</button>
-          <button id="btnOpenGmaps" class="btn btn-outline">OPEN FIRST IN GOOGLE MAPS</button>
-        </div>
+  <!-- ============================================================
+       GLOBAL UI ELEMENTS (toast, lightbox, draft banner, modals)
+       ============================================================ -->
+  <div id="toast" class="toast"></div>
+
+  <div id="lightbox" class="lightbox" hidden>
+    <button id="lbClose"    class="lb-btn lb-close"    title="Close">×</button>
+    <button id="lbDownload" class="lb-btn lb-download" title="Download">↓ DOWNLOAD</button>
+    <button id="lbPrev"     class="lb-btn lb-prev"     title="Previous">‹</button>
+    <button id="lbNext"     class="lb-btn lb-next"     title="Next">›</button>
+    <img    id="lbImg" alt="" />
+    <div    id="lbMeta" class="lb-meta"></div>
+  </div>
+
+  <div id="draftBanner" class="draft-banner" hidden>
+    <span id="draftMsg">Unsaved draft restored.</span>
+    <button id="btnDiscardDraft" class="btn btn-mini">DISCARD DRAFT</button>
+  </div>
+
+  <div id="scanModal" class="modal" hidden>
+    <div class="modal-card" style="max-width:520px;">
+      <div class="modal-head">
+        <h3>Scan QR / Barcode</h3>
+        <button id="scanClose" class="btn btn-outline">CLOSE</button>
       </div>
-      <div id="leafletMap" class="leaflet-map"></div>
-      <div class="map-legend">
-        <span><i class="pin pin-excellent"></i>Excellent</span>
-        <span><i class="pin pin-good"></i>Good</span>
-        <span><i class="pin pin-fair"></i>Fair</span>
-        <span><i class="pin pin-poor"></i>Poor</span>
-        <span><i class="pin pin-critical"></i>Critical</span>
+      <div class="modal-body">
+        <div id="scanRegion" style="width:100%;"></div>
+        <p class="hint" style="border:none;background:none;padding:10px 0 0;">
+          Point camera at the meter sticker. Result auto-fills the Customer ID.
+        </p>
       </div>
-    </div>
-  </section>
-
-  <!-- ============ TAB: NRW REPORT ============ -->
-  <section id="tab-nrw" class="tab-panel">
-    <div class="card">
-      <div class="card-head"><h2>NRW Baishakh Report Builder</h2></div>
-      <p class="hint">
-        Upload the customer reading file (e.g. <b>9.1.xlsx</b>) and the SCADA workbook
-        (e.g. <b>2083 Baisakh SCADA.xlsx</b>). The app produces an Excel file mirroring
-        <b>4.1.2.xlsx</b> structure: billable column, totals, daily SCADA block, and meter-status summary.
-      </p>
-
-      <div class="form-grid">
-        <div class="field">
-          <label>Customer reading file (.xlsx)</label>
-          <input type="file" id="nrwCustFile" accept=".xlsx,.xlsm" />
-        </div>
-        <div class="field">
-          <label>SCADA workbook (.xlsx)</label>
-          <input type="file" id="nrwScadaFile" accept=".xlsx,.xlsm" />
-        </div>
-        <div class="field">
-          <label>DMA name (auto-detected from filename)</label>
-          <input type="text" id="nrwDma" placeholder="e.g. 9.1" />
-        </div>
-        <div class="field">
-          <label>Output file name</label>
-          <input type="text" id="nrwOut" placeholder="9.1_baisakh.xlsx" />
-        </div>
-        <div class="field">
-          <label>Start date (Baisakh 1)</label>
-          <input type="date" id="nrwStart" value="2026-04-14" />
-        </div>
-        <div class="field">
-          <label>End date (Baisakh 31)</label>
-          <input type="date" id="nrwEnd" value="2026-05-14" />
-        </div>
-      </div>
-
-      <div class="btn-row" style="margin-top:14px;">
-        <button id="nrwGenerate" class="btn btn-primary">GENERATE REPORT</button>
-        <button id="nrwReset" class="btn btn-outline">RESET</button>
-      </div>
-
-      <div id="nrwLog" class="hint" style="margin-top:14px; white-space:pre-wrap;">
-        Select both files to begin.
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ TAB: ABOUT ============ -->
-  <!-- ============ TAB: CHIEF OFFICER ============ -->
-  <section id="tab-chief" class="tab-panel" data-extra-section="chief"></section>
-
-  <!-- ============ TAB: PIPE LEAKAGE ============ -->
-  <section id="tab-leak" class="tab-panel" data-extra-section="leak"></section>
-
-  <!-- ============ TAB: PRESSURE ============ -->
-  <section id="tab-pressure" class="tab-panel" data-extra-section="pressure"></section>
-
-  <!-- ============ TAB: GENERAL SURVEY AREA ============ -->
-  <section id="tab-area" class="tab-panel" data-extra-section="area"></section>
-
-  <section id="tab-about" class="tab-panel">
-    <div class="card">
-      <div class="card-head"><h2>How to Use</h2></div>
-      <ol class="help-list">
-        <li>Open this page on your mobile or laptop. Allow <b>Location</b> and <b>Camera</b> permissions when prompted.</li>
-        <li>Tap <b>CAPTURE LOCATION</b> — the app continuously refines GPS until accuracy reaches <b>≤ 2 m</b> (target). You can tap <b>STOP &amp; USE BEST</b> any time to accept the best reading so far.</li>
-        <li>Tap <b>START CAMERA</b>, then <b>CAPTURE PHOTO</b> for each angle. Use <b>SWITCH</b> to toggle front/rear. You may also upload existing pictures.</li>
-        <li>Fill in customer + connection details and tap <b>SAVE SURVEY</b>.</li>
-        <li>Open the <b>RECORDS</b> tab to view, edit, delete, or <b>EXPORT EXCEL</b>.</li>
-        <li>Data is stored locally on this device (offline-safe). Always export Excel before clearing.</li>
-      </ol>
-      <p class="hint">Tip: For best GPS accuracy, stand outdoors with clear sky for 10–15 seconds before capturing location.</p>
-    </div>
-  </section>
-</main>
-
-<!-- ============ TOAST ============ -->
-<div id="toast" class="toast"></div>
-
-<!-- ============ LIGHTBOX ============ -->
-<div id="lightbox" class="lightbox" hidden>
-  <button id="lbClose" class="lb-btn lb-close" title="Close">×</button>
-  <button id="lbDownload" class="lb-btn lb-download" title="Download">↓ DOWNLOAD</button>
-  <button id="lbPrev" class="lb-btn lb-prev" title="Previous">‹</button>
-  <button id="lbNext" class="lb-btn lb-next" title="Next">›</button>
-  <img id="lbImg" alt="" />
-  <div id="lbMeta" class="lb-meta"></div>
-</div>
-
-<!-- ============ DRAFT BANNER ============ -->
-<div id="draftBanner" class="draft-banner" hidden>
-  <span id="draftMsg">Unsaved draft restored.</span>
-  <button id="btnDiscardDraft" class="btn btn-mini">DISCARD DRAFT</button>
-</div>
-
-<!-- ============ SCANNER MODAL ============ -->
-<div id="scanModal" class="modal" hidden>
-  <div class="modal-card" style="max-width:520px;">
-    <div class="modal-head">
-      <h3>Scan QR / Barcode</h3>
-      <button id="scanClose" class="btn btn-outline">CLOSE</button>
-    </div>
-    <div class="modal-body">
-      <div id="scanRegion" style="width:100%;"></div>
-      <p class="hint" style="border:none;background:none;padding:10px 0 0;">Point camera at the meter sticker. Result auto-fills the Customer ID.</p>
     </div>
   </div>
-</div>
 
-<!-- ============ MODAL (View record) ============ -->
-<div id="modal" class="modal" hidden>
-  <div class="modal-card">
-    <div class="modal-head">
-      <h3 id="modalTitle">Survey Details</h3>
-      <div class="btn-row">
-        <button id="modalPdf" class="btn btn-outline">PDF</button>
-        <button id="modalClose" class="btn btn-outline">CLOSE</button>
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitle">Survey Details</h3>
+        <div class="btn-row">
+          <button id="modalPdf"   class="btn btn-outline">PDF</button>
+          <button id="modalClose" class="btn btn-outline">CLOSE</button>
+        </div>
       </div>
+      <div id="modalBody" class="modal-body"></div>
     </div>
-    <div id="modalBody" class="modal-body"></div>
   </div>
-</div>
 
-<footer class="app-footer">
-  <span>KUKL Baneshwor &middot; Site Survey System &middot; Built for field engineers</span>
-</footer>
+  <footer class="app-footer">
+    <span>KUKL Baneshwor &middot; Site Survey System &middot; Built for field engineers</span>
+  </footer>
 
-<script src="app.js?v=11" data-cfasync="false"></script>
-<script src="nrw-builder.js?v=1" data-cfasync="false"></script>
-<script src="extra-sections.js?v=1" data-cfasync="false"></script>
+  <!-- ============================================================
+       SCRIPTS
+       ============================================================ -->
+  <script src="js/media-widgets.js?v=1"   data-cfasync="false"></script>
+  <script src="js/app.js?v=12"             data-cfasync="false"></script>
+  <script src="js/nrw-builder.js?v=2"      data-cfasync="false"></script>
+  <script src="js/extra-sections.js?v=2"   data-cfasync="false"></script>
+
+  <!-- Drawer wiring (small inline glue) -->
+  <script>
+    (function () {
+      var drawer  = document.getElementById('appDrawer');
+      var overlay = document.getElementById('drawerOverlay');
+      var btnOpen = document.getElementById('btnNav');
+      var btnClose= document.getElementById('btnNavClose');
+      function open()  { drawer.hidden = false; overlay.hidden = false; document.body.classList.add('drawer-open'); btnOpen.setAttribute('aria-expanded','true');  }
+      function close() { document.body.classList.remove('drawer-open'); btnOpen.setAttribute('aria-expanded','false'); setTimeout(function(){ drawer.hidden = true; overlay.hidden = true; }, 220); }
+      btnOpen .addEventListener('click', open);
+      btnClose.addEventListener('click', close);
+      overlay .addEventListener('click', close);
+      // Auto-close after selecting a section
+      document.querySelectorAll('#appDrawer .tab').forEach(function (b) {
+        b.addEventListener('click', close);
+      });
+      // Esc key
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) close();
+      });
+    })();
+  </script>
 </body>
 </html>

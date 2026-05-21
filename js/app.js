@@ -1472,7 +1472,7 @@ async function generateSurveyPdf(rec) {
 
   // ---------- PRE-LOAD logo ----------
   let logoImg = null;
-  try { logoImg = await loadImage('Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png'); } catch {}
+  try { logoImg = await loadImage('assets/kukl-logo.png'); } catch {}
 
   // ============================================================
   // PAGE 1

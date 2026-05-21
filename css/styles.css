@@ -64,13 +64,9 @@ body{
 .status-pill.offline{background:#000;color:#fff;}
 .clock{font-family:var(--mono);font-size:13px;font-weight:600;}
 
-/* ===== TABS ===== */
+/* ===== TABS (legacy horizontal — kept for fallback only) ===== */
 .tabs{
-  display:flex;gap:0;
-  border-bottom:2px solid var(--line);
-  background:#fff;
-  position:sticky;top:73px;z-index:40;
-  overflow-x:auto;
+  display:none;
 }
 .tab{
   background:transparent;border:none;
@@ -94,6 +90,87 @@ body{
   font-family:var(--mono);
 }
 .tab.active .badge{background:#fff;color:#000;}
+
+/* ===== NAV TOGGLE (hamburger) ===== */
+.nav-toggle{
+  background:#fff;border:1px solid #000;
+  width:42px;height:42px;
+  display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;
+  cursor:pointer;margin-right:12px;flex:0 0 auto;
+  transition:.15s;
+}
+.nav-toggle span{display:block;width:20px;height:2px;background:#000;}
+.nav-toggle:hover{background:#000;}
+.nav-toggle:hover span{background:#fff;}
+
+/* ===== SIDE DRAWER ===== */
+.drawer{
+  position:fixed;top:0;left:0;bottom:0;
+  width:min(86vw,320px);
+  background:#fff;border-right:2px solid #000;
+  transform:translateX(-105%);
+  transition:transform .22s ease;
+  z-index:80;
+  display:flex;flex-direction:column;
+  box-shadow:0 0 0 1px #000 inset;
+}
+body.drawer-open .drawer{transform:translateX(0);}
+.drawer-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.45);
+  opacity:0;pointer-events:none;
+  transition:opacity .22s ease;z-index:70;
+}
+body.drawer-open .drawer-overlay{opacity:1;pointer-events:auto;}
+
+.drawer-head{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 14px;
+  border-bottom:2px solid #000;
+  background:#000;color:#fff;
+}
+.drawer-logo{
+  width:36px;height:36px;
+  background:#fff;border:1px solid #fff;
+  object-fit:contain;
+}
+.drawer-title{flex:1;line-height:1.2;}
+.drawer-title strong{display:block;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;}
+.drawer-title small{display:block;font-size:10px;letter-spacing:1px;opacity:.7;text-transform:uppercase;}
+.nav-close{
+  background:transparent;border:1px solid #fff;color:#fff;
+  width:32px;height:32px;font-size:18px;line-height:1;cursor:pointer;
+}
+.nav-close:hover{background:#fff;color:#000;}
+
+.drawer-nav{
+  display:flex;flex-direction:column;
+  overflow-y:auto;flex:1;
+}
+.drawer-nav .tab{
+  display:flex;align-items:center;gap:12px;
+  text-align:left;
+  padding:14px 16px;
+  border-right:none;
+  border-bottom:1px solid #000;
+  background:#fff;color:#000;
+}
+.drawer-nav .tab::before{
+  content:attr(data-icon);
+  display:inline-block;width:22px;
+  font-family:var(--mono);font-size:14px;text-align:center;
+  flex:0 0 22px;
+}
+.drawer-nav .tab:hover{background:#000;color:#fff;}
+.drawer-nav .tab.active{background:#000;color:#fff;}
+.drawer-divider{
+  padding:10px 16px 6px;
+  font-size:10px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:#666;
+  background:#f7f7f7;border-bottom:1px solid #000;
+}
+
+/* Records badge inside drawer */
+.drawer-nav .tab .badge{margin-left:auto;}
 
 /* ===== CONTAINER ===== */
 .container{
@@ -643,11 +720,13 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 }
 
 /* =========================================================
-   MOBILE PEAK PORTABILITY — bottom nav, sticky save, compact UI
+   MOBILE PEAK PORTABILITY — sticky save, compact UI
+   (bottom-nav rules removed; drawer is the nav on all sizes)
    ========================================================= */
 @media (max-width:780px){
-  /* leave room for bottom nav + sticky save bar */
-  body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));}
+  /* (legacy .tabs bottom-nav rules retained but inert because
+      the new drawer hides .tabs globally — kept here only to avoid
+      churning unrelated rules.) */
 
   /* Top tabs become the BOTTOM thumb-zone nav */
   .tabs{
@@ -744,8 +823,7 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   /* reserve space so the form content above isn't covered */
   #tab-capture #surveyForm{padding-bottom:64px;}
 
-  /* Draft banner — narrower & out of the way */
-  .draft-banner{
+  /* Draft banner — narrower & out of the way */  .draft-banner{
     left:10px;right:10px;top:auto;bottom:calc(124px + env(safe-area-inset-bottom,0px));
     box-shadow:2px 2px 0 #000;
     border-width:1px;
@@ -792,3 +870,9 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   #tab-capture #surveyForm{padding-bottom:0;}
   .draft-banner{top:60px;bottom:auto;}
 }
+
+/* ===== EXTRA SECTIONS — shared overrides ===== */
+.mw-mic-active{background:#000 !important;color:#fff !important;}
+.records-table tbody tr:hover{background:#f7f7f7;}
+.extra-loc{margin-top:4px;}
+.extra-photos .thumb-strip{margin-top:8px;}

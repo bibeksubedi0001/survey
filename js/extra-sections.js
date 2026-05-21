@@ -247,13 +247,20 @@
           input = buildLocationWidget(inputId);
           break;
         case 'photos':
-          input = buildPhotosWidget(inputId);
+          input = buildPhotosWidget(inputId, key);
           break;
         default:
           input = el('input', { id: inputId, type: 'text', placeholder: f.placeholder || '' });
       }
       if (f.required && input.tagName !== 'DIV') input.required = true;
       fld.appendChild(input);
+
+      // Attach voice-to-text mic button to every textarea — same as
+      // the main NEW SURVEY remarks field.
+      if (f.type === 'textarea' && window.KUKLMedia && typeof window.KUKLMedia.attachVoiceInput === 'function') {
+        window.KUKLMedia.attachVoiceInput(input, { lang: 'en-US' });
+      }
+
       formGrid.appendChild(fld);
     });
 
@@ -352,22 +359,43 @@
   }
 
   // ---------- Photos widget ----------
-  function buildPhotosWidget(inputId) {
-    const wrap  = el('div', { id: inputId, class: 'extra-photos' });
+  // Uses the shared KUKLMedia.createCameraWidget so every section gets the
+  // exact same live-camera + stamped photo experience as the main NEW SURVEY
+  // tab. Falls back to a plain file picker if the shared module is missing.
+  function buildPhotosWidget(inputId, sectionKey) {
+    const wrap = el('div', { id: inputId, class: 'extra-photos' });
+
+    if (window.KUKLMedia && typeof window.KUKLMedia.createCameraWidget === 'function') {
+      const cam = window.KUKLMedia.createCameraWidget({
+        container: wrap,
+        getId: () => sectionKey ? `[${sectionKey.toUpperCase()}]` : '',
+        getGps: () => {
+          // Pull GPS from the section's location widget if present.
+          const loc = document.getElementById(`${sectionKey}_gps`);
+          if (loc && typeof loc._collect === 'function') return loc._collect();
+          return null;
+        },
+      });
+      wrap._collect = () => cam.getPhotos();
+      wrap._reset   = () => cam.reset();
+      wrap._stop    = () => cam.stop();
+      return wrap;
+    }
+
+    // ---- Fallback: simple file picker ----
     const file  = el('input', { type: 'file', accept: 'image/*', multiple: '', capture: 'environment', style: 'display:none;' });
     const btn   = el('button', { type: 'button', class: 'btn btn-outline' }, 'ADD PHOTOS');
     const strip = el('div', { class: 'thumb-strip', style: 'margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;' });
-    const empty = el('div', { class: 'thumb-empty', style: 'font-size:11px;letter-spacing:1px;color:#666;text-transform:uppercase;' }, 'No photos yet');
+    const empty = el('div', { class: 'thumb-empty' }, 'No photos yet');
     strip.appendChild(empty);
-
     const photos = [];
     function rerender() {
       strip.innerHTML = '';
       if (!photos.length) { strip.appendChild(empty); return; }
       photos.forEach((p, idx) => {
-        const cell = el('div', { style: 'position:relative;' });
-        const img = el('img', { src: p.dataUrl, style: 'width:80px;height:80px;object-fit:cover;border:1px solid #000;' });
-        const x   = el('button', { type: 'button', title: 'Remove', style: 'position:absolute;top:-6px;right:-6px;width:20px;height:20px;border:1px solid #000;background:#fff;font-size:12px;line-height:1;cursor:pointer;' }, '×');
+        const cell = el('div', { class: 'thumb' });
+        const img  = el('img', { src: p.dataUrl, alt: '' });
+        const x    = el('button', { type: 'button', class: 'del', title: 'Remove' }, '×');
         x.addEventListener('click', () => { photos.splice(idx, 1); rerender(); });
         cell.appendChild(img); cell.appendChild(x);
         strip.appendChild(cell);

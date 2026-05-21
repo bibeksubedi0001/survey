@@ -5,7 +5,7 @@
      - OSM tiles (*.tile.openstreetmap.org)   → stale-while-revalidate (capped LRU)
      - Everything else → network-first, fall back to cache
 */
-const VERSION = 'v9-2026-05-21';
+const VERSION = 'v10-2026-05-21';
 const SHELL_CACHE = `kukl-shell-${VERSION}`;
 const LIB_CACHE   = `kukl-libs-${VERSION}`;
 const TILE_CACHE  = `kukl-tiles-${VERSION}`;
@@ -14,12 +14,13 @@ const TILE_LIMIT  = 600; // ~30 MB rough budget
 const SHELL_ASSETS = [
   './',
   './index.html',
-  './styles.css?v=11',
-  './app.js?v=11',
-  './nrw-builder.js?v=1',
-  './extra-sections.js?v=1',
   './manifest.webmanifest',
-  './Kathmandu-Upatyaka-Khanepani-Limited---KUKL.png',
+  './css/styles.css?v=12',
+  './js/app.js?v=12',
+  './js/nrw-builder.js?v=2',
+  './js/extra-sections.js?v=2',
+  './js/media-widgets.js?v=1',
+  './assets/kukl-logo.png',
 ];
 
 const LIB_URLS = [
