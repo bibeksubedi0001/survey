@@ -620,13 +620,16 @@
     empty.style.display = 'none';
 
     const table = el('table', { class: 'records-table' });
+    const cols = COLUMN_DEFS[key] || COLUMN_DEFS.chief;
     table.appendChild(el('thead', null,
       el('tr', null,
         el('th', null, '#'),
-        el('th', null, 'ID'),
-        el('th', null, 'Date / Time'),
-        el('th', null, summaryLabel(key)),
-        el('th', null, 'GPS'),
+        el('th', null, 'Survey ID'),
+        el('th', null, 'Date'),
+        el('th', null, cols.customer.label),
+        el('th', null, cols.address.label),
+        el('th', null, 'Lat, Lng'),
+        el('th', null, cols.condition.label),
         el('th', null, 'Photos'),
         el('th', null, 'Actions'),
       ),
@@ -636,20 +639,23 @@
     filtered.forEach((r, i) => {
       const tr = el('tr');
       tr.appendChild(el('td', null, String(i + 1)));
-      tr.appendChild(el('td', null, r.id));
-      tr.appendChild(el('td', null, (r.createdAt || '').replace('T', ' ').slice(0, 19)));
-      tr.appendChild(el('td', null, summaryValue(key, r)));
+      tr.appendChild(el('td', { class: 'mono' }, r.id));
+      tr.appendChild(el('td', null, (r.createdAt || '').replace('T', ' ').slice(0, 16)));
+      tr.appendChild(el('td', null, cols.customer.get(r) || '—'));
+      tr.appendChild(el('td', null, cols.address.get(r)  || '—'));
 
       const g = r.gps && isFinite(r.gps.lat) ? r.gps : null;
-      const gpsCell = el('td');
+      const gpsCell = el('td', { class: 'mono' });
       if (g) {
         const link = el('a', { href: `https://maps.google.com/?q=${g.lat},${g.lng}`, target: '_blank', rel: 'noopener' },
-          `${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}`);
+          `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}`);
         gpsCell.appendChild(link);
       } else {
         gpsCell.textContent = '—';
       }
       tr.appendChild(gpsCell);
+
+      tr.appendChild(el('td', null, cols.condition.get(r) || '—'));
 
       const photosCell = el('td');
       const photos = r.photos || [];
@@ -669,12 +675,21 @@
 
       const actionsCell = el('td');
       const btnRow = el('div', { class: 'btn-row' });
-      const delBtn = el('button', { type: 'button', class: 'btn btn-outline btn-mini' }, 'DELETE');
-      delBtn.addEventListener('click', async () => {
-        if (!confirm('Delete this record?')) return;
+      const viewBtn = el('button', { type: 'button', class: 'btn btn-outline btn-mini' }, 'VIEW');
+      const pdfBtn  = el('button', { type: 'button', class: 'btn btn-outline btn-mini' }, 'PDF');
+      const editBtn = el('button', { type: 'button', class: 'btn btn-outline btn-mini' }, 'EDIT');
+      const delBtn  = el('button', { type: 'button', class: 'btn btn-outline btn-mini btn-danger-outline' }, 'DEL');
+      viewBtn.addEventListener('click', () => openRecordView(key, r));
+      pdfBtn .addEventListener('click', () => exportRecordPdf(key, r));
+      editBtn.addEventListener('click', () => loadRecordIntoForm(key, r));
+      delBtn .addEventListener('click', async () => {
+        if (!confirm(`Delete record ${r.id}?`)) return;
         await dbDelete(section.store, r.id);
         await refreshRecords(key);
       });
+      btnRow.appendChild(viewBtn);
+      btnRow.appendChild(pdfBtn);
+      btnRow.appendChild(editBtn);
       btnRow.appendChild(delBtn);
       actionsCell.appendChild(btnRow);
       tr.appendChild(actionsCell);
@@ -725,6 +740,183 @@
     if (key === 'pressure') return `${r.location || ''} — ${r.pressure ?? ''} ${r.unit || ''}`;
     if (key === 'area')     return `${r.area || ''}${r.ward ? ' / Ward ' + r.ward : ''}`;
     return '';
+  }
+
+  // Per-section column accessors for the unified records table.
+  // Mirrors the main NEW SURVEY layout: Customer / Address / Condition.
+  const COLUMN_DEFS = {
+    chief: {
+      customer:  { label: 'Reported By', get: r => r.reportedBy },
+      address:   { label: 'Location',    get: r => r.location },
+      condition: { label: 'Issue',       get: r => r.issue },
+    },
+    leak: {
+      customer:  { label: 'Reported By', get: r => r.reportedBy },
+      address:   { label: 'Location',    get: r => r.location },
+      condition: { label: 'Severity',    get: r => r.severity },
+    },
+    pressure: {
+      customer:  { label: 'Measured By', get: r => r.reportedBy },
+      address:   { label: 'Location',    get: r => r.location },
+      condition: { label: 'Reading',     get: r => r.pressure == null ? '' : `${r.pressure} ${r.unit || ''}`.trim() },
+    },
+    area: {
+      customer:  { label: 'Surveyor',     get: r => r.reportedBy },
+      address:   { label: 'Area / Tole',  get: r => r.area },
+      condition: { label: 'Ward',         get: r => r.ward != null && r.ward !== '' ? ('Ward ' + r.ward) : '' },
+    },
+  };
+
+  // ---------- Single-record VIEW ----------
+  function openRecordView(key, r) {
+    const section = SECTIONS[key];
+    const overlay = el('div', { class: 'record-view-overlay' });
+    const sheet   = el('div', { class: 'record-view-sheet' });
+
+    const head = el('div', { class: 'record-view-head' },
+      el('div', null,
+        el('div', { class: 'rv-id' }, r.id),
+        el('div', { class: 'rv-sub' }, `${section.title} · ${(r.createdAt || '').replace('T',' ').slice(0,19)}`),
+      ),
+      el('button', { type: 'button', class: 'btn btn-outline btn-mini' }, 'CLOSE'),
+    );
+    head.querySelector('button').addEventListener('click', () => overlay.remove());
+
+    const body = el('div', { class: 'record-view-body' });
+    section.fields.forEach(f => {
+      if (f.type === 'photos') return;
+      const v = r[f.key];
+      let txt;
+      if (f.type === 'location') {
+        if (v && isFinite(v.lat)) txt = `${v.lat.toFixed(6)}, ${v.lng.toFixed(6)}${v.acc != null ? ` (±${v.acc} m)` : ''}${v.samples ? ` · ${v.samples} samples` : ''}`;
+        else txt = '—';
+      } else if (v == null || v === '') {
+        txt = '—';
+      } else {
+        txt = String(v);
+      }
+      const row = el('div', { class: 'rv-row' },
+        el('div', { class: 'rv-label' }, stripStar(f.label)),
+        el('div', { class: 'rv-value' }, txt),
+      );
+      body.appendChild(row);
+    });
+
+    const photos = r.photos || [];
+    if (photos.length) {
+      const photoSection = el('div', { class: 'rv-photos' },
+        el('div', { class: 'rv-label' }, `Photos (${photos.length})`),
+      );
+      const grid = el('div', { class: 'rv-photo-grid' });
+      photos.forEach((p, idx) => {
+        const img = el('img', { src: p.dataUrl, alt: '' });
+        img.addEventListener('click', () => openPhotoViewer(photos, idx));
+        grid.appendChild(img);
+      });
+      photoSection.appendChild(grid);
+      body.appendChild(photoSection);
+    }
+
+    sheet.appendChild(head);
+    sheet.appendChild(body);
+    overlay.appendChild(sheet);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
+  // ---------- Single-record PDF ----------
+  function exportRecordPdf(key, r) {
+    const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (!jsPDFCtor) { toast('PDF library not loaded'); return; }
+    const section = SECTIONS[key];
+    const doc = new jsPDFCtor({ unit: 'pt', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 36;
+    let y = margin;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.text('KUKL BANESHWOR — ' + section.title.toUpperCase(), margin, y); y += 18;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    doc.text('Survey ID: ' + r.id, margin, y); y += 14;
+    doc.text('Saved: ' + (r.createdAt || '').replace('T',' ').slice(0,19), margin, y); y += 18;
+
+    doc.setDrawColor(0); doc.line(margin, y, pageW - margin, y); y += 12;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+    doc.text('Field Data', margin, y); y += 14;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+
+    const colLabelW = 150;
+    section.fields.forEach(f => {
+      if (f.type === 'photos') return;
+      const v = r[f.key];
+      let txt;
+      if (f.type === 'location') {
+        if (v && isFinite(v.lat)) txt = `${v.lat.toFixed(6)}, ${v.lng.toFixed(6)}${v.acc != null ? ` (acc ${v.acc} m)` : ''}`;
+        else txt = '—';
+      } else if (v == null || v === '') {
+        txt = '—';
+      } else {
+        txt = String(v);
+      }
+      const lines = doc.splitTextToSize(txt, pageW - margin * 2 - colLabelW - 10);
+      if (y + lines.length * 12 + 4 > pageH - margin) { doc.addPage(); y = margin; }
+      doc.setFont('helvetica', 'bold');
+      doc.text(stripStar(f.label) + ':', margin, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(lines, margin + colLabelW, y);
+      y += Math.max(14, lines.length * 12 + 2);
+    });
+
+    const photos = r.photos || [];
+    if (photos.length) {
+      doc.addPage(); y = margin;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+      doc.text(`Photos (${photos.length})`, margin, y); y += 12;
+      const imgW = (pageW - margin * 2 - 12) / 2;
+      const imgH = imgW * 0.75;
+      let col = 0;
+      photos.forEach((p) => {
+        if (y + imgH > pageH - margin) { doc.addPage(); y = margin; col = 0; }
+        const x = margin + col * (imgW + 12);
+        try { doc.addImage(p.dataUrl, 'JPEG', x, y, imgW, imgH); } catch (_) {}
+        col++;
+        if (col >= 2) { col = 0; y += imgH + 12; }
+      });
+    }
+
+    const fname = `${section.exportName}_${r.id}.pdf`;
+    doc.save(fname);
+    toast('PDF saved');
+  }
+
+  // ---------- Load a record back into the form (EDIT) ----------
+  function loadRecordIntoForm(key, r) {
+    const section = SECTIONS[key];
+    const panel = document.getElementById('tab-' + key);
+    if (!panel) return;
+    // Switch to SURVEY view first so all field nodes exist & are visible.
+    setSectionView(key, 'survey');
+    section.fields.forEach(f => {
+      if (f.type === 'photos') return;
+      if (f.type === 'location') {
+        if (panel._gpsPanel && r[f.key]) panel._gpsPanel.setGps(r[f.key]);
+        return;
+      }
+      const node = $(`${key}_${f.key}`);
+      if (!node) return;
+      const v = r[f.key];
+      node.value = (v == null) ? '' : v;
+    });
+    // Photos: reload into the camera widget if possible
+    const photosNode = $(`${key}_photos`);
+    if (photosNode && Array.isArray(r.photos) && photosNode._reset) {
+      photosNode._reset();
+      if (photosNode._load) photosNode._load(r.photos);
+    }
+    toast(`Loaded ${r.id} into the form. Save to create a NEW record (the original stays).`);
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
   }
 
   async function exportSection(key) {
