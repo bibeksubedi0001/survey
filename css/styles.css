@@ -810,7 +810,7 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   /* Sticky bottom save bar on capture tab */
   #tab-capture .form-actions.full{
     position:fixed;left:0;right:0;
-    bottom:calc(60px + env(safe-area-inset-bottom,0px));
+    bottom:env(safe-area-inset-bottom,0px);
     background:#fff;
     border-top:2px solid #000;
     padding:8px 10px;
@@ -821,10 +821,10 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   }
   #tab-capture .form-actions.full .btn{flex:1 1 0;margin:0;}
   /* reserve space so the form content above isn't covered */
-  #tab-capture #surveyForm{padding-bottom:64px;}
+  #tab-capture #surveyForm{padding-bottom:84px;}
 
   /* Draft banner — narrower & out of the way */  .draft-banner{
-    left:10px;right:10px;top:auto;bottom:calc(124px + env(safe-area-inset-bottom,0px));
+    left:10px;right:10px;top:auto;bottom:calc(80px + env(safe-area-inset-bottom,0px));
     box-shadow:2px 2px 0 #000;
     border-width:1px;
   }
@@ -1065,4 +1065,72 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   padding:6px 14px;
   font-size:12px;letter-spacing:1.5px;
   border:1px solid #fff;
+}
+
+/* ============================================================
+   MOBILE — new home hub / view switcher / extras map / viewer
+   ============================================================ */
+@media (max-width:780px){
+  /* Home hub — single column with comfy padding */
+  .hub-grid{grid-template-columns:1fr;gap:10px;}
+  .hub-heading{font-size:12px;padding:7px 10px;letter-spacing:1.5px;}
+  .hub-card{padding:14px 14px 12px;}
+  .hub-card .hub-icon{font-size:24px;}
+  .hub-card h3{font-size:14px;}
+  .hub-card p{font-size:12px;margin-bottom:10px;}
+  .hub-card .hub-actions{gap:6px;}
+  .hub-card .hub-actions .btn{
+    padding:11px 8px;font-size:11px;min-height:44px;
+  }
+
+  /* View switcher — keep three buttons in a row */
+  .view-switcher{margin-bottom:10px;}
+  .view-switcher .vs-btn{
+    padding:11px 6px;font-size:11px;min-height:44px;letter-spacing:1px;
+  }
+
+  /* Per-section map smaller on phones */
+  .extra-map{height:60vh;min-height:340px;max-height:520px;}
+
+  /* Records table inside extras: horizontal scroll if too wide */
+  #tab-chief .table-wrap,
+  #tab-leak .table-wrap,
+  #tab-pressure .table-wrap,
+  #tab-area .table-wrap{
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+  }
+  .records-table{min-width:560px;}
+  .records-table .thumb-strip img{width:36px;height:36px;}
+
+  /* Photo viewer — bigger touch targets */
+  .photo-viewer .pv-close{width:44px;height:44px;font-size:22px;}
+  .photo-viewer .pv-nav{width:48px;height:72px;font-size:30px;}
+  .photo-viewer .pv-prev{left:8px;}
+  .photo-viewer .pv-next{right:8px;}
+
+  /* Grouped headings tighter */
+  .extra-form-body .group-title{margin-top:14px;font-size:10px;padding:5px 8px;}
+
+  /* Prevent horizontal page scroll caused by overflow components */
+  html,body{overflow-x:hidden;}
+  body{overscroll-behavior-y:contain;}
+
+  /* Touch optimization: avoid 300ms tap delay; suppress tap highlight */
+  .btn,.tab,.vs-btn,.hub-go,.del,.thumb img,
+  .nav-toggle,.nav-close{
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+  }
+}
+
+/* Small phones (\u2264360px) \u2014 stack hub actions vertically */
+@media (max-width:360px){
+  .hub-card .hub-actions{flex-direction:column;}
+  .hub-card .hub-actions .btn{width:100%;}
+  .view-switcher .vs-btn{font-size:10px;letter-spacing:.5px;padding:10px 4px;}
+}
+
+/* Tablet / landscape phone \u2014 2-column hub */
+@media (min-width:520px) and (max-width:900px){
+  .hub-grid{grid-template-columns:repeat(2,1fr);}
 }
