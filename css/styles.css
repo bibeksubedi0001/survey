@@ -30,7 +30,11 @@ body{
 }
 
 /* ===== HEADER ===== */
-.app-header{
+/* Header is intentionally hidden — the sticky nav bar is the primary chrome.
+   Keeping the markup so JS hooks (online status, brandHome, currentSection,
+   btnInstall, btnHomeQuick) continue to resolve without errors. */
+.app-header{display:none !important;}
+.app-header-real{
   display:flex;align-items:center;justify-content:space-between;
   padding:14px 22px;
   border-bottom:2px solid var(--line);
