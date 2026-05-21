@@ -613,6 +613,10 @@
     const all = (await dbAll(section.store))
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
+    // Update the per-section badge on the nav tab (like NEW SURVEY's badge)
+    const badge = document.getElementById(`${key}Count`);
+    if (badge) badge.textContent = all.length;
+
     const q = (searchEl?.value || '').trim().toLowerCase();
     const filtered = !q ? all : all.filter(r => {
       const blob = [

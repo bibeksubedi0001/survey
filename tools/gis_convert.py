@@ -190,6 +190,7 @@ def main():
             connections_gdf = None
 
         # --- pipes ---
+        pipes_gdf = None
         if 'pipes' in bucket:
             gdfs = []
             for ds, lyr in bucket['pipes']:
@@ -201,6 +202,7 @@ def main():
             n, sz = write_geojson(merged, out_dir / 'pipes.geojson')
             counts['pipes'] = n
             layers_avail.append('pipes')
+            pipes_gdf = merged
 
         # --- devices = valves + hydrants + flowmeters + loggers ---
         device_kinds = ['valve', 'hydrant', 'flowmeter', 'logger']
@@ -231,27 +233,45 @@ def main():
                     gdfs.append(g)
             if gdfs:
                 boundary_gdf = gpd.GeoDataFrame(geopandas_concat(gdfs), crs='EPSG:4326')
-        if (boundary_gdf is None or boundary_gdf.empty) and connections_gdf is not None and not connections_gdf.empty:
-            # Derive boundary from connection points using a numpy convex hull
-            # (avoids a shapely/numpy collection-creation incompatibility).
+        if (boundary_gdf is None or boundary_gdf.empty):
+            # Derive a tight "service area" boundary by buffering & unioning
+            # the pipe network in projected metres, then simplifying.
             import numpy as np
             from shapely.geometry import Polygon
-            cp_proj = connections_gdf.to_crs(32645)
-            pts = np.array([(p.x, p.y) for p in cp_proj.geometry if p is not None and not p.is_empty])
-            if len(pts) >= 3:
+            derived_poly = None
+            if pipes_gdf is not None and not pipes_gdf.empty:
                 try:
-                    from scipy.spatial import ConvexHull
-                    hull_idx = ConvexHull(pts).vertices
-                    hull_poly = Polygon(pts[hull_idx]).buffer(40)  # 40 m pad
-                except ImportError:
-                    # Fallback: padded bounding box
-                    xmin, ymin = pts.min(axis=0); xmax, ymax = pts.max(axis=0)
-                    pad = 40
-                    hull_poly = Polygon([
-                        (xmin - pad, ymin - pad), (xmax + pad, ymin - pad),
-                        (xmax + pad, ymax + pad), (xmin - pad, ymax + pad),
-                    ])
-                boundary_gdf = gpd.GeoDataFrame({'geometry': [hull_poly], 'derived': [True]}, crs=32645).to_crs(4326)
+                    pp_proj = pipes_gdf.to_crs(32645)
+                    geoms = [g for g in pp_proj.geometry if g is not None and not g.is_empty]
+                    if geoms:
+                        # Buffer each pipe by 25 m (covers typical service-line reach),
+                        # union, close small gaps with buffer(+10)/buffer(-10), simplify.
+                        buf = [g.buffer(25) for g in geoms]
+                        u = buf[0]
+                        for b in buf[1:]:
+                            u = u.union(b)
+                        u = u.buffer(10).buffer(-10).simplify(5, preserve_topology=True)
+                        derived_poly = u
+                except Exception as e:
+                    print(f'    boundary-from-pipes failed: {e}')
+            if derived_poly is None and connections_gdf is not None and not connections_gdf.empty:
+                # Fallback: convex hull of connection points.
+                cp_proj = connections_gdf.to_crs(32645)
+                pts = np.array([(p.x, p.y) for p in cp_proj.geometry if p is not None and not p.is_empty])
+                if len(pts) >= 3:
+                    try:
+                        from scipy.spatial import ConvexHull
+                        hull_idx = ConvexHull(pts).vertices
+                        derived_poly = Polygon(pts[hull_idx]).buffer(30)
+                    except ImportError:
+                        xmin, ymin = pts.min(axis=0); xmax, ymax = pts.max(axis=0)
+                        pad = 30
+                        derived_poly = Polygon([
+                            (xmin - pad, ymin - pad), (xmax + pad, ymin - pad),
+                            (xmax + pad, ymax + pad), (xmin - pad, ymax + pad),
+                        ])
+            if derived_poly is not None:
+                boundary_gdf = gpd.GeoDataFrame({'geometry': [derived_poly], 'derived': [True]}, crs=32645).to_crs(4326)
         if boundary_gdf is not None and not boundary_gdf.empty:
             n, sz = write_geojson(boundary_gdf, out_dir / 'boundary.geojson')
             counts['boundary'] = n
