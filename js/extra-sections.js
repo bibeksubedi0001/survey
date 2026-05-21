@@ -330,13 +330,17 @@
     );
 
     // ---- Map card ----
-    const mapHost = el('div', { id: `${key}_map`, class: 'extra-map' });
+    const mapHost  = el('div', { id: `${key}_map`, class: 'extra-map' });
     const mapEmpty = el('div', { id: `${key}_map_empty`, class: 'empty-state' }, 'No mapped records yet. Save a report with GPS to see it here.');
-    const mapCard = el('div', { class: 'card' },
+    const mapCountPill = el('span', { id: `${key}_map_count`, class: 'status-pill', style: 'background:#000;color:#fff;' }, '0 PINS');
+    const mapCard  = el('div', { class: 'card' },
       el('div', { class: 'card-head' },
         el('h2', null, 'Location Map'),
-        el('div', { class: 'btn-row' },
-          el('button', { type: 'button', class: 'btn btn-outline', id: `${key}_map_fit` }, 'FIT ALL'),
+        el('div', { class: 'btn-row', style: 'gap:8px;align-items:center;flex-wrap:wrap;' },
+          mapCountPill,
+          el('button', { type: 'button', class: 'btn btn-outline btn-mini', id: `${key}_map_fit` }, 'FIT ALL'),
+          el('button', { type: 'button', class: 'btn btn-outline btn-mini', id: `${key}_map_gmaps` }, 'OPEN IN GMAPS'),
+          el('button', { type: 'button', class: 'btn btn-mini', id: `${key}_map_refresh`, title: 'Refresh map markers' }, 'REFRESH'),
         ),
       ),
       mapHost,
@@ -369,13 +373,24 @@
     panel._gpsPanel = gpsPanelApi;
     panel._draftBanner = draftBanner;
 
-    // Map "Fit all" button
+    // Map toolbar: FIT ALL / OPEN IN GMAPS / REFRESH
     document.getElementById(`${key}_map_fit`).addEventListener('click', () => {
       const m = panel._extraMap;
       if (m && m._group && m._group.getLayers().length) {
         const b = m._group.getBounds();
-        if (b.isValid()) m.fitBounds(b.pad(0.2));
+        if (b.isValid()) m.fitBounds(b.pad(0.2), { maxZoom: 18 });
+      } else {
+        toast('No pins to fit');
       }
+    });
+    document.getElementById(`${key}_map_gmaps`).addEventListener('click', async () => {
+      const all = await dbAll(SECTIONS[key].store);
+      const pt = all.find(r => r.gps && isFinite(r.gps.lat) && isFinite(r.gps.lng));
+      if (!pt) { toast('No mapped records yet'); return; }
+      window.open(`https://maps.google.com/?q=${pt.gps.lat},${pt.gps.lng}`, '_blank', 'noopener');
+    });
+    document.getElementById(`${key}_map_refresh`).addEventListener('click', () => {
+      refreshMap(key);
     });
 
     // Wire up
@@ -1069,56 +1084,146 @@
     if (view === 'map') refreshMap(key);
   }
 
+  // ---------- Map helpers ----------
+  // Per-section base color for markers (when no severity signal is present).
+  const SECTION_MARKER_BASE = {
+    chief:    'poor',      // orange
+    leak:     'critical',  // red (refined per record below)
+    pressure: 'good',      // blue
+    area:     'excellent', // green
+  };
+
+  function severityClass(key, r) {
+    if (key === 'leak') {
+      const s = String(r.severity || '').toUpperCase();
+      if (s.includes('EMERG'))  return 'critical';
+      if (s.includes('SEVERE')) return 'critical';
+      if (s.includes('MOD'))    return 'poor';
+      if (s.includes('MINOR'))  return 'fair';
+      return 'poor';
+    }
+    if (key === 'pressure') {
+      const v = parseFloat(r.pressure);
+      const unit = String(r.unit || '').toLowerCase();
+      // Normalize to PSI-ish: 1 bar ≈ 14.5 psi, 1 mwc ≈ 1.42 psi
+      let psi = v;
+      if (unit.includes('bar')) psi = v * 14.5;
+      else if (unit.includes('mwc') || unit.includes('m')) psi = v * 1.42;
+      if (!isFinite(psi)) return 'good';
+      if (psi < 10) return 'critical';
+      if (psi < 20) return 'poor';
+      if (psi < 60) return 'good';
+      if (psi < 90) return 'fair';
+      return 'poor';
+    }
+    return SECTION_MARKER_BASE[key] || 'good';
+  }
+
+  function escapeHtmlLite(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
   async function refreshMap(key) {
     const panel = document.getElementById('tab-' + key);
     if (!panel) return;
     const host  = document.getElementById(`${key}_map`);
     const empty = document.getElementById(`${key}_map_empty`);
+    const pill  = document.getElementById(`${key}_map_count`);
     if (!host) return;
 
     if (typeof L === 'undefined') {
-      empty.textContent = 'Map library not loaded.';
-      empty.style.display = '';
+      if (empty) {
+        empty.textContent = 'Map library not loaded — check internet.';
+        empty.style.display = '';
+      }
       host.style.display = 'none';
+      if (pill) pill.textContent = '0 PINS';
       return;
     }
 
     const all = await dbAll(SECTIONS[key].store);
     const points = all.filter(r => r.gps && isFinite(r.gps.lat) && isFinite(r.gps.lng));
+    if (pill) pill.textContent = points.length + (points.length === 1 ? ' PIN' : ' PINS');
 
     if (!points.length) {
-      empty.style.display = '';
+      if (empty) empty.style.display = '';
       host.style.display = 'none';
       return;
     }
-    empty.style.display = 'none';
+    if (empty) empty.style.display = 'none';
     host.style.display  = '';
 
     let map = panel._extraMap;
     if (!map) {
+      // Guarantee non-zero height
+      if (!host.style.height) host.style.height = '460px';
       map = L.map(host, { zoomControl: true });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap',
-      }).addTo(map);
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, crossOrigin: true,
+        attribution: '© OpenStreetMap contributors',
+      });
+      const sat = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, crossOrigin: true, attribution: 'Tiles © Esri' }
+      );
+      osm.addTo(map);
+      L.control.layers({ 'Street': osm, 'Satellite': sat }, null, { position: 'topright', collapsed: true }).addTo(map);
       map._group = L.featureGroup().addTo(map);
       panel._extraMap = map;
+      window.addEventListener('resize', () => map.invalidateSize());
     } else {
       map._group.clearLayers();
     }
 
+    const cols = COLUMN_DEFS[key] || COLUMN_DEFS.chief;
+
     points.forEach(r => {
       const { lat, lng } = r.gps;
-      const popup = `<div style="font:11px monospace;line-height:1.4;">
-        <b>${r.id}</b><br>
-        ${(r.createdAt || '').replace('T',' ').slice(0,19)}<br>
-        ${summaryValue(key, r)}
-      </div>`;
-      L.marker([lat, lng]).bindPopup(popup).addTo(map._group);
+      const cls = severityClass(key, r);
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="kukl-marker ${cls}"></div>`,
+        iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20],
+      });
+
+      const customer  = escapeHtmlLite(cols.customer  && cols.customer .get(r));
+      const address   = escapeHtmlLite(cols.address   && cols.address  .get(r));
+      const condition = escapeHtmlLite(cols.condition && cols.condition.get(r));
+      const acc = r.gps.acc != null && isFinite(r.gps.acc) ? `±${(+r.gps.acc).toFixed(1)}m` : '';
+      const when = (r.createdAt || '').replace('T',' ').slice(0,16);
+
+      const photosHtml = (r.photos || []).slice(0, 4)
+        .map(p => `<img src="${p.dataUrl}" alt="">`).join('');
+
+      const popup = `
+        <b>${customer || escapeHtmlLite(r.id)}</b><br/>
+        ${address ? `<span style="font-size:11px;">${address}</span><br/>` : ''}
+        <span style="font-family:monospace;font-size:11px;">${lat.toFixed(6)}, ${lng.toFixed(6)}${acc ? '  ' + acc : ''}</span><br/>
+        ${condition ? `<span style="font-size:11px;">${escapeHtmlLite(cols.condition.label)}: <b>${condition}</b></span><br/>` : ''}
+        <span style="font-size:10px;color:#666;">${when}</span>
+        ${photosHtml ? `<div class="popup-photos">${photosHtml}</div>` : ''}
+        <a class="popup-link" href="https://maps.google.com/?q=${lat},${lng}" target="_blank" rel="noopener">GOOGLE MAPS ↗</a>
+        <a class="popup-link" href="#" data-view-record="1">VIEW DETAILS</a>
+      `;
+
+      const marker = L.marker([lat, lng], { icon }).bindPopup(popup).addTo(map._group);
+      marker.on('popupopen', (e) => {
+        const root = e.popup.getElement();
+        const v = root && root.querySelector('[data-view-record]');
+        if (v) v.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          marker.closePopup();
+          openRecordView(key, r);
+        });
+      });
     });
+
     const b = map._group.getBounds();
-    if (b.isValid()) map.fitBounds(b.pad(0.2));
-    setTimeout(() => map.invalidateSize(), 50);
+    if (b.isValid()) map.fitBounds(b.pad(0.2), { maxZoom: 18 });
+    // Ladder of resizes to handle hidden→visible transitions
+    [0, 60, 200, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
   }
 
   // ---------- Init ----------
