@@ -6,3 +6,8 @@ Thumbs.db
 
 # Node (in case of future tooling)
 node_modules/
+package.json
+package-lock.json
+
+# Local data / generated reports (not part of the app)
+sabal/

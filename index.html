@@ -47,6 +47,7 @@
   <button class="tab active" data-tab="capture">NEW SURVEY</button>
   <button class="tab" data-tab="records">RECORDS <span id="recordCount" class="badge">0</span></button>
   <button class="tab" data-tab="map">LOCATION MAP</button>
+  <button class="tab" data-tab="nrw">NRW REPORT</button>
   <button class="tab" data-tab="about">HELP</button>
 </nav>
 
@@ -304,6 +305,54 @@
     </div>
   </section>
 
+  <!-- ============ TAB: NRW REPORT ============ -->
+  <section id="tab-nrw" class="tab-panel">
+    <div class="card">
+      <div class="card-head"><h2>NRW Baishakh Report Builder</h2></div>
+      <p class="hint">
+        Upload the customer reading file (e.g. <b>9.1.xlsx</b>) and the SCADA workbook
+        (e.g. <b>2083 Baisakh SCADA.xlsx</b>). The app produces an Excel file mirroring
+        <b>4.1.2.xlsx</b> structure: billable column, totals, daily SCADA block, and meter-status summary.
+      </p>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Customer reading file (.xlsx)</label>
+          <input type="file" id="nrwCustFile" accept=".xlsx,.xlsm" />
+        </div>
+        <div class="field">
+          <label>SCADA workbook (.xlsx)</label>
+          <input type="file" id="nrwScadaFile" accept=".xlsx,.xlsm" />
+        </div>
+        <div class="field">
+          <label>DMA name (auto-detected from filename)</label>
+          <input type="text" id="nrwDma" placeholder="e.g. 9.1" />
+        </div>
+        <div class="field">
+          <label>Output file name</label>
+          <input type="text" id="nrwOut" placeholder="9.1_baisakh.xlsx" />
+        </div>
+        <div class="field">
+          <label>Start date (Baisakh 1)</label>
+          <input type="date" id="nrwStart" value="2026-04-14" />
+        </div>
+        <div class="field">
+          <label>End date (Baisakh 31)</label>
+          <input type="date" id="nrwEnd" value="2026-05-14" />
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px;">
+        <button id="nrwGenerate" class="btn btn-primary">GENERATE REPORT</button>
+        <button id="nrwReset" class="btn btn-outline">RESET</button>
+      </div>
+
+      <div id="nrwLog" class="hint" style="margin-top:14px; white-space:pre-wrap;">
+        Select both files to begin.
+      </div>
+    </div>
+  </section>
+
   <!-- ============ TAB: ABOUT ============ -->
   <section id="tab-about" class="tab-panel">
     <div class="card">
@@ -373,5 +422,6 @@
 </footer>
 
 <script src="app.js?v=11" data-cfasync="false"></script>
+<script src="nrw-builder.js?v=1" data-cfasync="false"></script>
 </body>
 </html>
