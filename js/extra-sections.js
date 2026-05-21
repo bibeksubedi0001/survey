@@ -76,19 +76,19 @@
       exportName: 'KUKL_ChiefOfficer_Reports',
       sheetName: 'Chief Officer',
       fields: [
-        { key: 'reportedBy', label: 'Reported By *',          type: 'text',     required: true, placeholder: 'Officer name' },
-        { key: 'reportedAt', label: 'Date / Time *',          type: 'datetime', required: true },
-        { key: 'location',   label: 'Location (Address / Landmark) *', type: 'text', required: true, full: true, placeholder: 'e.g. Baneshwor Chowk, Ward 10' },
-        { key: 'gps',        label: 'GPS Coordinates',        type: 'location', full: true },
-        { key: 'issue',      label: 'Primary Issue *',        type: 'select',   required: true, options: ['No Water Supply','Low Pressure','Leakage','Pipe Burst','Blockage','Contamination','Meter Fault','Billing Dispute','Illegal Connection','Other'] },
-        { key: 'leakage',    label: 'Leakage',                type: 'select',   options: ['None','Minor (drip)','Moderate','Major','Burst'] },
-        { key: 'blockage',   label: 'Blockage',               type: 'select',   options: ['None','Partial','Full'] },
-        { key: 'supplyStatus',  label: 'Water Supply Status', type: 'select',   options: ['Supplying','Intermittent','Off','Tanker only'] },
-        { key: 'billingStatus', label: 'Billing Status',      type: 'select',   options: ['Up to date','1-3 months due','3-6 months due','6+ months due','Disputed','Unknown'] },
-        { key: 'meterStatus',   label: 'Meter Reading Status',type: 'select',   options: ['Working','Stopped','Faulty','Missing','Inaccessible','Not Installed'] },
-        { key: 'otherIssues', label: 'Any Other Issues',      type: 'textarea', full: true, placeholder: 'Describe any additional observations' },
-        { key: 'remarks',     label: 'Remarks',               type: 'textarea', full: true },
-        { key: 'photos',      label: 'Photo Capture',         type: 'photos',   full: true },
+        { group: 'Reporter & Time', key: 'reportedBy', label: 'Reported By *',          type: 'text',     required: true, placeholder: 'Officer name' },
+        { group: 'Reporter & Time', key: 'reportedAt', label: 'Date / Time *',          type: 'datetime', required: true },
+        { group: 'Location',        key: 'location',   label: 'Location (Address / Landmark) *', type: 'text', required: true, full: true, placeholder: 'e.g. Baneshwor Chowk, Ward 10' },
+        { group: 'Location',        key: 'gps',        label: 'GPS Coordinates',        type: 'location', full: true },
+        { group: 'Findings',        key: 'issue',      label: 'Primary Issue *',        type: 'select',   required: true, options: ['No Water Supply','Low Pressure','Leakage','Pipe Burst','Blockage','Contamination','Meter Fault','Billing Dispute','Illegal Connection','Other'] },
+        { group: 'Findings',        key: 'leakage',    label: 'Leakage',                type: 'select',   options: ['None','Minor (drip)','Moderate','Major','Burst'] },
+        { group: 'Findings',        key: 'blockage',   label: 'Blockage',               type: 'select',   options: ['None','Partial','Full'] },
+        { group: 'Findings',        key: 'supplyStatus',  label: 'Water Supply Status', type: 'select',   options: ['Supplying','Intermittent','Off','Tanker only'] },
+        { group: 'Findings',        key: 'billingStatus', label: 'Billing Status',      type: 'select',   options: ['Up to date','1-3 months due','3-6 months due','6+ months due','Disputed','Unknown'] },
+        { group: 'Findings',        key: 'meterStatus',   label: 'Meter Reading Status',type: 'select',   options: ['Working','Stopped','Faulty','Missing','Inaccessible','Not Installed'] },
+        { group: 'Notes & Media',   key: 'otherIssues', label: 'Any Other Issues',      type: 'textarea', full: true, placeholder: 'Describe any additional observations' },
+        { group: 'Notes & Media',   key: 'remarks',     label: 'Remarks',               type: 'textarea', full: true },
+        { group: 'Notes & Media',   key: 'photos',      label: 'Photo Capture',         type: 'photos',   full: true },
       ],
     },
 
@@ -99,20 +99,20 @@
       exportName: 'KUKL_Pipe_Leakage_Survey',
       sheetName: 'Pipe Leakage',
       fields: [
-        { key: 'reportedBy', label: 'Reported By *',     type: 'text', required: true, placeholder: 'Field officer name' },
-        { key: 'reportedAt', label: 'Date Observed *',   type: 'datetime', required: true },
-        { key: 'location',   label: 'Location / Landmark *', type: 'text', required: true, full: true, placeholder: 'e.g. New Baneshwor near Everest Hotel' },
-        { key: 'gps',        label: 'GPS Coordinates',   type: 'location', full: true },
-        { key: 'pipeMaterial', label: 'Pipe Material',   type: 'select', options: ['HDPE','GI','PVC','DI','AC','MS','Unknown'] },
-        { key: 'pipeDiameter', label: 'Pipe Diameter (mm)', type: 'number', placeholder: 'e.g. 110' },
-        { key: 'leakType',   label: 'Leakage Type',      type: 'select', options: ['Surface visible','Underground','Joint','Valve','Hydrant','Service connection','Saddle','Ferrule'] },
-        { key: 'severity',   label: 'Severity',          type: 'select', options: ['Minor (drip)','Moderate','Major','Burst'] },
-        { key: 'estLoss',    label: 'Estimated Loss (L/min)', type: 'number', placeholder: 'Approximate' },
-        { key: 'soil',       label: 'Soil / Site Condition', type: 'select', options: ['Dry','Wet','Saturated','Flooded'] },
-        { key: 'roadType',   label: 'Surface Type',      type: 'select', options: ['Black-topped road','Gravel road','Earthen','Footpath','Private land','Drain'] },
-        { key: 'urgency',    label: 'Repair Urgency',    type: 'select', options: ['Immediate','Within 24 hours','Within a week','Routine'] },
-        { key: 'remarks',    label: 'Remarks',           type: 'textarea', full: true },
-        { key: 'photos',     label: 'Photo Capture',     type: 'photos', full: true },
+        { group: 'Reporter & Time', key: 'reportedBy', label: 'Reported By *',     type: 'text', required: true, placeholder: 'Field officer name' },
+        { group: 'Reporter & Time', key: 'reportedAt', label: 'Date Observed *',   type: 'datetime', required: true },
+        { group: 'Location',        key: 'location',   label: 'Location / Landmark *', type: 'text', required: true, full: true, placeholder: 'e.g. New Baneshwor near Everest Hotel' },
+        { group: 'Location',        key: 'gps',        label: 'GPS Coordinates',   type: 'location', full: true },
+        { group: 'Pipe Details',    key: 'pipeMaterial', label: 'Pipe Material',   type: 'select', options: ['HDPE','GI','PVC','DI','AC','MS','Unknown'] },
+        { group: 'Pipe Details',    key: 'pipeDiameter', label: 'Pipe Diameter (mm)', type: 'number', placeholder: 'e.g. 110' },
+        { group: 'Leak Details',    key: 'leakType',   label: 'Leakage Type',      type: 'select', options: ['Surface visible','Underground','Joint','Valve','Hydrant','Service connection','Saddle','Ferrule'] },
+        { group: 'Leak Details',    key: 'severity',   label: 'Severity',          type: 'select', options: ['Minor (drip)','Moderate','Major','Burst'] },
+        { group: 'Leak Details',    key: 'estLoss',    label: 'Estimated Loss (L/min)', type: 'number', placeholder: 'Approximate' },
+        { group: 'Leak Details',    key: 'soil',       label: 'Soil / Site Condition', type: 'select', options: ['Dry','Wet','Saturated','Flooded'] },
+        { group: 'Leak Details',    key: 'roadType',   label: 'Surface Type',      type: 'select', options: ['Black-topped road','Gravel road','Earthen','Footpath','Private land','Drain'] },
+        { group: 'Leak Details',    key: 'urgency',    label: 'Repair Urgency',    type: 'select', options: ['Immediate','Within 24 hours','Within a week','Routine'] },
+        { group: 'Notes & Media',   key: 'remarks',    label: 'Remarks',           type: 'textarea', full: true },
+        { group: 'Notes & Media',   key: 'photos',     label: 'Photo Capture',     type: 'photos', full: true },
       ],
     },
 
@@ -123,19 +123,19 @@
       exportName: 'KUKL_Pressure_Readings',
       sheetName: 'Pressure',
       fields: [
-        { key: 'reportedBy', label: 'Measured By *', type: 'text', required: true },
-        { key: 'reportedAt', label: 'Date / Time *', type: 'datetime', required: true },
-        { key: 'location',   label: 'Location / Landmark *', type: 'text', required: true, full: true },
-        { key: 'gps',        label: 'GPS Coordinates', type: 'location', full: true },
-        { key: 'dma',        label: 'DMA / Zone', type: 'text', placeholder: 'e.g. 9.1 (OMU 036)' },
-        { key: 'point',      label: 'Measurement Point', type: 'select', options: ['Hydrant','Public tap','Bulk meter','House connection','Pipeline tap','Reservoir outlet'] },
-        { key: 'pressure',   label: 'Pressure Reading', type: 'number', required: true, placeholder: 'Value' },
-        { key: 'unit',       label: 'Unit', type: 'select', options: ['m head','bar','psi','kPa'] },
-        { key: 'supply',     label: 'Supply Status at Reading', type: 'select', options: ['Supplying','Off','Intermittent'] },
-        { key: 'pipeDiameter', label: 'Pipe Diameter (mm)', type: 'number' },
-        { key: 'elevation',  label: 'Elevation (m, optional)', type: 'number' },
-        { key: 'remarks',    label: 'Remarks', type: 'textarea', full: true },
-        { key: 'photos',     label: 'Photo Capture', type: 'photos', full: true },
+        { group: 'Reporter & Time', key: 'reportedBy', label: 'Measured By *', type: 'text', required: true },
+        { group: 'Reporter & Time', key: 'reportedAt', label: 'Date / Time *', type: 'datetime', required: true },
+        { group: 'Location & Zone', key: 'location',   label: 'Location / Landmark *', type: 'text', required: true, full: true },
+        { group: 'Location & Zone', key: 'gps',        label: 'GPS Coordinates', type: 'location', full: true },
+        { group: 'Location & Zone', key: 'dma',        label: 'DMA / Zone', type: 'text', placeholder: 'e.g. 9.1 (OMU 036)' },
+        { group: 'Measurement',     key: 'point',      label: 'Measurement Point', type: 'select', options: ['Hydrant','Public tap','Bulk meter','House connection','Pipeline tap','Reservoir outlet'] },
+        { group: 'Measurement',     key: 'pressure',   label: 'Pressure Reading', type: 'number', required: true, placeholder: 'Value' },
+        { group: 'Measurement',     key: 'unit',       label: 'Unit', type: 'select', options: ['m head','bar','psi','kPa'] },
+        { group: 'Measurement',     key: 'supply',     label: 'Supply Status at Reading', type: 'select', options: ['Supplying','Off','Intermittent'] },
+        { group: 'Measurement',     key: 'pipeDiameter', label: 'Pipe Diameter (mm)', type: 'number' },
+        { group: 'Measurement',     key: 'elevation',  label: 'Elevation (m, optional)', type: 'number' },
+        { group: 'Notes & Media',   key: 'remarks',    label: 'Remarks', type: 'textarea', full: true },
+        { group: 'Notes & Media',   key: 'photos',     label: 'Photo Capture', type: 'photos', full: true },
       ],
     },
 
@@ -146,24 +146,24 @@
       exportName: 'KUKL_Area_Survey',
       sheetName: 'Area Survey',
       fields: [
-        { key: 'reportedBy', label: 'Surveyor *', type: 'text', required: true },
-        { key: 'reportedAt', label: 'Date / Time *', type: 'datetime', required: true },
-        { key: 'area',       label: 'Area / Tole *', type: 'text', required: true, placeholder: 'e.g. New Baneshwor' },
-        { key: 'ward',       label: 'Ward Number', type: 'number', placeholder: 'e.g. 10' },
-        { key: 'dma',        label: 'DMA', type: 'text', placeholder: 'e.g. 9.1' },
-        { key: 'gps',        label: 'GPS Coordinates', type: 'location', full: true },
-        { key: 'population', label: 'Approx Population', type: 'number' },
-        { key: 'households', label: 'No. of Households', type: 'number' },
-        { key: 'connections',label: 'Service Connections', type: 'number' },
-        { key: 'source',     label: 'Primary Water Source', type: 'select', options: ['Sundarijal','Melamchi','Bagmati','Bishnumati','Manohara','Tube well','Tanker','Mixed','Other'] },
-        { key: 'schedule',   label: 'Supply Schedule', type: 'select', options: ['Daily','Alternate days','Twice a week','Once a week','Irregular','None'] },
-        { key: 'duration',   label: 'Supply Duration (hrs/day)', type: 'number' },
-        { key: 'tank',       label: 'Storage Tank Present', type: 'yesno' },
-        { key: 'tankCap',    label: 'Storage Capacity (L)', type: 'number' },
-        { key: 'commonIssues', label: 'Common Issues', type: 'textarea', full: true, placeholder: 'e.g. Low pressure during morning, contamination after rain, illegal connections...' },
-        { key: 'complaints', label: 'Public Complaint Summary', type: 'textarea', full: true },
-        { key: 'remarks',    label: 'Remarks', type: 'textarea', full: true },
-        { key: 'photos',     label: 'Photo Capture', type: 'photos', full: true },
+        { group: 'Reporter & Time', key: 'reportedBy', label: 'Surveyor *', type: 'text', required: true },
+        { group: 'Reporter & Time', key: 'reportedAt', label: 'Date / Time *', type: 'datetime', required: true },
+        { group: 'Area Details',    key: 'area',       label: 'Area / Tole *', type: 'text', required: true, placeholder: 'e.g. New Baneshwor' },
+        { group: 'Area Details',    key: 'ward',       label: 'Ward Number', type: 'number', placeholder: 'e.g. 10' },
+        { group: 'Area Details',    key: 'dma',        label: 'DMA', type: 'text', placeholder: 'e.g. 9.1' },
+        { group: 'Area Details',    key: 'gps',        label: 'GPS Coordinates', type: 'location', full: true },
+        { group: 'Demographics',    key: 'population', label: 'Approx Population', type: 'number' },
+        { group: 'Demographics',    key: 'households', label: 'No. of Households', type: 'number' },
+        { group: 'Demographics',    key: 'connections',label: 'Service Connections', type: 'number' },
+        { group: 'Supply',          key: 'source',     label: 'Primary Water Source', type: 'select', options: ['Sundarijal','Melamchi','Bagmati','Bishnumati','Manohara','Tube well','Tanker','Mixed','Other'] },
+        { group: 'Supply',          key: 'schedule',   label: 'Supply Schedule', type: 'select', options: ['Daily','Alternate days','Twice a week','Once a week','Irregular','None'] },
+        { group: 'Supply',          key: 'duration',   label: 'Supply Duration (hrs/day)', type: 'number' },
+        { group: 'Supply',          key: 'tank',       label: 'Storage Tank Present', type: 'yesno' },
+        { group: 'Supply',          key: 'tankCap',    label: 'Storage Capacity (L)', type: 'number' },
+        { group: 'Notes & Media',   key: 'commonIssues', label: 'Common Issues', type: 'textarea', full: true, placeholder: 'e.g. Low pressure during morning, contamination after rain, illegal connections...' },
+        { group: 'Notes & Media',   key: 'complaints', label: 'Public Complaint Summary', type: 'textarea', full: true },
+        { group: 'Notes & Media',   key: 'remarks',    label: 'Remarks', type: 'textarea', full: true },
+        { group: 'Notes & Media',   key: 'photos',     label: 'Photo Capture', type: 'photos', full: true },
       ],
     },
   };
@@ -216,9 +216,19 @@
     const section = SECTIONS[key];
     if (!section) return;
 
-    // Build the form card
-    const formGrid = el('div', { class: 'form-grid' });
+    // Build the form card — split into multiple .form-grid blocks per group
+    // so each section looks visually arranged (Reporter / Location / Findings…).
+    const formBody = el('div', { class: 'extra-form-body' });
+    let currentGroup = null;
+    let formGrid = null;
     section.fields.forEach(f => {
+      const grp = f.group || 'Details';
+      if (grp !== currentGroup) {
+        currentGroup = grp;
+        formBody.appendChild(el('h3', { class: 'group-title' }, grp));
+        formGrid = el('div', { class: 'form-grid' });
+        formBody.appendChild(formGrid);
+      }
       const fld = el('div', { class: 'field' + (f.full ? ' full' : '') });
       fld.appendChild(el('label', null, f.label));
       const inputId = `${key}_${f.key}`;
@@ -267,22 +277,40 @@
     const btnRow = el('div', { class: 'btn-row', style: 'margin-top:12px;' },
       el('button', { type: 'submit', class: 'btn btn-primary' }, 'SAVE REPORT'),
       el('button', { type: 'reset',  class: 'btn btn-outline' }, 'RESET'),
-      el('button', { type: 'button', class: 'btn btn-outline', id: `${key}_export` }, 'EXPORT TO EXCEL'),
     );
 
-    const form = el('form', { id: `${key}_form`, autocomplete: 'off' }, formGrid, btnRow);
+    const form = el('form', { id: `${key}_form`, autocomplete: 'off' }, formBody, btnRow);
 
-    const recordsHost = el('div', { id: `${key}_records`, style: 'margin-top:16px;' });
-
-    const card = el('div', { class: 'card' },
+    const formCard = el('div', { class: 'card' },
       el('h2', { class: 'card-title' }, section.title),
       form,
-      el('div', { class: 'hint', id: `${key}_status` }, 'Records: 0'),
+    );
+
+    // ---- Records card (mirrors main RECORDS tab) ----
+    const searchBox = el('input', {
+      id: `${key}_search`, class: 'search', type: 'search',
+      placeholder: 'Search by ID, location, surveyor…',
+    });
+    const btnExport = el('button', { type: 'button', class: 'btn btn-primary', id: `${key}_export` }, 'EXPORT EXCEL');
+    const btnClear  = el('button', { type: 'button', class: 'btn btn-danger',  id: `${key}_clear`  }, 'DELETE ALL');
+
+    const recordsHost  = el('div', { id: `${key}_records`, class: 'table-wrap' });
+    const emptyState   = el('div', { id: `${key}_empty`, class: 'empty-state' }, 'No reports yet.');
+    const statusLine   = el('div', { class: 'hint', id: `${key}_status` }, 'Records: 0');
+
+    const recordsCard = el('div', { class: 'card' },
+      el('div', { class: 'card-head' },
+        el('h2', null, 'Saved Reports'),
+        el('div', { class: 'btn-row' }, searchBox, btnExport, btnClear),
+      ),
+      statusLine,
       recordsHost,
+      emptyState,
     );
 
     panel.innerHTML = '';
-    panel.appendChild(card);
+    panel.appendChild(formCard);
+    panel.appendChild(recordsCard);
 
     // Wire up
     form.addEventListener('submit', async (e) => {
@@ -310,6 +338,17 @@
     });
 
     $(`${key}_export`).addEventListener('click', () => exportSection(key));
+
+    btnClear.addEventListener('click', async () => {
+      const all = await dbAll(section.store);
+      if (!all.length) { toast('Nothing to delete'); return; }
+      if (!confirm(`Delete ALL ${all.length} record(s) in this section? This cannot be undone.`)) return;
+      for (const r of all) await dbDelete(section.store, r.id);
+      await refreshRecords(key);
+      toast('All records deleted');
+    });
+
+    searchBox.addEventListener('input', () => refreshRecords(key));
 
     refreshRecords(key);
   }
@@ -442,43 +481,130 @@
 
   async function refreshRecords(key) {
     const section = SECTIONS[key];
-    const host = $(`${key}_records`);
+    const host   = $(`${key}_records`);
     const status = $(`${key}_status`);
+    const empty  = $(`${key}_empty`);
+    const searchEl = $(`${key}_search`);
     if (!host) return;
-    const all = (await dbAll(section.store)).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    status.textContent = `Records: ${all.length}`;
-    host.innerHTML = '';
-    if (!all.length) return;
 
-    const table = el('table', { class: 'records-table', style: 'width:100%;border-collapse:collapse;font-size:12px;' });
-    const thead = el('thead');
-    thead.appendChild(el('tr', null,
-      el('th', { style: thStyle() }, 'ID'),
-      el('th', { style: thStyle() }, 'Date/Time'),
-      el('th', { style: thStyle() }, summaryLabel(key)),
-      el('th', { style: thStyle() }, 'Photos'),
-      el('th', { style: thStyle() }, ''),
+    const all = (await dbAll(section.store))
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+    const q = (searchEl?.value || '').trim().toLowerCase();
+    const filtered = !q ? all : all.filter(r => {
+      const blob = [
+        r.id, r.createdAt, r.reportedBy, r.location, r.area, r.dma, r.ward,
+        summaryValue(key, r),
+      ].map(v => (v == null ? '' : String(v))).join(' ').toLowerCase();
+      return blob.includes(q);
+    });
+
+    status.textContent = q
+      ? `Records: ${filtered.length} of ${all.length}`
+      : `Records: ${all.length}`;
+
+    host.innerHTML = '';
+    if (!filtered.length) {
+      empty.textContent = all.length ? 'No reports match your search.' : 'No reports yet.';
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const table = el('table', { class: 'records-table' });
+    table.appendChild(el('thead', null,
+      el('tr', null,
+        el('th', null, '#'),
+        el('th', null, 'ID'),
+        el('th', null, 'Date / Time'),
+        el('th', null, summaryLabel(key)),
+        el('th', null, 'GPS'),
+        el('th', null, 'Photos'),
+        el('th', null, 'Actions'),
+      ),
     ));
-    table.appendChild(thead);
+
     const tbody = el('tbody');
-    all.forEach(r => {
+    filtered.forEach((r, i) => {
       const tr = el('tr');
-      tr.appendChild(el('td', { style: tdStyle() }, r.id));
-      tr.appendChild(el('td', { style: tdStyle() }, (r.createdAt || '').replace('T', ' ').slice(0, 19)));
-      tr.appendChild(el('td', { style: tdStyle() }, summaryValue(key, r)));
-      tr.appendChild(el('td', { style: tdStyle() }, String((r.photos || []).length)));
-      const delBtn = el('button', { type: 'button', class: 'btn btn-outline', style: 'padding:4px 8px;font-size:11px;' }, 'DELETE');
+      tr.appendChild(el('td', null, String(i + 1)));
+      tr.appendChild(el('td', null, r.id));
+      tr.appendChild(el('td', null, (r.createdAt || '').replace('T', ' ').slice(0, 19)));
+      tr.appendChild(el('td', null, summaryValue(key, r)));
+
+      const g = r.gps && isFinite(r.gps.lat) ? r.gps : null;
+      const gpsCell = el('td');
+      if (g) {
+        const link = el('a', { href: `https://maps.google.com/?q=${g.lat},${g.lng}`, target: '_blank', rel: 'noopener' },
+          `${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}`);
+        gpsCell.appendChild(link);
+      } else {
+        gpsCell.textContent = '—';
+      }
+      tr.appendChild(gpsCell);
+
+      const photosCell = el('td');
+      const photos = r.photos || [];
+      if (photos.length) {
+        const strip = el('div', { class: 'thumb-strip' });
+        photos.slice(0, 3).forEach((p, pi) => {
+          const img = el('img', { src: p.dataUrl, alt: '', title: 'Click to view' });
+          img.addEventListener('click', () => openPhotoViewer(photos, pi));
+          strip.appendChild(img);
+        });
+        if (photos.length > 3) strip.appendChild(el('span', { class: 'thumb-more' }, `+${photos.length - 3}`));
+        photosCell.appendChild(strip);
+      } else {
+        photosCell.textContent = '—';
+      }
+      tr.appendChild(photosCell);
+
+      const actionsCell = el('td');
+      const btnRow = el('div', { class: 'btn-row' });
+      const delBtn = el('button', { type: 'button', class: 'btn btn-outline btn-mini' }, 'DELETE');
       delBtn.addEventListener('click', async () => {
         if (!confirm('Delete this record?')) return;
         await dbDelete(section.store, r.id);
         await refreshRecords(key);
       });
-      tr.appendChild(el('td', { style: tdStyle() }, delBtn));
+      btnRow.appendChild(delBtn);
+      actionsCell.appendChild(btnRow);
+      tr.appendChild(actionsCell);
+
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
     host.appendChild(table);
   }
+
+  function openPhotoViewer(photos, startIdx) {
+    const overlay = el('div', { class: 'photo-viewer' });
+    let idx = startIdx || 0;
+    const img = el('img', { src: photos[idx].dataUrl, alt: '' });
+    const counter = el('div', { class: 'pv-counter' }, `${idx + 1} / ${photos.length}`);
+    const close   = el('button', { type: 'button', class: 'pv-close', title: 'Close' }, '×');
+    const prev    = el('button', { type: 'button', class: 'pv-nav pv-prev' }, '‹');
+    const next    = el('button', { type: 'button', class: 'pv-nav pv-next' }, '›');
+    function update() { img.src = photos[idx].dataUrl; counter.textContent = `${idx + 1} / ${photos.length}`; }
+    prev.addEventListener('click', () => { idx = (idx - 1 + photos.length) % photos.length; update(); });
+    next.addEventListener('click', () => { idx = (idx + 1) % photos.length; update(); });
+    close.addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.addEventListener('keydown', function onKey(e) {
+      if (!document.body.contains(overlay)) { document.removeEventListener('keydown', onKey); return; }
+      if (e.key === 'Escape') overlay.remove();
+      if (e.key === 'ArrowLeft')  prev.click();
+      if (e.key === 'ArrowRight') next.click();
+    });
+    overlay.appendChild(close);
+    overlay.appendChild(prev);
+    overlay.appendChild(img);
+    overlay.appendChild(next);
+    overlay.appendChild(counter);
+    document.body.appendChild(overlay);
+  }
+  // Legacy table styling helpers kept (no longer used by table headers,
+  // but the photo-grid path may still reference them).
   function thStyle() { return 'border:1px solid #000;padding:6px 8px;background:#000;color:#fff;text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;'; }
   function tdStyle() { return 'border:1px solid #000;padding:6px 8px;vertical-align:top;'; }
 
