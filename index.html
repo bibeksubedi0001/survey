@@ -48,6 +48,10 @@
   <button class="tab" data-tab="records">RECORDS <span id="recordCount" class="badge">0</span></button>
   <button class="tab" data-tab="map">LOCATION MAP</button>
   <button class="tab" data-tab="nrw">NRW REPORT</button>
+  <button class="tab" data-tab="chief">CHIEF OFFICER</button>
+  <button class="tab" data-tab="leak">LEAKAGE</button>
+  <button class="tab" data-tab="pressure">PRESSURE</button>
+  <button class="tab" data-tab="area">AREA SURVEY</button>
   <button class="tab" data-tab="about">HELP</button>
 </nav>
 
@@ -354,6 +358,18 @@
   </section>
 
   <!-- ============ TAB: ABOUT ============ -->
+  <!-- ============ TAB: CHIEF OFFICER ============ -->
+  <section id="tab-chief" class="tab-panel" data-extra-section="chief"></section>
+
+  <!-- ============ TAB: PIPE LEAKAGE ============ -->
+  <section id="tab-leak" class="tab-panel" data-extra-section="leak"></section>
+
+  <!-- ============ TAB: PRESSURE ============ -->
+  <section id="tab-pressure" class="tab-panel" data-extra-section="pressure"></section>
+
+  <!-- ============ TAB: GENERAL SURVEY AREA ============ -->
+  <section id="tab-area" class="tab-panel" data-extra-section="area"></section>
+
   <section id="tab-about" class="tab-panel">
     <div class="card">
       <div class="card-head"><h2>How to Use</h2></div>
@@ -423,5 +439,6 @@
 
 <script src="app.js?v=11" data-cfasync="false"></script>
 <script src="nrw-builder.js?v=1" data-cfasync="false"></script>
+<script src="extra-sections.js?v=1" data-cfasync="false"></script>
 </body>
 </html>
