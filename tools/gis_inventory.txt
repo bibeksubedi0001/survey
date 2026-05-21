@@ -1,0 +1,131 @@
+Found 12 dataset(s) under D:\Intern\GIS Files
+
+== Handedover2.3.gpkg
+   - Handedover2.3                             n=0      geom=Point          crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - 2.3__flow_pressure_logger                 n=4      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335977.2503,3065351.6536..336621.6323,3065935.6008]
+   - 2.3__flowmeter                            n=3      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336604.7147,3065931.0328..336632.7690,3065940.3622]
+   - 2.3__house_connection_end                 n=1099   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335963.4585,3065248.2028..336634.0239,3065964.8507]
+   - 2.3__house_connection_in_pipe             n=1099   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335961.5779,3065247.9649..336635.4135,3065966.1907]
+   - 2.3__hydrants                             n=5      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335965.9346,3065351.6536..336345.1881,3065955.6942]
+   - 2.3__line_features_other                  n=2732   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334575.4655,3064957.1928..339853.6064,3068853.0359]
+   - 2.3__node                                 n=243    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335958.4354,3065242.0968..336632.7690,3065960.6089]
+   - 2.3__pipes                                n=1370   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335958.4354,3065242.0968..336647.7060,3065968.1089]
+   - 2.3__point_feature_others                 n=67     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334624.2788,3064992.4979..337063.8227,3067115.1061]
+   - 2.3__service_reservoir                    n=0      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - 2.3__valves                               n=10     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335958.4354,3065242.0968..336612.8271,3065938.4378]
+
+== 2. DMA-9.1_GIS_2024_July_17\2. DMA-9.1_GIS_2024_July_17\DMA-9.1_GIS_2024_July_17\DNI-9_December_2023\DNI9_final_45N.gdb
+   - Valves                                    n=74     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335576.7630,3061435.4808..337687.1735,3063272.1781]
+   - Hydrants                                  n=3      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336092.7348,3061926.0616..337356.3463,3063461.9936]
+   - FlowMeter                                 n=4      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336010.3225,3061949.6265..337218.6645,3063472.5573]
+   - House_Connection_in_Pipe                  n=2390   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335756.2582,3061576.6176..337704.4682,3063524.6403]
+   - Pipes                                     n=2999   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335529.8222,3061388.4628..337706.6132,3063527.0275]
+   - Flow_Pressure_Logger                      n=4      geom=Point          crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336092.7348,3061926.0616..337356.3463,3063191.3581]
+   - Node                                      n=518    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335529.8222,3061388.4628..337706.6132,3063516.4043]
+   - House_Connection_End                      n=2389   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335756.9217,3061570.8678..337704.3631,3063524.3000]
+
+== 2. DMA-9.2_GIS_2024_July_17\2. DMA-9.2_GIS_2024_July_17\DMA-9.2_GIS_2024_July_17\DNI-9_December_2023\DNI9_final_45N.gdb
+   - Valves                                    n=122    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335576.7630,3061435.4808..337687.1735,3063272.1781]
+   - Hydrants                                  n=12     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336092.7348,3061926.0616..337356.3463,3063461.9936]
+   - FlowMeter                                 n=8      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336010.3225,3061949.6265..337218.6645,3063472.5573]
+   - House_Connection_in_Pipe                  n=4007   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335756.2582,3061576.6176..337704.4682,3063524.6403]
+   - Pipes                                     n=5150   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335529.8222,3061388.4628..337706.6132,3063527.0275]
+   - Flow_Pressure_Logger                      n=4      geom=Point          crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336092.7348,3061926.0616..337356.3463,3063191.3581]
+   - Node                                      n=1012   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335529.8222,3061388.4628..337706.6132,3063516.4043]
+   - House_Connection_End                      n=4007   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335756.9217,3061570.8678..337704.3631,3063524.3000]
+
+== DMA 2.2 2026-1-29\DMA 2.2 2026-1-29\DNI_2.gdb
+   - House_Connection_End                      n=4347   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334578.6350,3064985.1448..337280.2648,3067191.8384]
+   - House_Connection_in_Pipe                  n=4347   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334577.5365,3064981.7516..337282.1816,3067192.4597]
+   - Pipes                                     n=5390   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334571.9060,3061660.5260..339857.8544,3068846.4095]
+   - Point_Feature_others                      n=66     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334624.2788,3064992.4979..337063.8227,3067115.1061]
+   - Service_Reservoir                         n=0      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - Flow_Pressure_Logger                      n=4      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334684.9883,3064983.9920..337209.0233,3065964.5568]
+   - FlowMeter                                 n=11     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334770.5285,3065041.6286..337259.0817,3066473.3205]
+   - Hydrants                                  n=16     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334573.8777,3064983.9920..337274.8084,3067200.0650]
+   - Line_Features_other                       n=2732   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334575.4655,3064957.1928..339853.6064,3068853.0359]
+   - Node                                      n=958    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334572.2424,3064982.5701..339857.8544,3068839.7740]
+   - Valves                                    n=84     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334762.8487,3064984.8228..339377.3786,3068839.7740]
+
+== DMA-3.1 & 4.1 GIS AND METER FILE\DMA-3.1 & 4.1 GIS AND METER FILE\GIS DMA-3.1\DMA3.1_V2.gdb
+   - FlowMeter                                 n=7      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335464.0670,3063695.2881..337333.6937,3065276.3512]
+   - Hydrants                                  n=13     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335172.9173,3063555.5524..337809.3703,3065731.5290]
+   - Node                                      n=589    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335174.4871,3063505.4894..337801.1519,3065932.4562]
+   - Service_Reservoir                         n=0      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - Valves                                    n=61     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335173.1872,3063614.8911..337778.3629,3065931.6736]
+   - Pipes                                     n=3629   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335171.0820,3063390.1987..337815.5276,3065933.3242]
+   - House_Connection_in_Pipe                  n=2940   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335178.1530,3063499.5862..337815.0732,3065740.5290]
+   - House_Connection_End                      n=2940   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335179.2210,3063501.7058..337812.7176,3065731.3160]
+   - Flow_Pressure_Logger                      n=4      geom=Point          crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335251.2454,3063779.0706..337778.3629,3065731.5290]
+   - sDMA_Boundary                             n=2      geom=MultiPolygon   crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335169.6925,3063800.7610..336330.2804,3065386.2383]
+
+== DMA-3.1 & 4.1 GIS AND METER FILE\DMA-3.1 & 4.1 GIS AND METER FILE\GIS DMA-4.1\DMA-4.1.gdb
+   - FlowMeter                                 n=2      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332624.1383,3064238.3046..335189.9196,3067084.6525]
+   - House_Connection_End                      n=547    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332597.8458,3063667.5914..335478.5697,3067187.9128]
+   - Hydrants                                  n=3      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332597.1523,3063709.9807..335396.4057,3067192.1443]
+   - Service_Reservoir                         n=0      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - Valves                                    n=16     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332604.1799,3063692.0509..335466.5804,3067194.4672]
+   - House_Connection_in_Pipe                  n=547    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334081.0419,3063666.4921..335477.7796,3065055.0205]
+   - Pipes                                     n=704    geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334080.2814,3063647.2691..335495.3226,3065195.3376]
+   - Node                                      n=126    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334080.2814,3063692.2001..335488.3625,3065190.0859]
+   - Flow_Pressure_Logger                      n=4      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334927.2033,3064347.2831..335388.2839,3065107.0069]
+
+== DMA-3.2\DMA-3.2\DNI3.2_V2.gdb
+   - FlowMeter                                 n=7      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335464.0670,3063695.2881..337333.6937,3065276.3512]
+   - Hydrants                                  n=10     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335172.9173,3063555.5524..337809.3703,3065731.5290]
+   - Node                                      n=592    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335174.4871,3063505.4894..337801.1519,3065932.4562]
+   - Service_Reservoir                         n=0      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - Valves                                    n=52     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335180.4629,3063614.8911..337778.3629,3065931.6736]
+   - Pipes                                     n=3311   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335171.0820,3063390.1987..337815.5276,3065933.3242]
+   - House_Connection_Pipe                     n=2638   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335178.1530,3063499.5862..337815.0732,3065740.5290]
+   - House_Connection_End                      n=2638   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335179.2210,3063501.7058..337812.7176,3065731.3160]
+   - Flow_Pressure_Logger                      n=4      geom=Point          crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335940.5227,3063685.4890..337778.3629,3065731.5290]
+
+== DMA-3.3\DMA-3.3\DNI3.3_V2.gdb
+   - FlowMeter                                 n=6      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335464.0670,3063695.2881..337333.6937,3065275.3510]
+   - Hydrants                                  n=8      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335172.9173,3063555.5524..337809.3703,3065731.5290]
+   - Node                                      n=543    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335174.4871,3063505.4894..337801.1519,3065932.4562]
+   - Service_Reservoir                         n=0      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - Valves                                    n=55     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335180.4629,3063614.8911..337778.3629,3065931.5037]
+   - Pipes                                     n=2946   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335171.0820,3063390.1987..337815.5276,3065931.5037]
+   - House_Connection_Pipe                     n=2308   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335178.1530,3063499.5862..337815.0732,3065740.5290]
+   - House_Connection_End                      n=2307   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335179.2210,3063501.7058..337812.7176,3065731.3160]
+   - Flow_Pressure_Logger                      n=4      geom=Point          crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336673.3932,3063779.0706..337778.3629,3065731.5290]
+
+== DMA-3.4\DMA-3.4\DNI3.4_V2.gdb
+   - FlowMeter                                 n=3      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335464.0670,3063695.2881..337333.6937,3065275.3510]
+   - Hydrants                                  n=8      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335172.9173,3063555.5524..337809.3703,3065731.5290]
+   - Node                                      n=278    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335174.4871,3063505.4894..337801.1519,3065933.4881]
+   - Service_Reservoir                         n=0      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - Valves                                    n=25     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335180.4629,3063614.8911..337778.3629,3065931.5037]
+   - Pipes                                     n=1232   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335171.0820,3063390.1987..337815.5276,3065931.5037]
+   - House_Connection_Pipe                     n=903    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335178.1530,3063499.5862..337815.0732,3065740.5290]
+   - House_Connection_End                      n=900    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335179.2210,3063501.7058..337812.7176,3065731.3160]
+   - Flow_Pressure_Logger                      n=4      geom=Point          crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335940.5227,3063685.4890..337778.3629,3065731.5290]
+
+== DMA-3.5\DMA-3.5\DMA-3.5 GIS\DMA_3.5.gdb
+   - FlowMeter                                 n=4      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335464.0670,3063695.2881..337333.6937,3065276.3512]
+   - Hydrants                                  n=6      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335172.9173,3063555.5524..337809.3703,3065731.5290]
+   - Node                                      n=329    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335174.4871,3063505.4894..337801.1519,3065932.4562]
+   - Service_Reservoir                         n=0      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=?
+   - Valves                                    n=35     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335180.4629,3063614.8911..337778.3629,3065931.6736]
+   - Pipes                                     n=1911   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335171.0820,3063390.1987..337815.5276,3065933.3242]
+   - House_Connection_Pipe                     n=1520   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335178.1530,3063499.5862..337815.0732,3065740.5290]
+   - House_Connection_End                      n=1520   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[335179.2210,3063501.7058..337812.7176,3065731.3160]
+   - Flow_Pressure_Logger                      n=4      geom=Point          crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[336673.3932,3063779.0706..337778.3629,3065731.5290]
+
+== DNI_1.2 gdb\DMA 1.2_V3.gdb
+   - FlowMeter                                 n=5      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332624.1383,3064467.6173..335189.9196,3067084.6525]
+   - House_Connection_End                      n=2259   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332597.8458,3063667.5914..335478.5697,3067187.9128]
+   - Node                                      n=432    geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332597.1523,3063692.2001..335488.3625,3068329.6048]
+   - Service_Reservoir                         n=1      geom=3D MultiPolygon crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[334801.4188,3068327.7287..334849.9079,3068351.6701]
+   - Valves                                    n=27     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332604.1799,3063692.2001..335463.1817,3068329.6048]
+   - House_Connection_in_Pipe                  n=2259   geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332655.2583,3063666.4921..335477.7796,3067047.4858]
+   - Pipes                                     n=2740   geom=3D MultiLineString crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332654.4937,3063647.2691..335495.3226,3068330.3490]
+   - Hydrants                                  n=11     geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[332871.4616,3064522.4289..335356.7428,3067017.7317]
+   - Flow_Pressure_Logger                      n=4      geom=3D Point       crs=PROJCS["WGS 84 / UTM zone 45N" bbox=[333817.4400,3064983.9920..337209.0233,3066987.1876]
+
+!! DNI_2.4.gdb
+   ERROR: D:\Intern\GIS Files\DNI_2.4.gdb: Permission denied
+
+Wrote D:\Intern\tools\gis_inventory.json

@@ -1,0 +1,1252 @@
+[
+  {
+    "path": "D:\\Intern\\GIS Files\\Handedover2.3.gpkg",
+    "layers": [
+      {
+        "name": "Handedover2.3",
+        "count": 0,
+        "geom": "Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "2.3__flow_pressure_logger",
+        "count": 4,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335977.2503,
+          3065351.6536,
+          336621.6323,
+          3065935.6008
+        ]
+      },
+      {
+        "name": "2.3__flowmeter",
+        "count": 3,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336604.7147,
+          3065931.0328,
+          336632.769,
+          3065940.3622
+        ]
+      },
+      {
+        "name": "2.3__house_connection_end",
+        "count": 1099,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335963.4585,
+          3065248.2028,
+          336634.0239,
+          3065964.8507
+        ]
+      },
+      {
+        "name": "2.3__house_connection_in_pipe",
+        "count": 1099,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335961.5779,
+          3065247.9649,
+          336635.4135,
+          3065966.1907
+        ]
+      },
+      {
+        "name": "2.3__hydrants",
+        "count": 5,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335965.9346,
+          3065351.6536,
+          336345.1881,
+          3065955.6942
+        ]
+      },
+      {
+        "name": "2.3__line_features_other",
+        "count": 2732,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334575.4655,
+          3064957.1928,
+          339853.6064,
+          3068853.0359
+        ]
+      },
+      {
+        "name": "2.3__node",
+        "count": 243,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335958.4354,
+          3065242.0968,
+          336632.769,
+          3065960.6089
+        ]
+      },
+      {
+        "name": "2.3__pipes",
+        "count": 1370,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335958.4354,
+          3065242.0968,
+          336647.706,
+          3065968.1089
+        ]
+      },
+      {
+        "name": "2.3__point_feature_others",
+        "count": 67,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334624.2788,
+          3064992.4979,
+          337063.8227,
+          3067115.1061
+        ]
+      },
+      {
+        "name": "2.3__service_reservoir",
+        "count": 0,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "2.3__valves",
+        "count": 10,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335958.4354,
+          3065242.0968,
+          336612.8271,
+          3065938.4378
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\2. DMA-9.1_GIS_2024_July_17\\2. DMA-9.1_GIS_2024_July_17\\DMA-9.1_GIS_2024_July_17\\DNI-9_December_2023\\DNI9_final_45N.gdb",
+    "layers": [
+      {
+        "name": "Valves",
+        "count": 74,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335576.76300000027,
+          3061435.480799999,
+          337687.17349999957,
+          3063272.178099999
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 3,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336092.73479999974,
+          3061926.0615999997,
+          337356.3463000003,
+          3063461.9935999997
+        ]
+      },
+      {
+        "name": "FlowMeter",
+        "count": 4,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336010.3224999998,
+          3061949.6264999993,
+          337218.66449999996,
+          3063472.5572999995
+        ]
+      },
+      {
+        "name": "House_Connection_in_Pipe",
+        "count": 2390,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335756.25820000004,
+          3061576.6175999995,
+          337704.4682,
+          3063524.6403
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 2999,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335529.8222000003,
+          3061388.4628,
+          337706.6131999999,
+          3063527.0275000003
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336092.73479999974,
+          3061926.0615999997,
+          337356.3463000003,
+          3063191.358100001
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 518,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335529.8222000003,
+          3061388.4628,
+          337706.61319999956,
+          3063516.4043000005
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 2389,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335756.92169999983,
+          3061570.867799999,
+          337704.3630999997,
+          3063524.3000000007
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\2. DMA-9.2_GIS_2024_July_17\\2. DMA-9.2_GIS_2024_July_17\\DMA-9.2_GIS_2024_July_17\\DNI-9_December_2023\\DNI9_final_45N.gdb",
+    "layers": [
+      {
+        "name": "Valves",
+        "count": 122,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335576.76300000027,
+          3061435.480799999,
+          337687.17349999957,
+          3063272.178099999
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 12,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336092.73479999974,
+          3061926.0615999997,
+          337356.3463000003,
+          3063461.9935999997
+        ]
+      },
+      {
+        "name": "FlowMeter",
+        "count": 8,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336010.3224999998,
+          3061949.6264999993,
+          337218.66449999996,
+          3063472.5572999995
+        ]
+      },
+      {
+        "name": "House_Connection_in_Pipe",
+        "count": 4007,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335756.25820000004,
+          3061576.6175999995,
+          337704.4682,
+          3063524.6403
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 5150,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335529.8222000003,
+          3061388.4628,
+          337706.6131999999,
+          3063527.0275000003
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336092.73479999974,
+          3061926.0615999997,
+          337356.3463000003,
+          3063191.358100001
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 1012,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335529.8222000003,
+          3061388.4628,
+          337706.61319999956,
+          3063516.4043000005
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 4007,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335756.92169999983,
+          3061570.867799999,
+          337704.3630999997,
+          3063524.3000000007
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DMA 2.2 2026-1-29\\DMA 2.2 2026-1-29\\DNI_2.gdb",
+    "layers": [
+      {
+        "name": "House_Connection_End",
+        "count": 4347,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334578.6349999998,
+          3064985.1448,
+          337280.2648,
+          3067191.8384000007
+        ]
+      },
+      {
+        "name": "House_Connection_in_Pipe",
+        "count": 4347,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334577.5365000004,
+          3064981.751599999,
+          337282.1815999998,
+          3067192.4596999995
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 5390,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334571.9060000004,
+          3061660.5260000005,
+          339857.8543999996,
+          3068846.409499999
+        ]
+      },
+      {
+        "name": "Point_Feature_others",
+        "count": 66,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334624.27880000044,
+          3064992.4979,
+          337063.82270000037,
+          3067115.1061000004
+        ]
+      },
+      {
+        "name": "Service_Reservoir",
+        "count": 0,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334684.9883000003,
+          3064983.9920000006,
+          337209.02329999954,
+          3065964.5568000004
+        ]
+      },
+      {
+        "name": "FlowMeter",
+        "count": 11,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334770.5285,
+          3065041.6285999995,
+          337259.0817,
+          3066473.3204999994
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 16,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334573.87770000007,
+          3064983.9920000006,
+          337274.80840000045,
+          3067200.0649999995
+        ]
+      },
+      {
+        "name": "Line_Features_other",
+        "count": 2732,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334575.46549999993,
+          3064957.1928000003,
+          339853.60639999993,
+          3068853.0359000005
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 958,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334572.2423999999,
+          3064982.5701,
+          339857.8543999996,
+          3068839.774
+        ]
+      },
+      {
+        "name": "Valves",
+        "count": 84,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334762.8487,
+          3064984.8227999993,
+          339377.3786000004,
+          3068839.774
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DMA-3.1 & 4.1 GIS AND METER FILE\\DMA-3.1 & 4.1 GIS AND METER FILE\\GIS DMA-3.1\\DMA3.1_V2.gdb",
+    "layers": [
+      {
+        "name": "FlowMeter",
+        "count": 7,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335464.0669999998,
+          3063695.2881000005,
+          337333.6936999997,
+          3065276.3511999995
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 13,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335172.91729999986,
+          3063555.5524000004,
+          337809.3702999996,
+          3065731.528999999
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 589,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335174.48709999956,
+          3063505.4893999994,
+          337801.15189999994,
+          3065932.4562
+        ]
+      },
+      {
+        "name": "Service_Reservoir",
+        "count": 0,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "Valves",
+        "count": 61,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335173.1871999996,
+          3063614.8911000006,
+          337778.36290000007,
+          3065931.6735999994
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 3629,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335171.0820000004,
+          3063390.1986999996,
+          337815.5276000002,
+          3065933.324199999
+        ]
+      },
+      {
+        "name": "House_Connection_in_Pipe",
+        "count": 2940,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335178.15299999993,
+          3063499.5862000007,
+          337815.07320000045,
+          3065740.528999999
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 2940,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335179.2209999999,
+          3063501.7058000006,
+          337812.7176000001,
+          3065731.3159999996
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335251.24540000036,
+          3063779.0705999993,
+          337778.36290000007,
+          3065731.528999999
+        ]
+      },
+      {
+        "name": "sDMA_Boundary",
+        "count": 2,
+        "geom": "MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335169.6924999999,
+          3063800.761,
+          336330.28039999964,
+          3065386.2383000003
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DMA-3.1 & 4.1 GIS AND METER FILE\\DMA-3.1 & 4.1 GIS AND METER FILE\\GIS DMA-4.1\\DMA-4.1.gdb",
+    "layers": [
+      {
+        "name": "FlowMeter",
+        "count": 2,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332624.13829999976,
+          3064238.3046000004,
+          335189.9195999997,
+          3067084.6525
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 547,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332597.84580000024,
+          3063667.5913999993,
+          335478.5697,
+          3067187.912799999
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 3,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332597.1523000002,
+          3063709.9806999993,
+          335396.4057,
+          3067192.1443000007
+        ]
+      },
+      {
+        "name": "Service_Reservoir",
+        "count": 0,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "Valves",
+        "count": 16,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332604.1798999999,
+          3063692.050899999,
+          335466.5804000003,
+          3067194.4672
+        ]
+      },
+      {
+        "name": "House_Connection_in_Pipe",
+        "count": 547,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334081.0418999996,
+          3063666.4921,
+          335477.7796,
+          3065055.0205000006
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 704,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334080.28139999975,
+          3063647.269099999,
+          335495.3226,
+          3065195.3376
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 126,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334080.28139999975,
+          3063692.200099999,
+          335488.3624999998,
+          3065190.0858999994
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334927.20330000017,
+          3064347.2830999997,
+          335388.28390000015,
+          3065107.0068999995
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DMA-3.2\\DMA-3.2\\DNI3.2_V2.gdb",
+    "layers": [
+      {
+        "name": "FlowMeter",
+        "count": 7,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335464.0669999998,
+          3063695.2881000005,
+          337333.6936999997,
+          3065276.3511999995
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 10,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335172.91729999986,
+          3063555.5524000004,
+          337809.3702999996,
+          3065731.528999999
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 592,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335174.48709999956,
+          3063505.4893999994,
+          337801.15189999994,
+          3065932.4562
+        ]
+      },
+      {
+        "name": "Service_Reservoir",
+        "count": 0,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "Valves",
+        "count": 52,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335180.4628999997,
+          3063614.8911000006,
+          337778.36290000007,
+          3065931.6735999994
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 3311,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335171.0820000004,
+          3063390.1986999996,
+          337815.5276000002,
+          3065933.324199999
+        ]
+      },
+      {
+        "name": "House_Connection_Pipe",
+        "count": 2638,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335178.15299999993,
+          3063499.5862000007,
+          337815.07320000045,
+          3065740.528999999
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 2638,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335179.2209999999,
+          3063501.7058000006,
+          337812.7176000001,
+          3065731.3159999996
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335940.5226999996,
+          3063685.489,
+          337778.36290000007,
+          3065731.528999999
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DMA-3.3\\DMA-3.3\\DNI3.3_V2.gdb",
+    "layers": [
+      {
+        "name": "FlowMeter",
+        "count": 6,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335464.0669999998,
+          3063695.2881000005,
+          337333.6936999997,
+          3065275.351
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 8,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335172.91729999986,
+          3063555.5524000004,
+          337809.3702999996,
+          3065731.528999999
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 543,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335174.48709999956,
+          3063505.4893999994,
+          337801.15189999994,
+          3065932.4562
+        ]
+      },
+      {
+        "name": "Service_Reservoir",
+        "count": 0,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "Valves",
+        "count": 55,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335180.4628999997,
+          3063614.8911000006,
+          337778.36290000007,
+          3065931.5036999993
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 2946,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335171.0820000004,
+          3063390.1986999996,
+          337815.5276000002,
+          3065931.5036999993
+        ]
+      },
+      {
+        "name": "House_Connection_Pipe",
+        "count": 2308,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335178.15299999993,
+          3063499.5862000007,
+          337815.07320000045,
+          3065740.528999999
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 2307,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335179.2209999999,
+          3063501.7058000006,
+          337812.7176000001,
+          3065731.3159999996
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336673.3931999998,
+          3063779.0705999993,
+          337778.36290000007,
+          3065731.528999999
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DMA-3.4\\DMA-3.4\\DNI3.4_V2.gdb",
+    "layers": [
+      {
+        "name": "FlowMeter",
+        "count": 3,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335464.0669999998,
+          3063695.2881000005,
+          337333.6936999997,
+          3065275.351
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 8,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335172.91729999986,
+          3063555.5524000004,
+          337809.3702999996,
+          3065731.528999999
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 278,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335174.48709999956,
+          3063505.4893999994,
+          337801.15189999994,
+          3065933.4880999997
+        ]
+      },
+      {
+        "name": "Service_Reservoir",
+        "count": 0,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "Valves",
+        "count": 25,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335180.4628999997,
+          3063614.8911000006,
+          337778.36290000007,
+          3065931.5036999993
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 1232,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335171.0820000004,
+          3063390.1986999996,
+          337815.5276000002,
+          3065931.5036999993
+        ]
+      },
+      {
+        "name": "House_Connection_Pipe",
+        "count": 903,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335178.15299999993,
+          3063499.5862000007,
+          337815.07320000045,
+          3065740.528999999
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 900,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335179.2209999999,
+          3063501.7058000006,
+          337812.7176000001,
+          3065731.3159999996
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335940.5226999996,
+          3063685.489,
+          337778.36290000007,
+          3065731.528999999
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DMA-3.5\\DMA-3.5\\DMA-3.5 GIS\\DMA_3.5.gdb",
+    "layers": [
+      {
+        "name": "FlowMeter",
+        "count": 4,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335464.0669999998,
+          3063695.2881000005,
+          337333.6936999997,
+          3065276.3511999995
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 6,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335172.91729999986,
+          3063555.5524000004,
+          337809.3702999996,
+          3065731.528999999
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 329,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335174.48709999956,
+          3063505.4893999994,
+          337801.15189999994,
+          3065932.4562
+        ]
+      },
+      {
+        "name": "Service_Reservoir",
+        "count": 0,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": null
+      },
+      {
+        "name": "Valves",
+        "count": 35,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335180.4628999997,
+          3063614.8911000006,
+          337778.36290000007,
+          3065931.6735999994
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 1911,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335171.0820000004,
+          3063390.1986999996,
+          337815.5276000002,
+          3065933.324199999
+        ]
+      },
+      {
+        "name": "House_Connection_Pipe",
+        "count": 1520,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335178.15299999993,
+          3063499.5862000007,
+          337815.07320000045,
+          3065740.528999999
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 1520,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          335179.2209999999,
+          3063501.7058000006,
+          337812.7176000001,
+          3065731.3159999996
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          336673.3931999998,
+          3063779.0705999993,
+          337778.36290000007,
+          3065731.528999999
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DNI_1.2 gdb\\DMA 1.2_V3.gdb",
+    "layers": [
+      {
+        "name": "FlowMeter",
+        "count": 5,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332624.13829999976,
+          3064467.6173,
+          335189.9195999997,
+          3067084.6525
+        ]
+      },
+      {
+        "name": "House_Connection_End",
+        "count": 2259,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332597.84580000024,
+          3063667.5913999993,
+          335478.5697,
+          3067187.912799999
+        ]
+      },
+      {
+        "name": "Node",
+        "count": 432,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332597.1523000002,
+          3063692.200099999,
+          335488.3625,
+          3068329.604800001
+        ]
+      },
+      {
+        "name": "Service_Reservoir",
+        "count": 1,
+        "geom": "3D MultiPolygon",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          334801.4188000001,
+          3068327.728700001,
+          334849.9079000001,
+          3068351.6701000007
+        ]
+      },
+      {
+        "name": "Valves",
+        "count": 27,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332604.1798999999,
+          3063692.200099999,
+          335463.1816999996,
+          3068329.604800001
+        ]
+      },
+      {
+        "name": "House_Connection_in_Pipe",
+        "count": 2259,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332655.25829999987,
+          3063666.4921,
+          335477.7796,
+          3067047.4858
+        ]
+      },
+      {
+        "name": "Pipes",
+        "count": 2740,
+        "geom": "3D MultiLineString",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332654.49370000046,
+          3063647.269099999,
+          335495.3226,
+          3068330.349
+        ]
+      },
+      {
+        "name": "Hydrants",
+        "count": 11,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          332871.46160000004,
+          3064522.4288999997,
+          335356.7428000001,
+          3067017.7316999994
+        ]
+      },
+      {
+        "name": "Flow_Pressure_Logger",
+        "count": 4,
+        "geom": "3D Point",
+        "crs": "PROJCS[\"WGS 84 / UTM zone 45N\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84...",
+        "bbox": [
+          333817.4400000004,
+          3064983.9920000006,
+          337209.02329999954,
+          3066987.1876
+        ]
+      }
+    ]
+  },
+  {
+    "path": "D:\\Intern\\GIS Files\\DNI_2.4.gdb",
+    "error": "D:\\Intern\\GIS Files\\DNI_2.4.gdb: Permission denied"
+  }
+]

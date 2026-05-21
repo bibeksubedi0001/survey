@@ -467,6 +467,39 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .kukl-marker.fair{background:#e6c200;}
 .kukl-marker.poor{background:#e07a00;}
 .kukl-marker.critical{background:#c1001f;}
+
+/* ---------- DMA overlay control ---------- */
+.kukl-dma-ctrl{
+  background:#fff;
+  border:2px solid rgba(0,0,0,.25);
+  border-radius:6px;
+  padding:6px 8px;
+  font:12px/1.35 system-ui,Segoe UI,sans-serif;
+  min-width:210px;
+  max-width:260px;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+.kukl-dma-ctrl .kdma-row{display:flex;align-items:center;gap:6px;margin:4px 0;}
+.kukl-dma-ctrl .kdma-head{gap:4px;}
+.kukl-dma-ctrl .kdma-select{
+  flex:1;font:inherit;padding:2px 4px;border:1px solid #999;border-radius:3px;background:#fff;
+}
+.kukl-dma-ctrl .kdma-fit,
+.kukl-dma-ctrl .kdma-close{
+  border:1px solid #999;background:#f3f3f3;border-radius:3px;
+  padding:0 6px;height:24px;font:inherit;cursor:pointer;line-height:22px;
+}
+.kukl-dma-ctrl .kdma-close{color:#a00;font-weight:bold;}
+.kukl-dma-ctrl .kdma-fit:hover,
+.kukl-dma-ctrl .kdma-close:hover{background:#e8e8e8;}
+.kukl-dma-ctrl .kdma-layers{flex-wrap:wrap;gap:4px 10px;}
+.kukl-dma-ctrl .kdma-layers label{display:inline-flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;}
+.kukl-dma-ctrl label{cursor:pointer;}
+.kukl-dma-ctrl .kdma-stats{flex-wrap:wrap;gap:3px;padding-top:4px;border-top:1px dashed #ccc;font-size:11px;}
+.kukl-dma-ctrl .kdma-pill{
+  display:inline-block;background:#eef3fb;border:1px solid #cdd9ee;
+  padding:1px 5px;border-radius:8px;margin-right:3px;font-size:10px;
+}
 .leaflet-popup-content{font-family:inherit;font-size:13px;line-height:1.5;}
 .leaflet-popup-content b{font-size:12px;letter-spacing:.5px;}
 .leaflet-popup-content .popup-photos{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}

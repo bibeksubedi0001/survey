@@ -855,6 +855,10 @@ function ensureLeaflet() {
   }).addTo(leafletMap);
   // Resize support
   window.addEventListener('resize', () => leafletMap && leafletMap.invalidateSize());
+  // DMA overlay (boundaries, pipes, connections, devices) — optional
+  if (window.KUKLDma) {
+    try { window.KUKLDma.attach(leafletMap); } catch (e) { console.warn('[DMA] attach failed', e); }
+  }
   return leafletMap;
 }
 

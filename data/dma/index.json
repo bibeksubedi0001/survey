@@ -1,0 +1,291 @@
+{
+  "generated": "2026-05-21T09:46:53.252952Z",
+  "dmas": [
+    {
+      "id": "1.2",
+      "label": "DMA 1.2",
+      "bbox": [
+        85.316363,
+        27.699574,
+        85.32771,
+        27.710241
+      ],
+      "center": [
+        27.704908,
+        85.322036
+      ],
+      "counts": {
+        "connections": 2259,
+        "pipes": 2740,
+        "devices": 47,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "2.2",
+      "label": "DMA 2.2",
+      "bbox": [
+        85.322306,
+        27.699494,
+        85.336606,
+        27.709385
+      ],
+      "center": [
+        27.704439,
+        85.329456
+      ],
+      "counts": {
+        "connections": 4347,
+        "pipes": 5390,
+        "devices": 115,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "2.3",
+      "label": "DMA 2.3",
+      "bbox": [
+        85.336319,
+        27.701583,
+        85.343052,
+        27.708064
+      ],
+      "center": [
+        27.704824,
+        85.339686
+      ],
+      "counts": {
+        "connections": 1099,
+        "pipes": 1370,
+        "devices": 22,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "3.1",
+      "label": "DMA 3.1",
+      "bbox": [
+        85.328549,
+        27.688581,
+        85.339953,
+        27.702683
+      ],
+      "center": [
+        27.695632,
+        85.334251
+      ],
+      "counts": {
+        "connections": 2940,
+        "pipes": 3629,
+        "devices": 85,
+        "boundary": 2
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "3.2",
+      "label": "DMA 3.2",
+      "bbox": [
+        85.336192,
+        27.68765,
+        85.344457,
+        27.701411
+      ],
+      "center": [
+        27.694531,
+        85.340325
+      ],
+      "counts": {
+        "connections": 2638,
+        "pipes": 3311,
+        "devices": 73,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "3.3",
+      "label": "DMA 3.3",
+      "bbox": [
+        85.340993,
+        27.686804,
+        85.351421,
+        27.699716
+      ],
+      "center": [
+        27.69326,
+        85.346207
+      ],
+      "counts": {
+        "connections": 2307,
+        "pipes": 2946,
+        "devices": 73,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "3.4",
+      "label": "DMA 3.4",
+      "bbox": [
+        85.345834,
+        27.685919,
+        85.354773,
+        27.698747
+      ],
+      "center": [
+        27.692333,
+        85.350304
+      ],
+      "counts": {
+        "connections": 900,
+        "pipes": 1232,
+        "devices": 40,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "3.5",
+      "label": "DMA 3.5",
+      "bbox": [
+        85.347431,
+        27.695396,
+        85.355154,
+        27.706067
+      ],
+      "center": [
+        27.700732,
+        85.351293
+      ],
+      "counts": {
+        "connections": 1520,
+        "pipes": 1911,
+        "devices": 49,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "4.1",
+      "label": "DMA 4.1",
+      "bbox": [
+        85.327657,
+        27.692906,
+        85.33149,
+        27.699707
+      ],
+      "center": [
+        27.696306,
+        85.329574
+      ],
+      "counts": {
+        "connections": 547,
+        "pipes": 704,
+        "devices": 25,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "9.1",
+      "label": "DMA 9.1",
+      "bbox": [
+        85.342834,
+        27.668518,
+        85.354407,
+        27.678266
+      ],
+      "center": [
+        27.673392,
+        85.348621
+      ],
+      "counts": {
+        "connections": 2389,
+        "pipes": 2999,
+        "devices": 85,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "9.2",
+      "label": "DMA 9.2",
+      "bbox": [
+        85.334595,
+        27.673799,
+        85.349387,
+        27.686075
+      ],
+      "center": [
+        27.679937,
+        85.341991
+      ],
+      "counts": {
+        "connections": 4007,
+        "pipes": 5150,
+        "devices": 146,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    }
+  ]
+}

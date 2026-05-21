@@ -1173,6 +1173,10 @@
       map._group = L.featureGroup().addTo(map);
       panel._extraMap = map;
       window.addEventListener('resize', () => map.invalidateSize());
+      // DMA overlay (boundaries, pipes, connections, devices)
+      if (window.KUKLDma) {
+        try { window.KUKLDma.attach(map); } catch (e) { console.warn('[DMA] attach failed', e); }
+      }
     } else {
       map._group.clearLayers();
     }
