@@ -222,6 +222,8 @@
     let currentGroup = null;
     let formGrid = null;
     section.fields.forEach(f => {
+      // GPS is captured in a dedicated top-of-section panel (KUKLGps) — skip inline.
+      if (f.type === 'location') return;
       const grp = f.group || 'Details';
       if (grp !== currentGroup) {
         currentGroup = grp;
@@ -286,13 +288,32 @@
       form,
     );
 
+    // ---- Shared high-accuracy GPS panel (top of survey view) ----
+    const gpsHost = el('div', { class: 'gps-host' });
+    let gpsPanelApi = null;
+    if (window.KUKLGps && typeof window.KUKLGps.createPanel === 'function') {
+      gpsPanelApi = window.KUKLGps.createPanel({
+        container: gpsHost,
+        title: 'GPS COORDINATES (HIGH ACCURACY)',
+      });
+    }
+
+    // ---- Draft banner (auto-save) ----
+    const draftBanner = el('div', { class: 'draft-banner', hidden: '' },
+      el('span', null, 'DRAFT RESTORED — your last unsaved entries were recovered.'),
+      el('button', { type: 'button', class: 'btn btn-mini btn-outline', id: `${key}_draft_discard` }, 'DISCARD DRAFT'),
+    );
+
     // ---- Records card (mirrors main RECORDS tab) ----
     const searchBox = el('input', {
       id: `${key}_search`, class: 'search', type: 'search',
       placeholder: 'Search by ID, location, surveyor…',
     });
-    const btnExport = el('button', { type: 'button', class: 'btn btn-primary', id: `${key}_export` }, 'EXPORT EXCEL');
-    const btnClear  = el('button', { type: 'button', class: 'btn btn-danger',  id: `${key}_clear`  }, 'DELETE ALL');
+    const btnExport     = el('button', { type: 'button', class: 'btn btn-primary', id: `${key}_export` }, 'EXPORT EXCEL');
+    const btnExportJson = el('button', { type: 'button', class: 'btn btn-outline', id: `${key}_export_json` }, 'EXPORT JSON');
+    const btnImportJson = el('button', { type: 'button', class: 'btn btn-outline', id: `${key}_import_json` }, 'IMPORT JSON');
+    const importFile    = el('input', { type: 'file', accept: 'application/json,.json', id: `${key}_import_file`, style: 'display:none;' });
+    const btnClear      = el('button', { type: 'button', class: 'btn btn-danger',  id: `${key}_clear`  }, 'DELETE ALL');
 
     const recordsHost  = el('div', { id: `${key}_records`, class: 'table-wrap' });
     const emptyState   = el('div', { id: `${key}_empty`, class: 'empty-state' }, 'No reports yet.');
@@ -301,7 +322,7 @@
     const recordsCard = el('div', { class: 'card' },
       el('div', { class: 'card-head' },
         el('h2', null, 'Saved Reports'),
-        el('div', { class: 'btn-row' }, searchBox, btnExport, btnClear),
+        el('div', { class: 'btn-row' }, searchBox, btnExport, btnExportJson, btnImportJson, importFile, btnClear),
       ),
       statusLine,
       recordsHost,
@@ -323,7 +344,7 @@
     );
 
     // ---- View switcher (SURVEY / REPORT / MAP) ----
-    const formView    = el('div', { class: 'section-view active', 'data-view': 'survey' }, formCard);
+    const formView    = el('div', { class: 'section-view active', 'data-view': 'survey' }, gpsHost, draftBanner, formCard);
     const reportView  = el('div', { class: 'section-view',        'data-view': 'report' }, recordsCard);
     const mapView     = el('div', { class: 'section-view',        'data-view': 'map'    }, mapCard);
 
@@ -343,6 +364,10 @@
     panel.appendChild(formView);
     panel.appendChild(reportView);
     panel.appendChild(mapView);
+
+    // Store API references on the panel so collectForm / submit can reach them.
+    panel._gpsPanel = gpsPanelApi;
+    panel._draftBanner = draftBanner;
 
     // Map "Fit all" button
     document.getElementById(`${key}_map_fit`).addEventListener('click', () => {
@@ -368,9 +393,10 @@
         // Re-render dynamic widgets that lose state on reset
         section.fields.forEach(f => {
           if (f.type === 'datetime') { const e2 = $(`${key}_${f.key}`); if (e2) e2.value = fmtDateTimeInput(new Date()); }
-          if (f.type === 'location') { const w = $(`${key}_${f.key}`); if (w && w._reset) w._reset(); }
           if (f.type === 'photos')   { const w = $(`${key}_${f.key}`); if (w && w._reset) w._reset(); }
         });
+        if (panel._gpsPanel) panel._gpsPanel.reset();
+        clearDraft(key); hideDraftBanner(panel);
         await refreshRecords(key);
       } catch (err) {
         console.error(err);
@@ -379,6 +405,39 @@
     });
 
     $(`${key}_export`).addEventListener('click', () => exportSection(key));
+    btnExportJson.addEventListener('click', () => exportSectionJson(key));
+    btnImportJson.addEventListener('click', () => importFile.click());
+    importFile.addEventListener('change', async () => {
+      const f = importFile.files && importFile.files[0];
+      importFile.value = '';
+      if (!f) return;
+      await importSectionJson(key, f);
+    });
+    $(`${key}_draft_discard`).addEventListener('click', () => {
+      clearDraft(key);
+      hideDraftBanner(panel);
+      form.reset();
+      section.fields.forEach(f => {
+        if (f.type === 'datetime') { const e2 = $(`${key}_${f.key}`); if (e2) e2.value = fmtDateTimeInput(new Date()); }
+        if (f.type === 'photos')   { const w = $(`${key}_${f.key}`); if (w && w._reset) w._reset(); }
+      });
+      if (panel._gpsPanel) panel._gpsPanel.reset();
+      toast('Draft discarded');
+    });
+
+    // Draft auto-save: debounce input events, write to localStorage.
+    let draftTimer = null;
+    form.addEventListener('input', () => {
+      clearTimeout(draftTimer);
+      draftTimer = setTimeout(() => saveDraft(key, collectForm(key)), 500);
+    });
+
+    // Restore any saved draft
+    const existingDraft = loadDraft(key);
+    if (existingDraft) {
+      applyDraft(key, existingDraft);
+      draftBanner.hidden = false;
+    }
 
     btnClear.addEventListener('click', async () => {
       const all = await dbAll(section.store);
@@ -450,9 +509,11 @@
         container: wrap,
         getId: () => sectionKey ? `[${sectionKey.toUpperCase()}]` : '',
         getGps: () => {
-          // Pull GPS from the section's location widget if present.
-          const loc = document.getElementById(`${sectionKey}_gps`);
-          if (loc && typeof loc._collect === 'function') return loc._collect();
+          // Pull GPS from the section's shared GPS panel.
+          const panel = document.getElementById('tab-' + sectionKey);
+          if (panel && panel._gpsPanel && typeof panel._gpsPanel.getGps === 'function') {
+            return panel._gpsPanel.getGps();
+          }
           return null;
         },
       });
@@ -502,11 +563,17 @@
   // ---------- Collect / list / export ----------
   function collectForm(key) {
     const section = SECTIONS[key];
+    const panel = document.getElementById('tab-' + key);
     const rec = {};
     section.fields.forEach(f => {
+      // GPS pulled from the shared panel, not from a form field.
+      if (f.type === 'location') {
+        rec[f.key] = (panel && panel._gpsPanel) ? panel._gpsPanel.getGps() : null;
+        return;
+      }
       const node = $(`${key}_${f.key}`);
       if (!node) return;
-      if (f.type === 'location' || f.type === 'photos') {
+      if (f.type === 'photos') {
         rec[f.key] = node._collect ? node._collect() : null;
       } else if (f.type === 'number') {
         const v = node.value;
@@ -693,6 +760,104 @@
     toast('Excel exported');
   }
   function stripStar(s) { return (s || '').replace(/\s*\*$/, ''); }
+
+  // ---------- JSON export / import ----------
+  async function exportSectionJson(key) {
+    const section = SECTIONS[key];
+    const all = await dbAll(section.store);
+    if (!all.length) { toast('No records to export'); return; }
+    const payload = {
+      schema: 'kukl-extra',
+      section: key,
+      store: section.store,
+      exportedAt: new Date().toISOString(),
+      count: all.length,
+      records: all,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${section.exportName}_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+    toast(`Exported ${all.length} record(s) as JSON`);
+  }
+
+  async function importSectionJson(key, file) {
+    const section = SECTIONS[key];
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      let records = Array.isArray(data) ? data
+                  : Array.isArray(data?.records) ? data.records
+                  : null;
+      if (!records) { toast('Invalid JSON: no records array'); return; }
+      if (data && data.section && data.section !== key) {
+        if (!confirm(`This JSON looks like a "${data.section}" export, but you are importing into "${key}". Continue anyway?`)) return;
+      }
+      const existing = await dbAll(section.store);
+      const existingIds = new Set(existing.map(r => r.id));
+      let added = 0, skipped = 0, invalid = 0;
+      for (const r of records) {
+        if (!r || typeof r !== 'object' || !r.id) { invalid++; continue; }
+        if (existingIds.has(r.id)) { skipped++; continue; }
+        if (!r.createdAt) r.createdAt = new Date().toISOString();
+        await dbPut(section.store, r);
+        existingIds.add(r.id);
+        added++;
+      }
+      await refreshRecords(key);
+      toast(`Imported ${added} new, skipped ${skipped} duplicate${invalid ? ', ' + invalid + ' invalid' : ''}`);
+    } catch (err) {
+      console.error(err);
+      toast('Import failed: ' + (err.message || 'bad JSON'));
+    }
+  }
+
+  // ---------- Draft auto-save (localStorage) ----------
+  const DRAFT_PREFIX = 'kukl_extra_draft_';
+  function saveDraft(key, rec) {
+    try {
+      // Strip photos (potentially huge data URLs) from drafts to keep localStorage healthy.
+      const clean = { ...rec };
+      if (Array.isArray(clean.photos)) clean.photos = [];
+      localStorage.setItem(DRAFT_PREFIX + key, JSON.stringify({ savedAt: Date.now(), data: clean }));
+    } catch (_) { /* quota or unavailable */ }
+  }
+  function loadDraft(key) {
+    try {
+      const raw = localStorage.getItem(DRAFT_PREFIX + key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.data) return null;
+      // Treat empty drafts as no draft
+      const d = parsed.data;
+      const hasContent = Object.keys(d).some(k => {
+        const v = d[k];
+        if (v == null || v === '') return false;
+        if (typeof v === 'object') return Object.keys(v).length > 0;
+        return true;
+      });
+      return hasContent ? d : null;
+    } catch (_) { return null; }
+  }
+  function clearDraft(key) {
+    try { localStorage.removeItem(DRAFT_PREFIX + key); } catch (_) {}
+  }
+  function hideDraftBanner(panel) {
+    if (panel && panel._draftBanner) panel._draftBanner.hidden = true;
+  }
+  function applyDraft(key, data) {
+    const section = SECTIONS[key];
+    section.fields.forEach(f => {
+      if (f.type === 'photos' || f.type === 'location') return;
+      const node = $(`${key}_${f.key}`);
+      if (!node) return;
+      const v = data[f.key];
+      if (v == null) return;
+      node.value = v;
+    });
+  }
 
   // ---------- View switching (SURVEY / REPORT / MAP) ----------
   function setSectionView(key, view) {

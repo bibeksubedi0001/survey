@@ -1134,3 +1134,57 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 @media (min-width:520px) and (max-width:900px){
   .hub-grid{grid-template-columns:repeat(2,1fr);}
 }
+
+/* ===== Shared high-accuracy GPS panel (extras) ===== */
+.gps-host{margin:0 0 14px;}
+.gps-panel-card{margin:0 0 14px;border:2px solid #000;}
+.gps-panel-title{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:0 0 12px;padding:8px 12px;background:#000;color:#fff;
+  font-size:12px;letter-spacing:2px;text-transform:uppercase;
+}
+.gps-panel-status{
+  font-size:10px;letter-spacing:1.5px;padding:3px 8px;
+  border:1px solid #fff;background:transparent;color:#fff;
+}
+.gps-panel-status.ok{background:#fff;color:#000;}
+.gps-panel-status.warn{background:#ffb300;color:#000;border-color:#ffb300;}
+.gps-panel-status.err{background:#d50000;color:#fff;border-color:#d50000;}
+.gps-panel-status.run{background:#1976d2;color:#fff;border-color:#1976d2;}
+.gps-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  padding:0 12px 12px;
+}
+.gps-cell{
+  border:1px solid #000;padding:6px 10px;background:#fafafa;
+  display:flex;flex-direction:column;gap:2px;
+}
+.gps-cell.wide{grid-column:span 3;}
+.gps-cell label{
+  font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#666;font-weight:700;
+}
+.gps-cell output{
+  font:13px/1.2 'Courier New',monospace;color:#000;word-break:break-all;
+}
+.gps-actions{
+  display:flex;gap:8px;flex-wrap:wrap;padding:0 12px 12px;
+}
+.gps-hint{
+  margin:0;padding:8px 12px;border-top:1px solid #000;background:#fafafa;
+  font-size:11px;color:#444;
+}
+@media (max-width:520px){
+  .gps-grid{grid-template-columns:repeat(2,1fr);}
+  .gps-cell.wide{grid-column:span 2;}
+}
+
+/* ===== Draft restored banner ===== */
+.draft-banner{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border:2px dashed #ffb300;background:#fff8e1;color:#5d4037;
+  padding:8px 12px;margin:0 0 14px;font-size:11px;letter-spacing:1px;
+  text-transform:uppercase;font-weight:700;
+}
+
+/* ===== Main-tab switcher matches extras style ===== */
+.main-switcher{margin-bottom:14px;}

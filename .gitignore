@@ -11,3 +11,8 @@ package-lock.json
 
 # Local data / generated reports (not part of the app)
 sabal/
+
+# Local smoke-test scratch
+_smoke.js
+_smoke_out.txt
+out.log

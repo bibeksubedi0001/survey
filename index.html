@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title"          content="KUKL Survey" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=15" />
+  <link rel="stylesheet" href="css/styles.css?v=16" />
 
   <!-- Third-party libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"   data-cfasync="false"></script>
@@ -64,18 +64,18 @@
     <nav class="drawer-nav" role="tablist">
       <button class="tab active" data-tab="home"     data-icon="⌂">HOME</button>
       <div class="drawer-divider">FIELD REPORTS</div>
-      <button class="tab"        data-tab="capture"  data-icon="◉">NEW SURVEY</button>
+      <button class="tab"        data-tab="capture"  data-icon="◉">NEW SURVEY <span id="recordCount" class="badge">0</span></button>
       <button class="tab"        data-tab="chief"    data-icon="★">CHIEF OFFICER</button>
       <button class="tab"        data-tab="leak"     data-icon="◆">LEAKAGE SURVEY</button>
       <button class="tab"        data-tab="pressure" data-icon="↯">PRESSURE</button>
       <button class="tab"        data-tab="area"     data-icon="⬢">AREA SURVEY</button>
-      <div class="drawer-divider">QUICK VIEWS</div>
-      <button class="tab"        data-tab="records"  data-icon="❑">RECORDS <span id="recordCount" class="badge">0</span></button>
-      <button class="tab"        data-tab="map"      data-icon="◎">LOCATION MAP</button>
       <div class="drawer-divider">DATA CALCULATION</div>
       <button class="tab"        data-tab="nrw"      data-icon="∑">NRW REPORT</button>
       <div class="drawer-divider">OTHER</div>
       <button class="tab"        data-tab="about"    data-icon="?">HELP</button>
+      <!-- Hidden routing anchors: kept so SURVEY/REPORT/MAP switcher and hub-go can activate these panels via the existing tab system. -->
+      <button class="tab" data-tab="records" hidden aria-hidden="true" style="display:none;"></button>
+      <button class="tab" data-tab="map"     hidden aria-hidden="true" style="display:none;"></button>
     </nav>
   </aside>
   <div id="drawerOverlay" class="drawer-overlay" hidden></div>
@@ -180,6 +180,11 @@
 
     <!-- ===== TAB: NEW SURVEY ===== -->
     <section id="tab-capture" class="tab-panel">
+      <nav class="view-switcher main-switcher">
+        <button type="button" class="vs-btn active" data-route="capture">SURVEY</button>
+        <button type="button" class="vs-btn"        data-route="records">REPORT</button>
+        <button type="button" class="vs-btn"        data-route="map">MAP</button>
+      </nav>
 
       <!-- GPS PANEL -->
       <div class="card">
@@ -374,6 +379,11 @@
 
     <!-- ===== TAB: RECORDS ===== -->
     <section id="tab-records" class="tab-panel">
+      <nav class="view-switcher main-switcher">
+        <button type="button" class="vs-btn"        data-route="capture">SURVEY</button>
+        <button type="button" class="vs-btn active" data-route="records">REPORT</button>
+        <button type="button" class="vs-btn"        data-route="map">MAP</button>
+      </nav>
       <div class="card">
         <div class="card-head">
           <h2>Saved Survey Records</h2>
@@ -412,6 +422,11 @@
 
     <!-- ===== TAB: MAP ===== -->
     <section id="tab-map" class="tab-panel">
+      <nav class="view-switcher main-switcher">
+        <button type="button" class="vs-btn"        data-route="capture">SURVEY</button>
+        <button type="button" class="vs-btn"        data-route="records">REPORT</button>
+        <button type="button" class="vs-btn active" data-route="map">MAP</button>
+      </nav>
       <div class="card">
         <div class="card-head">
           <h2>Surveyed Locations</h2>
@@ -563,9 +578,10 @@
        SCRIPTS
        ============================================================ -->
   <script src="js/media-widgets.js?v=1"   data-cfasync="false"></script>
+  <script src="js/gps-sampler.js?v=1"     data-cfasync="false"></script>
   <script src="js/app.js?v=14"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=2"      data-cfasync="false"></script>
-  <script src="js/extra-sections.js?v=4"   data-cfasync="false"></script>
+  <script src="js/extra-sections.js?v=5"   data-cfasync="false"></script>
 
   <!-- Drawer wiring (small inline glue) -->
   <script>
@@ -584,6 +600,15 @@
       });
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) close();
+      });
+
+      // Main-panel SURVEY/REPORT/MAP switcher → routes to the existing tabs.
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.main-switcher .vs-btn');
+        if (!btn) return;
+        var route = btn.getAttribute('data-route');
+        var drawerBtn = document.querySelector('.tab[data-tab="' + route + '"]');
+        if (drawerBtn) drawerBtn.click();
       });
     })();
   </script>
