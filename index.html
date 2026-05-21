@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title"          content="KUKL Survey" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=18" />
+  <link rel="stylesheet" href="css/styles.css?v=19" />
 
   <!-- Third-party libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"   data-cfasync="false"></script>
@@ -30,9 +30,6 @@
        HEADER
        ============================================================ -->
   <header class="app-header">
-    <button id="btnNav" class="nav-toggle" aria-label="Open menu" aria-controls="appDrawer" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
     <a href="#home" id="brandHome" class="brand" aria-label="Go to Home">
       <img src="assets/kukl-logo.png" alt="KUKL Logo" class="brand-logo" />
       <div class="brand-text">
@@ -49,37 +46,25 @@
   </header>
 
   <!-- ============================================================
-       SIDE DRAWER (replaces tab bar)
-       Buttons keep the .tab class so the existing tab handler in
-       app.js continues to switch panels automatically.
+       PRIMARY NAVIGATION BAR (always visible, sticky)
        ============================================================ -->
-  <aside id="appDrawer" class="drawer" role="dialog" aria-label="Sections" aria-modal="true" hidden>
-    <div class="drawer-head">
-      <img src="assets/kukl-logo.png" alt="" class="drawer-logo" />
-      <div class="drawer-title">
-        <strong>KUKL Survey</strong>
-        <small>Field Sections</small>
-      </div>
-      <button id="btnNavClose" class="nav-close" aria-label="Close menu">×</button>
-    </div>
-    <nav class="drawer-nav" role="tablist">
-      <button class="tab active" data-tab="home"     data-icon="⌂">HOME</button>
-      <div class="drawer-divider">FIELD REPORTS</div>
-      <button class="tab"        data-tab="capture"  data-icon="◉">NEW SURVEY <span id="recordCount" class="badge">0</span></button>
-      <button class="tab"        data-tab="chief"    data-icon="★">CHIEF OFFICER</button>
-      <button class="tab"        data-tab="leak"     data-icon="◆">LEAKAGE SURVEY</button>
-      <button class="tab"        data-tab="pressure" data-icon="↯">PRESSURE</button>
-      <button class="tab"        data-tab="area"     data-icon="⬢">AREA SURVEY</button>
-      <div class="drawer-divider">DATA CALCULATION</div>
-      <button class="tab"        data-tab="nrw"      data-icon="∑">NRW REPORT</button>
-      <div class="drawer-divider">OTHER</div>
-      <button class="tab"        data-tab="about"    data-icon="?">HELP</button>
-      <!-- Hidden routing anchors: kept so SURVEY/REPORT/MAP switcher and hub-go can activate these panels via the existing tab system. -->
+  <nav class="nav-bar" id="appNav" role="tablist" aria-label="Sections">
+    <div class="nav-bar-inner">
+      <button class="tab active" data-tab="home">⌂ HOME</button>
+      <span class="nav-sep" aria-hidden="true"></span>
+      <button class="tab" data-tab="capture">◉ NEW SURVEY <span id="recordCount" class="badge">0</span></button>
+      <button class="tab" data-tab="chief">★ CHIEF OFFICER</button>
+      <button class="tab" data-tab="leak">◆ LEAKAGE</button>
+      <button class="tab" data-tab="pressure">↯ PRESSURE</button>
+      <button class="tab" data-tab="area">⬢ AREA SURVEY</button>
+      <span class="nav-sep" aria-hidden="true"></span>
+      <button class="tab" data-tab="nrw">∑ NRW REPORT</button>
+      <button class="tab" data-tab="about">? HELP</button>
+      <!-- Hidden routing anchors for SURVEY/REPORT/MAP switcher and hub-go -->
       <button class="tab" data-tab="records" hidden aria-hidden="true" style="display:none;"></button>
       <button class="tab" data-tab="map"     hidden aria-hidden="true" style="display:none;"></button>
-    </nav>
-  </aside>
-  <div id="drawerOverlay" class="drawer-overlay" hidden></div>
+    </div>
+  </nav>
 
   <!-- ============================================================
        MAIN CONTENT
@@ -581,17 +566,14 @@
   <script src="js/nrw-builder.js?v=2"      data-cfasync="false"></script>
   <script src="js/extra-sections.js?v=7"   data-cfasync="false"></script>
 
-  <!-- Drawer + global navigation wiring -->
+  <!-- Global navigation wiring -->
   <script>
     (function () {
-      var drawer  = document.getElementById('appDrawer');
-      var overlay = document.getElementById('drawerOverlay');
-      var btnOpen = document.getElementById('btnNav');
-      var btnClose= document.getElementById('btnNavClose');
       var brand   = document.getElementById('brandHome');
       var btnHomeQuick = document.getElementById('btnHomeQuick');
       var btnTop  = document.getElementById('btnBackToTop');
       var sectionLabel = document.getElementById('currentSection');
+      var navBar  = document.getElementById('appNav');
 
       // ---- Section labels (shown in header subtitle) ----
       var SECTION_TITLES = {
@@ -606,81 +588,41 @@
         nrw: 'NRW Report Builder',
         about: 'Help & About',
       };
-      // Which drawer entry should appear "active" for each route.
-      // records/map collapse into the NEW SURVEY entry.
-      var DRAWER_FOR_ROUTE = {
-        records: 'capture',
-        map: 'capture',
-      };
-
-      function isRail() {
-        return document.body.classList.contains('rail-mode');
-      }
-      function open()  {
-        if (isRail()) return;
-        drawer.hidden = false; overlay.hidden = false;
-        document.body.classList.add('drawer-open');
-        btnOpen.setAttribute('aria-expanded','true');
-      }
-      function close() {
-        if (isRail()) return;
-        document.body.classList.remove('drawer-open');
-        btnOpen.setAttribute('aria-expanded','false');
-        setTimeout(function(){
-          if (!isRail()) { drawer.hidden = true; overlay.hidden = true; }
-        }, 220);
-      }
-      btnOpen .addEventListener('click', open);
-      btnClose.addEventListener('click', close);
-      overlay .addEventListener('click', close);
-      document.querySelectorAll('#appDrawer .tab').forEach(function (b) {
-        b.addEventListener('click', close);
-      });
-
-      // ---- Responsive: turn drawer into a permanent side-rail on wide screens ----
-      var mql = window.matchMedia('(min-width: 1100px)');
-      function applyRail(on) {
-        if (on) {
-          document.body.classList.add('rail-mode');
-          document.body.classList.remove('drawer-open');
-          drawer.hidden = false;
-          overlay.hidden = true;
-        } else {
-          document.body.classList.remove('rail-mode');
-          drawer.hidden = true;
-          overlay.hidden = true;
-        }
-      }
-      applyRail(mql.matches);
-      (mql.addEventListener ? mql.addEventListener.bind(mql, 'change')
-                            : mql.addListener.bind(mql))(function (e) { applyRail(e.matches); });
-
-      // ---- Update section label + drawer active state on every tab activation ----
-      function syncActive(route) {
-        if (SECTION_TITLES[route] && sectionLabel) {
-          sectionLabel.textContent = SECTION_TITLES[route];
-          document.title = 'KUKL · ' + SECTION_TITLES[route];
-        }
-        var drawerKey = DRAWER_FOR_ROUTE[route] || route;
-        document.querySelectorAll('#appDrawer .tab').forEach(function (b) {
-          b.classList.toggle('active', b.getAttribute('data-tab') === drawerKey);
-        });
-      }
-      // Hook EVERY tab button (including hidden routing anchors)
-      document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
-        b.addEventListener('click', function () { syncActive(b.getAttribute('data-tab')); });
-      });
-      // Initial state
-      syncActive('home');
+      // Records/Map routes collapse into NEW SURVEY in the nav bar.
+      var NAV_FOR_ROUTE = { records: 'capture', map: 'capture' };
 
       // ---- Main-panel SURVEY/REPORT/MAP switcher → activate the matching tab ----
       document.addEventListener('click', function (e) {
         var btn = e.target.closest('.main-switcher .vs-btn');
         if (!btn) return;
         var route = btn.getAttribute('data-route');
-        var drawerBtn = document.querySelector('.tab[data-tab="' + route + '"]');
-        if (drawerBtn) drawerBtn.click();
+        var navBtn = document.querySelector('.tab[data-tab="' + route + '"]');
+        if (navBtn) navBtn.click();
       });
+
+      // ---- Update section label + nav-bar active state on every tab activation ----
+      function syncActive(route) {
+        if (SECTION_TITLES[route] && sectionLabel) {
+          sectionLabel.textContent = SECTION_TITLES[route];
+          document.title = 'KUKL · ' + SECTION_TITLES[route];
+        }
+        var navKey = NAV_FOR_ROUTE[route] || route;
+        document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-tab') === navKey);
+        });
+        // Auto-scroll the active button into view on small screens
+        if (navBar) {
+          var active = navBar.querySelector('.tab.active:not([hidden])');
+          if (active && active.scrollIntoView) {
+            try { active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+          }
+        }
+      }
+      // Hook EVERY tab button (including hidden routing anchors)
+      document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
+        b.addEventListener('click', function () { syncActive(b.getAttribute('data-tab')); });
+      });
+      syncActive('home');
 
       // ---- Brand → HOME ----
       function gotoHome(e) {
@@ -693,18 +635,15 @@
       if (btnHomeQuick) btnHomeQuick.addEventListener('click', gotoHome);
 
       // ---- Keyboard shortcuts ----
-      // Esc closes drawer; Alt+H = Home, Alt+N = New Survey, Alt+R = Records,
-      // Alt+M = Map, Alt+C = Chief, Alt+L = Leakage, Alt+P = Pressure,
-      // Alt+A = Area, Alt+B = NRW (B for Builder), Alt+? = Help.
+      // Alt+H Home, Alt+N New Survey, Alt+R Records, Alt+M Map,
+      // Alt+C/L/P/A field reports, Alt+B NRW, Alt+/ Help.
       var SHORTCUTS = {
         h: 'home',  n: 'capture',  r: 'records',  m: 'map',
         c: 'chief', l: 'leak',     p: 'pressure', a: 'area',
         b: 'nrw',   '/': 'about',
       };
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) close();
         if (!e.altKey || e.ctrlKey || e.metaKey) return;
-        // Don't hijack inside form fields
         var tag = (e.target && e.target.tagName) || '';
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
         var key = (e.key || '').toLowerCase();
