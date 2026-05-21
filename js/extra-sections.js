@@ -308,9 +308,50 @@
       emptyState,
     );
 
+    // ---- Map card ----
+    const mapHost = el('div', { id: `${key}_map`, class: 'extra-map' });
+    const mapEmpty = el('div', { id: `${key}_map_empty`, class: 'empty-state' }, 'No mapped records yet. Save a report with GPS to see it here.');
+    const mapCard = el('div', { class: 'card' },
+      el('div', { class: 'card-head' },
+        el('h2', null, 'Location Map'),
+        el('div', { class: 'btn-row' },
+          el('button', { type: 'button', class: 'btn btn-outline', id: `${key}_map_fit` }, 'FIT ALL'),
+        ),
+      ),
+      mapHost,
+      mapEmpty,
+    );
+
+    // ---- View switcher (SURVEY / REPORT / MAP) ----
+    const formView    = el('div', { class: 'section-view active', 'data-view': 'survey' }, formCard);
+    const reportView  = el('div', { class: 'section-view',        'data-view': 'report' }, recordsCard);
+    const mapView     = el('div', { class: 'section-view',        'data-view': 'map'    }, mapCard);
+
+    const switcher = el('nav', { class: 'view-switcher', id: `${key}_switcher` },
+      el('button', { type: 'button', class: 'vs-btn active', 'data-view': 'survey' }, 'SURVEY'),
+      el('button', { type: 'button', class: 'vs-btn',        'data-view': 'report' }, 'REPORT'),
+      el('button', { type: 'button', class: 'vs-btn',        'data-view': 'map'    }, 'MAP'),
+    );
+    switcher.addEventListener('click', (e) => {
+      const b = e.target.closest('.vs-btn');
+      if (!b) return;
+      setSectionView(key, b.dataset.view);
+    });
+
     panel.innerHTML = '';
-    panel.appendChild(formCard);
-    panel.appendChild(recordsCard);
+    panel.appendChild(switcher);
+    panel.appendChild(formView);
+    panel.appendChild(reportView);
+    panel.appendChild(mapView);
+
+    // Map "Fit all" button
+    document.getElementById(`${key}_map_fit`).addEventListener('click', () => {
+      const m = panel._extraMap;
+      if (m && m._group && m._group.getLayers().length) {
+        const b = m._group.getBounds();
+        if (b.isValid()) m.fitBounds(b.pad(0.2));
+      }
+    });
 
     // Wire up
     form.addEventListener('submit', async (e) => {
@@ -653,6 +694,76 @@
   }
   function stripStar(s) { return (s || '').replace(/\s*\*$/, ''); }
 
+  // ---------- View switching (SURVEY / REPORT / MAP) ----------
+  function setSectionView(key, view) {
+    const panel = document.getElementById('tab-' + key);
+    if (!panel) return;
+    if (!panel._extraRendered) {
+      panel._extraRendered = true;
+      renderSection(panel, key);
+    }
+    view = ['survey','report','map'].includes(view) ? view : 'survey';
+    panel.querySelectorAll('.section-view').forEach(v => {
+      v.classList.toggle('active', v.dataset.view === view);
+    });
+    panel.querySelectorAll('.view-switcher .vs-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.view === view);
+    });
+    if (view === 'map') refreshMap(key);
+  }
+
+  async function refreshMap(key) {
+    const panel = document.getElementById('tab-' + key);
+    if (!panel) return;
+    const host  = document.getElementById(`${key}_map`);
+    const empty = document.getElementById(`${key}_map_empty`);
+    if (!host) return;
+
+    if (typeof L === 'undefined') {
+      empty.textContent = 'Map library not loaded.';
+      empty.style.display = '';
+      host.style.display = 'none';
+      return;
+    }
+
+    const all = await dbAll(SECTIONS[key].store);
+    const points = all.filter(r => r.gps && isFinite(r.gps.lat) && isFinite(r.gps.lng));
+
+    if (!points.length) {
+      empty.style.display = '';
+      host.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    host.style.display  = '';
+
+    let map = panel._extraMap;
+    if (!map) {
+      map = L.map(host, { zoomControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap',
+      }).addTo(map);
+      map._group = L.featureGroup().addTo(map);
+      panel._extraMap = map;
+    } else {
+      map._group.clearLayers();
+    }
+
+    points.forEach(r => {
+      const { lat, lng } = r.gps;
+      const popup = `<div style="font:11px monospace;line-height:1.4;">
+        <b>${r.id}</b><br>
+        ${(r.createdAt || '').replace('T',' ').slice(0,19)}<br>
+        ${summaryValue(key, r)}
+      </div>`;
+      L.marker([lat, lng]).bindPopup(popup).addTo(map._group);
+    });
+    const b = map._group.getBounds();
+    if (b.isValid()) map.fitBounds(b.pad(0.2));
+    setTimeout(() => map.invalidateSize(), 50);
+  }
+
   // ---------- Init ----------
   function init() {
     document.querySelectorAll('[data-extra-section]').forEach(panel => {
@@ -675,6 +786,30 @@
         }
       });
     });
+
+    // ---- Home-hub routing (delegated) ----
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('.hub-go');
+      if (!b) return;
+      e.preventDefault();
+      const goto = b.getAttribute('data-goto');
+      const view = b.getAttribute('data-view');
+      if (!goto) return;
+      // Activate the target tab via the existing tab system
+      const tabBtn = document.querySelector('.tab[data-tab="' + goto + '"]');
+      if (tabBtn) {
+        tabBtn.click();
+      } else {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        const panel = document.getElementById('tab-' + goto);
+        if (panel) panel.classList.add('active');
+      }
+      // For extra sections, also switch the inner SURVEY/REPORT/MAP view
+      if (view && SECTIONS[goto]) {
+        setTimeout(() => setSectionView(goto, view), 0);
+      }
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+    });
   }
 
   if (document.readyState === 'loading') {
@@ -683,6 +818,10 @@
     init();
   }
 
-  // Expose for debugging
-  window.KUKLExtra = { SECTIONS, dbAll, dbPut, dbDelete, openDB };
+  // Expose API
+  window.KUKLExtra = {
+    SECTIONS, dbAll, dbPut, dbDelete, openDB,
+    setView: setSectionView,
+    refreshMap,
+  };
 })();

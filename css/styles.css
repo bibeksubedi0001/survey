@@ -877,6 +877,100 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .extra-loc{margin-top:4px;}
 .extra-photos .thumb-strip{margin-top:8px;}
 
+/* ===== HOME HUB ===== */
+.hub-section{margin:0 0 28px;}
+.hub-heading{
+  margin:0 0 12px;
+  padding:8px 12px;
+  background:#000;
+  color:#fff;
+  font-size:13px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  font-weight:700;
+  border:2px solid #000;
+}
+.hub-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:14px;
+}
+.hub-card{
+  border:2px solid #000;
+  background:#fff;
+  padding:18px 16px 14px;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+}
+.hub-card .hub-icon{
+  font-size:28px;
+  line-height:1;
+  margin-bottom:8px;
+  letter-spacing:2px;
+}
+.hub-card h3{
+  margin:0 0 6px;
+  font-size:16px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  font-weight:700;
+}
+.hub-card p{
+  margin:0 0 14px;
+  font-size:12px;
+  color:#333;
+  line-height:1.5;
+  flex:1;
+}
+.hub-card .hub-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.hub-card .hub-actions .btn{
+  flex:1 1 auto;
+  padding:8px 10px;
+  font-size:11px;
+  letter-spacing:1.5px;
+}
+
+/* ===== VIEW SWITCHER inside each extra section ===== */
+.view-switcher{
+  display:flex;
+  gap:0;
+  margin:0 0 14px;
+  border:2px solid #000;
+  background:#fff;
+}
+.view-switcher .vs-btn{
+  flex:1;
+  padding:10px 12px;
+  background:#fff;
+  color:#000;
+  border:none;
+  border-right:1px solid #000;
+  font-size:12px;
+  letter-spacing:1.5px;
+  font-weight:700;
+  text-transform:uppercase;
+  cursor:pointer;
+}
+.view-switcher .vs-btn:last-child{border-right:none;}
+.view-switcher .vs-btn.active{background:#000;color:#fff;}
+.view-switcher .vs-btn:hover:not(.active){background:#f0f0f0;}
+
+.section-view{display:none;}
+.section-view.active{display:block;}
+
+/* Per-section Leaflet map */
+.extra-map{
+  width:100%;
+  height:460px;
+  border:1px solid #000;
+  background:#f4f4f4;
+}
+
 /* Grouped form headings inside each section */
 .extra-form-body .group-title{
   margin:18px 0 8px;

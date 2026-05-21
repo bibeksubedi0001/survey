@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title"          content="KUKL Survey" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=13" />
+  <link rel="stylesheet" href="css/styles.css?v=14" />
 
   <!-- Third-party libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"   data-cfasync="false"></script>
@@ -62,15 +62,18 @@
       <button id="btnNavClose" class="nav-close" aria-label="Close menu">×</button>
     </div>
     <nav class="drawer-nav" role="tablist">
-      <button class="tab active" data-tab="capture"  data-icon="◉">NEW SURVEY</button>
-      <button class="tab"        data-tab="records"  data-icon="❑">RECORDS <span id="recordCount" class="badge">0</span></button>
-      <button class="tab"        data-tab="map"      data-icon="◎">LOCATION MAP</button>
-      <button class="tab"        data-tab="nrw"      data-icon="∑">NRW REPORT</button>
+      <button class="tab active" data-tab="home"     data-icon="⌂">HOME</button>
       <div class="drawer-divider">FIELD REPORTS</div>
+      <button class="tab"        data-tab="capture"  data-icon="◉">NEW SURVEY</button>
       <button class="tab"        data-tab="chief"    data-icon="★">CHIEF OFFICER</button>
       <button class="tab"        data-tab="leak"     data-icon="◆">LEAKAGE SURVEY</button>
       <button class="tab"        data-tab="pressure" data-icon="↯">PRESSURE</button>
       <button class="tab"        data-tab="area"     data-icon="⬢">AREA SURVEY</button>
+      <div class="drawer-divider">QUICK VIEWS</div>
+      <button class="tab"        data-tab="records"  data-icon="❑">RECORDS <span id="recordCount" class="badge">0</span></button>
+      <button class="tab"        data-tab="map"      data-icon="◎">LOCATION MAP</button>
+      <div class="drawer-divider">DATA CALCULATION</div>
+      <button class="tab"        data-tab="nrw"      data-icon="∑">NRW REPORT</button>
       <div class="drawer-divider">OTHER</div>
       <button class="tab"        data-tab="about"    data-icon="?">HELP</button>
     </nav>
@@ -82,8 +85,101 @@
        ============================================================ -->
   <main class="container">
 
+    <!-- ===== TAB: HOME (HUB) ===== -->
+    <section id="tab-home" class="tab-panel active">
+      <div class="hub-section">
+        <h2 class="hub-heading">FIELD REPORTS</h2>
+        <div class="hub-grid">
+
+          <div class="hub-card" data-topic="capture">
+            <div class="hub-icon">◉</div>
+            <h3>New Survey</h3>
+            <p>Standard customer / connection survey with photos and GPS.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="capture">SURVEY</button>
+              <button class="btn btn-outline hub-go" data-goto="records">REPORT</button>
+              <button class="btn btn-outline hub-go" data-goto="map">MAP</button>
+            </div>
+          </div>
+
+          <div class="hub-card" data-topic="chief">
+            <div class="hub-icon">★</div>
+            <h3>Chief Officer</h3>
+            <p>Field observations escalated by the Chief Officer.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="chief"   data-view="survey">SURVEY</button>
+              <button class="btn btn-outline hub-go" data-goto="chief"   data-view="report">REPORT</button>
+              <button class="btn btn-outline hub-go" data-goto="chief"   data-view="map">MAP</button>
+            </div>
+          </div>
+
+          <div class="hub-card" data-topic="leak">
+            <div class="hub-icon">◆</div>
+            <h3>Pipe Leakage</h3>
+            <p>Visible / underground leakage logging with severity.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="leak"    data-view="survey">SURVEY</button>
+              <button class="btn btn-outline hub-go" data-goto="leak"    data-view="report">REPORT</button>
+              <button class="btn btn-outline hub-go" data-goto="leak"    data-view="map">MAP</button>
+            </div>
+          </div>
+
+          <div class="hub-card" data-topic="pressure">
+            <div class="hub-icon">↯</div>
+            <h3>Pressure</h3>
+            <p>Hydraulic pressure readings across the DMA.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="pressure" data-view="survey">SURVEY</button>
+              <button class="btn btn-outline hub-go" data-goto="pressure" data-view="report">REPORT</button>
+              <button class="btn btn-outline hub-go" data-goto="pressure" data-view="map">MAP</button>
+            </div>
+          </div>
+
+          <div class="hub-card" data-topic="area">
+            <div class="hub-icon">⬢</div>
+            <h3>Area Survey</h3>
+            <p>Area / Tole level demographics and supply pattern.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="area" data-view="survey">SURVEY</button>
+              <button class="btn btn-outline hub-go" data-goto="area" data-view="report">REPORT</button>
+              <button class="btn btn-outline hub-go" data-goto="area" data-view="map">MAP</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="hub-section">
+        <h2 class="hub-heading">DATA CALCULATION</h2>
+        <div class="hub-grid">
+          <div class="hub-card" data-topic="nrw">
+            <div class="hub-icon">∑</div>
+            <h3>NRW Report</h3>
+            <p>Non-Revenue Water monthly calculation workbook.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="nrw">OPEN</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hub-section">
+        <h2 class="hub-heading">HELP</h2>
+        <div class="hub-grid">
+          <div class="hub-card" data-topic="about">
+            <div class="hub-icon">?</div>
+            <h3>Help &amp; About</h3>
+            <p>Usage tips, offline behavior, and credits.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="about">OPEN</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== TAB: NEW SURVEY ===== -->
-    <section id="tab-capture" class="tab-panel active">
+    <section id="tab-capture" class="tab-panel">
 
       <!-- GPS PANEL -->
       <div class="card">
@@ -467,9 +563,9 @@
        SCRIPTS
        ============================================================ -->
   <script src="js/media-widgets.js?v=1"   data-cfasync="false"></script>
-  <script src="js/app.js?v=13"             data-cfasync="false"></script>
+  <script src="js/app.js?v=14"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=2"      data-cfasync="false"></script>
-  <script src="js/extra-sections.js?v=3"   data-cfasync="false"></script>
+  <script src="js/extra-sections.js?v=4"   data-cfasync="false"></script>
 
   <!-- Drawer wiring (small inline glue) -->
   <script>
@@ -483,11 +579,9 @@
       btnOpen .addEventListener('click', open);
       btnClose.addEventListener('click', close);
       overlay .addEventListener('click', close);
-      // Auto-close after selecting a section
       document.querySelectorAll('#appDrawer .tab').forEach(function (b) {
         b.addEventListener('click', close);
       });
-      // Esc key
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) close();
       });
