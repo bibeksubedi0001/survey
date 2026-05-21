@@ -16,7 +16,7 @@
 
   if (window.KUKLDma) return;
 
-  var DATA_BASE = 'data/dma/';
+  var DATA_BASE = './data/dma/';
   var INDEX_URL = DATA_BASE + 'index.json';
 
   // Shared state across map instances
@@ -25,8 +25,8 @@
 
   function loadIndex() {
     if (!_indexPromise) {
-      _indexPromise = fetch(INDEX_URL, { cache: 'force-cache' })
-        .then(function (r) { if (!r.ok) throw new Error('index.json ' + r.status); return r.json(); })
+      _indexPromise = fetch(INDEX_URL)
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + INDEX_URL); return r.json(); })
         .catch(function (e) { _indexPromise = null; throw e; });
     }
     return _indexPromise;
@@ -35,8 +35,8 @@
   function loadLayer(dmaId, layer) {
     var key = dmaId + '/' + layer;
     if (_geojsonCache[key]) return Promise.resolve(_geojsonCache[key]);
-    return fetch(DATA_BASE + key + '.geojson', { cache: 'force-cache' })
-      .then(function (r) { if (!r.ok) throw new Error(layer + ' ' + r.status); return r.json(); })
+    return fetch(DATA_BASE + key + '.geojson')
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (gj) { _geojsonCache[key] = gj; return gj; });
   }
 
@@ -264,7 +264,8 @@
       if (opts.defaultId) setActiveDma(opts.defaultId);
     }).catch(function (e) {
       console.warn('[KUKLDma] could not load index:', e);
-      root.querySelector('.kdma-head').innerHTML = '<span style="color:#b00;font-size:11px;">DMA data unavailable</span>';
+      root.querySelector('.kdma-head').innerHTML =
+        '<span style="color:#b00;font-size:10px;" title="' + escapeHtml(String(e && e.message || e)) + '">DMA data unavailable</span>';
     });
 
     return { setActiveDma: setActiveDma, getActiveDma: function () { return state.activeId; }, destroy: destroy };
