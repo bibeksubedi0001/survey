@@ -1302,6 +1302,32 @@ a.brand:hover .brand-text h1{text-decoration:underline;}
   #btnHomeQuick{display:inline-flex;}
 }
 
+/* ========================================================
+   NRW Report — live summary preview
+   ======================================================== */
+.nrw-preview-host{margin-top:18px;}
+.nrw-preview{border:1px solid #000;padding:12px 14px;background:#fafafa;}
+.nrw-preview h3{margin:0 0 10px;font-size:14px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid #000;padding-bottom:6px;}
+.nrw-preview h4{margin:0 0 6px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;}
+.nrw-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px;}
+.nrw-kpi{border:1px solid #000;background:#fff;padding:8px 10px;display:flex;flex-direction:column;}
+.nrw-kpi span{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:#444;}
+.nrw-kpi b{font-size:18px;font-weight:800;margin-top:2px;}
+.nrw-kpi i{font-size:10px;color:#666;font-style:normal;margin-top:2px;}
+.nrw-tables{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width:780px){ .nrw-tables{grid-template-columns:1fr;} }
+.nrw-table-wrap{border:1px solid #000;background:#fff;padding:8px 10px;min-width:0;}
+.nrw-scroll{max-height:340px;overflow:auto;}
+.nrw-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.nrw-tbl th,.nrw-tbl td{padding:4px 6px;border-bottom:1px solid #ddd;text-align:left;}
+.nrw-tbl thead th{position:sticky;top:0;background:#000;color:#fff;font-size:11px;letter-spacing:.4px;text-transform:uppercase;}
+.nrw-tbl tfoot th{background:#f0f0f0;font-weight:800;border-top:2px solid #000;border-bottom:none;}
+.nrw-tbl .num{text-align:right;font-variant-numeric:tabular-nums;}
+.nrw-tbl td.muted{color:#888;font-style:italic;text-align:center;}
+.nrw-unmapped{margin-top:12px;border:1px dashed #a8001a;background:#fff5f5;padding:8px 10px;}
+.nrw-unmapped h4{color:#a8001a;}
+.nrw-unmapped ul{margin:4px 0 0 18px;font-size:12px;}
+
 /* =============================================================
    PRIMARY NAV BAR — always visible, sticky below header
    ============================================================= */

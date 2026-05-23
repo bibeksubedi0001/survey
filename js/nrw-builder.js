@@ -158,7 +158,9 @@
   }
 
   // ---------- Core build ----------
-  async function buildReport({ customerFile, scadaFile, dmaName, dateStart, dateEnd, outputName }) {
+  // Pure compute: parses inputs, builds modified workbook + structured summary.
+  // Does NOT write any file. Caller decides whether to download.
+  async function computeReport({ customerFile, scadaFile, dmaName, dateStart, dateEnd }) {
     if (!customerFile) throw new Error('Customer reading file is required.');
     if (!scadaFile)    throw new Error('SCADA workbook is required.');
     if (!dmaName || !dmaName.trim()) throw new Error('DMA name is required (e.g. "9.1").');
@@ -314,20 +316,29 @@
       if (!mappedSet.has(k)) unmapped[k] = v;
     }
 
-    // Write file (browser download)
-    XLSX.writeFile(custWB, outputName);
-
     return {
-      sheet: wsName,
-      customerCount: last,             // rows 2..(last+1) in 1-based Excel
-      totalCons,
-      totalBill,
-      dailyCount: daily.length,
-      dailyTotal,
-      statusTotal,
-      unmapped,
-      dmaLabel,
+      wb: custWB,
+      summary: {
+        sheet: wsName,
+        customerCount: last,             // rows 2..(last+1) in 1-based Excel
+        totalCons,
+        totalBill,
+        daily,                           // [[{y,m,d}, value], ...]
+        dailyCount: daily.length,
+        dailyTotal,
+        status: STATUS_TEMPLATE.map(([id, name]) => ({ id, name, count: counts.get(name) || 0 })),
+        statusTotal,
+        unmapped,
+        dmaLabel,
+      },
     };
+  }
+
+  // Thin wrapper: compute + download.
+  async function buildReport(opts) {
+    const { wb, summary } = await computeReport(opts);
+    XLSX.writeFile(wb, opts.outputName);
+    return summary;
   }
 
   // ---------- UI wiring ----------
@@ -354,6 +365,76 @@
     el.textContent = msg;
   }
 
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function fmtNum(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return '0';
+    return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+  function ymdToISO(y) {
+    const pad = (v) => String(v).padStart(2, '0');
+    return y.y + '-' + pad(y.m) + '-' + pad(y.d);
+  }
+
+  function fileFingerprint(f) {
+    return f ? (f.name + '|' + f.size + '|' + f.lastModified) : '';
+  }
+
+  function renderPreview(host, summary) {
+    if (!host) return;
+    const s = summary;
+    const dailyRows = s.daily.map(([ymd, v]) =>
+      `<tr><td>${ymdToISO(ymd)}</td><td class="num">${fmtNum(v)}</td></tr>`
+    ).join('');
+    const statusRows = s.status.map(row =>
+      `<tr><td class="num">${row.id}</td><td>${escapeHtml(row.name)}</td><td class="num">${fmtNum(row.count)}</td></tr>`
+    ).join('');
+    const unmappedKeys = Object.keys(s.unmapped || {});
+    const unmappedHtml = unmappedKeys.length
+      ? `<div class="nrw-unmapped"><h4>Unmapped observations (not counted in status table)</h4><ul>${
+          unmappedKeys.map(k => `<li><b>${escapeHtml(k)}</b>: ${fmtNum(s.unmapped[k])}</li>`).join('')
+        }</ul></div>`
+      : '';
+
+    host.innerHTML =
+      `<div class="nrw-preview">
+        <h3>Summary preview &mdash; ${escapeHtml(s.dmaLabel)}</h3>
+        <div class="nrw-kpis">
+          <div class="nrw-kpi"><span>Customer rows</span><b>${fmtNum(s.customerCount)}</b></div>
+          <div class="nrw-kpi"><span>Total consumption</span><b>${fmtNum(s.totalCons)}</b></div>
+          <div class="nrw-kpi"><span>Total billable</span><b>${fmtNum(s.totalBill)}</b></div>
+          <div class="nrw-kpi"><span>Daily SCADA total</span><b>${fmtNum(s.dailyTotal)}</b><i>${fmtNum(s.dailyCount)} days</i></div>
+          <div class="nrw-kpi"><span>Meter-status total</span><b>${fmtNum(s.statusTotal)}</b></div>
+        </div>
+        <div class="nrw-tables">
+          <div class="nrw-table-wrap">
+            <h4>Daily SCADA &mdash; ${escapeHtml(s.dmaLabel)}</h4>
+            <div class="nrw-scroll">
+              <table class="nrw-tbl">
+                <thead><tr><th>Day</th><th class="num">${escapeHtml(s.dmaLabel)}</th></tr></thead>
+                <tbody>${dailyRows || '<tr><td colspan="2" class="muted">No SCADA data in range.</td></tr>'}</tbody>
+                <tfoot><tr><th>Total</th><th class="num">${fmtNum(s.dailyTotal)}</th></tr></tfoot>
+              </table>
+            </div>
+          </div>
+          <div class="nrw-table-wrap">
+            <h4>Meter Status Summary</h4>
+            <div class="nrw-scroll">
+              <table class="nrw-tbl">
+                <thead><tr><th class="num">ID</th><th>Meter Status</th><th class="num">Count</th></tr></thead>
+                <tbody>${statusRows}</tbody>
+                <tfoot><tr><th colspan="2">Total</th><th class="num">${fmtNum(s.statusTotal)}</th></tr></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+        ${unmappedHtml}
+      </div>`;
+  }
+
   function init() {
     const custIn   = $('nrwCustFile');
     const scadaIn  = $('nrwScadaFile');
@@ -363,7 +444,64 @@
     const endIn    = $('nrwEnd');
     const genBtn   = $('nrwGenerate');
     const resetBtn = $('nrwReset');
+    const preview  = $('nrwPreview');
     if (!custIn || !genBtn) return; // tab not on this page
+
+    // Auto-preview state
+    let lastFingerprint = '';
+    let cached = null;        // { wb, summary, fingerprint }
+    let previewRunId = 0;     // guards out-of-order async results
+
+    function currentFingerprint() {
+      return [
+        fileFingerprint(custIn.files && custIn.files[0]),
+        fileFingerprint(scadaIn.files && scadaIn.files[0]),
+        (dmaIn.value || '').trim(),
+        startIn.value, endIn.value,
+      ].join('::');
+    }
+
+    async function refreshPreview() {
+      if (!preview) return;
+      const cf = custIn.files && custIn.files[0];
+      const sf = scadaIn.files && scadaIn.files[0];
+      const dma = (dmaIn.value || '').trim();
+      const ds = parseDateInput(startIn.value);
+      const de = parseDateInput(endIn.value);
+      if (!cf || !sf || !dma || !ds || !de || ds > de) {
+        preview.innerHTML = '';
+        cached = null;
+        lastFingerprint = '';
+        return;
+      }
+      const fp = currentFingerprint();
+      if (fp === lastFingerprint) return;
+      lastFingerprint = fp;
+      const myRun = ++previewRunId;
+
+      preview.innerHTML = '<div class="nrw-preview"><p class="hint">Building preview…</p></div>';
+      try {
+        const result = await computeReport({
+          customerFile: cf, scadaFile: sf, dmaName: dma,
+          dateStart: ds, dateEnd: de,
+        });
+        if (myRun !== previewRunId) return; // superseded
+        cached = { wb: result.wb, summary: result.summary, fingerprint: fp };
+        renderPreview(preview, result.summary);
+        log('Preview ready. Click GENERATE REPORT to download the .xlsx.');
+      } catch (err) {
+        if (myRun !== previewRunId) return;
+        cached = null;
+        preview.innerHTML = '';
+        log('Preview failed: ' + (err && err.message ? err.message : String(err)), true);
+      }
+    }
+
+    // Trigger preview on any input change
+    [custIn, scadaIn, dmaIn, startIn, endIn].forEach(el => {
+      el.addEventListener('change', refreshPreview);
+      el.addEventListener('input',  refreshPreview);
+    });
 
     custIn.addEventListener('change', () => {
       const f = custIn.files && custIn.files[0];
@@ -373,6 +511,7 @@
       if (!outIn.value.trim()) {
         outIn.value = (dma || 'dma') + '_baisakh.xlsx';
       }
+      refreshPreview();
     });
 
     resetBtn && resetBtn.addEventListener('click', () => {
@@ -380,6 +519,9 @@
       scadaIn.value = '';
       dmaIn.value = '';
       outIn.value = '';
+      cached = null;
+      lastFingerprint = '';
+      if (preview) preview.innerHTML = '';
       log('Select both files to begin.');
     });
 
@@ -403,10 +545,17 @@
       genBtn.disabled = true;
       log('Building report…');
       try {
-        const stats = await buildReport({
-          customerFile, scadaFile, dmaName,
-          dateStart, dateEnd, outputName,
-        });
+        let stats;
+        const fp = currentFingerprint();
+        if (cached && cached.fingerprint === fp) {
+          XLSX.writeFile(cached.wb, outputName);
+          stats = cached.summary;
+        } else {
+          stats = await buildReport({
+            customerFile, scadaFile, dmaName,
+            dateStart, dateEnd, outputName,
+          });
+        }
         const lines = [
           `Saved: ${outputName}`,
           `DMA: ${stats.dmaLabel}`,
@@ -422,6 +571,9 @@
           }
         }
         log(lines.join('\n'));
+        // After download the cached wb has been written; invalidate so re-clicking recomputes
+        cached = null;
+        lastFingerprint = '';
       } catch (err) {
         console.error(err);
         log('Error: ' + (err && err.message ? err.message : String(err)), true);
@@ -438,5 +590,5 @@
   }
 
   // Expose for testing / debugging
-  window.NRWBuilder = { buildReport };
+  window.NRWBuilder = { buildReport, computeReport };
 })();
