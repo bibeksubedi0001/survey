@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-21T10:14:46.534238Z",
+  "generated": "2026-05-23T17:46:22.548636Z",
   "dmas": [
     {
       "id": "1.2",
@@ -18,6 +18,32 @@
         "connections": 2259,
         "pipes": 2740,
         "devices": 47,
+        "boundary": 1
+      },
+      "layers": [
+        "connections",
+        "pipes",
+        "devices",
+        "boundary"
+      ]
+    },
+    {
+      "id": "2.1",
+      "label": "DMA 2.1",
+      "bbox": [
+        85.327971,
+        27.708195,
+        85.339345,
+        27.718897
+      ],
+      "center": [
+        27.713546,
+        85.333658
+      ],
+      "counts": {
+        "connections": 2601,
+        "pipes": 3397,
+        "devices": 106,
         "boundary": 1
       },
       "layers": [
