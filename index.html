@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title"          content="KUKL Survey" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=27" />
+  <link rel="stylesheet" href="css/styles.css?v=28" />
 
   <!-- Third-party libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"   data-cfasync="false"></script>
@@ -559,6 +559,9 @@
   <!-- Floating back-to-top button (appears on scroll) -->
   <button id="btnBackToTop" class="fab fab-top" aria-label="Back to top" title="Back to top" hidden>▲</button>
 
+  <!-- Floating BACK-to-home button (visible on every non-home tab) -->
+  <button id="btnBackHome" class="fab fab-back" aria-label="Back to Home" title="Back to Home (Alt+H)" hidden>←</button>
+
   <!-- ============================================================
        SCRIPTS
        ============================================================ -->
@@ -575,6 +578,7 @@
       var brand   = document.getElementById('brandHome');
       var btnHomeQuick = document.getElementById('btnHomeQuick');
       var btnTop  = document.getElementById('btnBackToTop');
+      var btnBack = document.getElementById('btnBackHome');
       var sectionLabel = document.getElementById('currentSection');
       var navBar  = document.getElementById('appNav');
 
@@ -613,6 +617,8 @@
         document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
           b.classList.toggle('active', b.getAttribute('data-tab') === navKey);
         });
+        // Show BACK FAB on every non-home view
+        if (btnBack) btnBack.hidden = (navKey === 'home');
         // Auto-scroll the active button into view on small screens
         if (navBar) {
           var active = navBar.querySelector('.tab.active:not([hidden])');
@@ -636,6 +642,7 @@
       }
       brand.addEventListener('click', gotoHome);
       if (btnHomeQuick) btnHomeQuick.addEventListener('click', gotoHome);
+      if (btnBack)      btnBack.addEventListener('click', gotoHome);
 
       // ---- Keyboard shortcuts ----
       // Alt+H Home, Alt+N New Survey, Alt+R Records, Alt+M Map,
