@@ -80,10 +80,12 @@
         var c = L.DomUtil.create('div', 'kukl-dma-ctrl leaflet-bar');
         c.innerHTML =
           '<div class="kdma-row kdma-head">' +
+            '<button type="button" class="kdma-toggle" title="Collapse / expand" aria-label="Collapse">–</button>' +
             '<select class="kdma-select"><option value="">— DMA —</option></select>' +
             '<button type="button" class="kdma-fit" title="Fit to DMA">⤢</button>' +
             '<button type="button" class="kdma-close" title="Hide DMA layers">×</button>' +
           '</div>' +
+          '<div class="kdma-body">' +
           '<label class="kdma-row"><input type="checkbox" class="kdma-all"> Show all DMA outlines</label>' +
           '<div class="kdma-row kdma-layers">' +
             '<label><input type="checkbox" class="kdma-lyr" data-lyr="boundary" checked> Boundary</label>' +
@@ -101,7 +103,8 @@
               '<label><span class="kdma-sw kdma-sw-logger"></span><input type="checkbox" class="kdma-dev" data-kind="logger" checked> Pressure loggers <span class="kdma-cnt" data-kind="logger">0</span></label>' +
             '</div>' +
           '</div>' +
-          '<div class="kdma-row kdma-stats" hidden></div>';
+          '<div class="kdma-row kdma-stats" hidden></div>' +
+          '</div>';   /* /.kdma-body */
         L.DomEvent.disableClickPropagation(c);
         L.DomEvent.disableScrollPropagation(c);
         return c;
@@ -115,6 +118,22 @@
     var $fit  = root.querySelector('.kdma-fit');
     var $close= root.querySelector('.kdma-close');
     var $stats= root.querySelector('.kdma-stats');
+    var $toggle = root.querySelector('.kdma-toggle');
+
+    // Auto-collapse on small viewports so the panel doesn't cover the map
+    function applyCollapsed(collapsed) {
+      root.classList.toggle('kdma-collapsed', !!collapsed);
+      if ($toggle) {
+        $toggle.textContent = collapsed ? '+' : '–';
+        $toggle.setAttribute('aria-label', collapsed ? 'Expand' : 'Collapse');
+      }
+    }
+    applyCollapsed(window.innerWidth <= 640);
+    if ($toggle) {
+      $toggle.addEventListener('click', function () {
+        applyCollapsed(!root.classList.contains('kdma-collapsed'));
+      });
+    }
 
     // ---------- Public API ----------
     function destroy() {
