@@ -1415,14 +1415,20 @@ a.brand:hover .brand-text h1{text-decoration:underline;}
 
 /* Left-side BACK-to-home FAB */
 .fab-back{
-  left:18px;right:auto;bottom:18px;
-  width:48px;height:48px;
-  font-size:22px;line-height:1;
+  left:max(14px, env(safe-area-inset-left));
+  right:auto;
+  bottom:max(18px, env(safe-area-inset-bottom));
+  width:52px;height:52px;
+  font-size:24px;line-height:1;
   border-radius:50%;
+  z-index:1100;          /* above Leaflet controls / attribution */
+  background:#000;color:#fff;
+  border:2px solid #000;
 }
+.fab-back:hover{background:#fff;color:#000;}
 .fab-back::after{
   content:"HOME";
-  position:absolute;left:54px;top:50%;transform:translateY(-50%);
+  position:absolute;left:58px;top:50%;transform:translateY(-50%);
   font-size:10px;font-weight:800;letter-spacing:1.2px;
   background:#000;color:#fff;padding:3px 6px;border:1px solid #000;
   opacity:0;pointer-events:none;transition:opacity .15s ease;
@@ -1430,7 +1436,12 @@ a.brand:hover .brand-text h1{text-decoration:underline;}
 }
 .fab-back:hover::after{opacity:1;}
 @media (max-width:640px){
-  .fab-back{left:12px;bottom:12px;width:44px;height:44px;font-size:20px;}
+  .fab-back{
+    left:max(10px, env(safe-area-inset-left));
+    bottom:max(70px, env(safe-area-inset-bottom));  /* clear browser UI / Leaflet attribution */
+    width:48px;height:48px;font-size:22px;
+  }
+  .fab-back::after{display:none;}    /* no hover on touch devices */
 }
 
 /* Mobile: tighter padding so more tabs are visible at once */
