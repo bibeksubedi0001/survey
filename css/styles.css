@@ -1246,7 +1246,7 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 }
 
 /* ===== Main-tab switcher matches extras style ===== */
-.main-switcher{margin-bottom:14px;}
+.main-switcher{display:none;}   /* SURVEY / REPORT / MAP trio hidden — reach via Home hub */
 
 /* ===== Single-record VIEW overlay (extras) ===== */
 .record-view-overlay{
