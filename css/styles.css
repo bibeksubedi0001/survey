@@ -499,11 +499,33 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .kukl-dma-ctrl .kdma-layers{flex-wrap:wrap;gap:4px 10px;}
 .kukl-dma-ctrl .kdma-layers label{display:inline-flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;}
 .kukl-dma-ctrl label{cursor:pointer;}
+.kukl-dma-ctrl .kdma-devices{margin:4px 0 2px;padding-top:4px;border-top:1px dashed #ccc;}
+.kukl-dma-ctrl .kdma-devices-head{font-size:11px;}
+.kukl-dma-ctrl .kdma-devices-head label{display:inline-flex;align-items:center;gap:4px;}
+.kukl-dma-ctrl .kdma-devices-list{display:flex;flex-direction:column;gap:2px;margin:3px 0 0 14px;}
+.kukl-dma-ctrl .kdma-devices-list label{display:inline-flex;align-items:center;gap:4px;font-size:11px;}
+.kukl-dma-ctrl .kdma-devices-list input[disabled]+ *{opacity:.45;}
+.kukl-dma-ctrl .kdma-sw{
+  display:inline-block;width:10px;height:10px;border-radius:50%;
+  border:1.5px solid #000;flex:0 0 auto;
+}
+.kukl-dma-ctrl .kdma-sw-valve    {background:#fff;border-color:#000;}
+.kukl-dma-ctrl .kdma-sw-hydrant  {background:#e53935;border-color:#b71c1c;}
+.kukl-dma-ctrl .kdma-sw-flowmeter{background:#43a047;border-color:#1b5e20;}
+.kukl-dma-ctrl .kdma-sw-logger   {background:#8e24aa;border-color:#4a148c;}
+.kukl-dma-ctrl .kdma-cnt{
+  margin-left:auto;font-size:10px;color:#555;
+  background:#f1f1f1;border:1px solid #ddd;border-radius:8px;padding:0 5px;min-width:18px;text-align:center;
+}
 .kukl-dma-ctrl .kdma-stats{flex-wrap:wrap;gap:3px;padding-top:4px;border-top:1px dashed #ccc;font-size:11px;}
 .kukl-dma-ctrl .kdma-pill{
   display:inline-block;background:#eef3fb;border:1px solid #cdd9ee;
   padding:1px 5px;border-radius:8px;margin-right:3px;font-size:10px;
 }
+.kukl-dma-ctrl .kdma-pill-valve    {background:#fff;border-color:#000;color:#000;}
+.kukl-dma-ctrl .kdma-pill-hydrant  {background:#ffebee;border-color:#e53935;color:#b71c1c;}
+.kukl-dma-ctrl .kdma-pill-flowmeter{background:#e8f5e9;border-color:#43a047;color:#1b5e20;}
+.kukl-dma-ctrl .kdma-pill-logger   {background:#f3e5f5;border-color:#8e24aa;color:#4a148c;}
 .leaflet-popup-content{font-family:inherit;font-size:13px;line-height:1.5;}
 .leaflet-popup-content b{font-size:12px;letter-spacing:.5px;}
 .leaflet-popup-content .popup-photos{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}

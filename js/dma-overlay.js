@@ -54,6 +54,8 @@
     },
   };
   var DEVICE_LABELS = { valve: 'Valve', hydrant: 'Hydrant', flowmeter: 'Flow meter', logger: 'Pressure logger' };
+  var DEVICE_LABELS_PLURAL = { valve: 'Valves', hydrant: 'Hydrants', flowmeter: 'Flow meters', logger: 'Pressure loggers' };
+  var DEVICE_KINDS = ['valve', 'hydrant', 'flowmeter', 'logger'];
 
   function attach(map, opts) {
     opts = opts || {};
@@ -63,7 +65,9 @@
     var state = {
       activeId: null,
       showAllOutlines: false,
-      layersVisible: { boundary: true, connections: true, pipes: true, devices: true },
+      layersVisible: { boundary: true, connections: true, pipes: true },
+      deviceVisible: { valve: true, hydrant: true, flowmeter: true, logger: true },
+      deviceCounts: {},   // dmaId → { valve, hydrant, flowmeter, logger }
       activeLayers: {},   // layer-name → L.Layer
       outlineLayer: null, // FeatureGroup for ALL boundaries
       index: null,
@@ -85,7 +89,17 @@
             '<label><input type="checkbox" class="kdma-lyr" data-lyr="boundary" checked> Boundary</label>' +
             '<label><input type="checkbox" class="kdma-lyr" data-lyr="connections" checked> Connections</label>' +
             '<label><input type="checkbox" class="kdma-lyr" data-lyr="pipes" checked> Pipes</label>' +
-            '<label><input type="checkbox" class="kdma-lyr" data-lyr="devices" checked> Devices</label>' +
+          '</div>' +
+          '<div class="kdma-devices">' +
+            '<div class="kdma-devices-head">' +
+              '<label><input type="checkbox" class="kdma-dev-all" checked> <b>Devices</b></label>' +
+            '</div>' +
+            '<div class="kdma-devices-list">' +
+              '<label><span class="kdma-sw kdma-sw-valve"></span><input type="checkbox" class="kdma-dev" data-kind="valve" checked> Valves <span class="kdma-cnt" data-kind="valve">0</span></label>' +
+              '<label><span class="kdma-sw kdma-sw-hydrant"></span><input type="checkbox" class="kdma-dev" data-kind="hydrant" checked> Hydrants <span class="kdma-cnt" data-kind="hydrant">0</span></label>' +
+              '<label><span class="kdma-sw kdma-sw-flowmeter"></span><input type="checkbox" class="kdma-dev" data-kind="flowmeter" checked> Flow meters <span class="kdma-cnt" data-kind="flowmeter">0</span></label>' +
+              '<label><span class="kdma-sw kdma-sw-logger"></span><input type="checkbox" class="kdma-dev" data-kind="logger" checked> Pressure loggers <span class="kdma-cnt" data-kind="logger">0</span></label>' +
+            '</div>' +
           '</div>' +
           '<div class="kdma-row kdma-stats" hidden></div>';
         L.DomEvent.disableClickPropagation(c);
@@ -138,7 +152,7 @@
       if (state.layersVisible.boundary    && meta.layers.indexOf('boundary')    >= 0) jobs.push(addBoundary(id));
       if (state.layersVisible.pipes       && meta.layers.indexOf('pipes')       >= 0) jobs.push(addPipes(id));
       if (state.layersVisible.connections && meta.layers.indexOf('connections') >= 0) jobs.push(addConnections(id));
-      if (state.layersVisible.devices     && meta.layers.indexOf('devices')     >= 0) jobs.push(addDevices(id));
+      if (meta.layers.indexOf('devices') >= 0) jobs.push(addDevices(id));
       Promise.all(jobs).then(function () {
         if (meta.bbox) {
           try {
@@ -150,10 +164,15 @@
 
     function renderStats(m) {
       var c = m.counts || {};
-      return '<b>' + escapeHtml(m.label) + '</b><br>' +
+      var dc = state.deviceCounts[m.id] || {};
+      var html = '<b>' + escapeHtml(m.label) + '</b><br>' +
         '<span class="kdma-pill">' + (c.connections || 0) + ' connections</span>' +
         '<span class="kdma-pill">' + (c.pipes       || 0) + ' pipes</span>' +
         '<span class="kdma-pill">' + (c.devices     || 0) + ' devices</span>';
+      DEVICE_KINDS.forEach(function (k) {
+        if (dc[k]) html += '<span class="kdma-pill kdma-pill-' + k + '">' + dc[k] + ' ' + DEVICE_LABELS_PLURAL[k].toLowerCase() + '</span>';
+      });
+      return html;
     }
     function escapeHtml(s) {
       return String(s == null ? '' : s)
@@ -186,22 +205,49 @@
     }
     function addDevices(id) {
       return loadLayer(id, 'devices').then(function (gj) {
-        var layer = L.geoJSON(gj, {
-          pointToLayer: function (f, latlng) {
-            var kind = (f.properties && f.properties.kind) || 'valve';
-            var s = STYLE.devices[kind] || STYLE.devices.valve;
-            return L.circleMarker(latlng, {
-              radius: s.radius, color: s.color, weight: s.weight,
-              fillColor: s.fillColor, fillOpacity: 0.95,
-            });
-          },
-          onEachFeature: function (f, lyr) {
-            var kind = (f.properties && f.properties.kind) || 'asset';
-            lyr.bindTooltip(DEVICE_LABELS[kind] || kind, { sticky: true });
-          },
-        }).addTo(map);
-        state.activeLayers.devices = layer;
+        // Bucket features by kind
+        var buckets = { valve: [], hydrant: [], flowmeter: [], logger: [] };
+        (gj.features || []).forEach(function (f) {
+          var kind = (f.properties && f.properties.kind) || 'valve';
+          if (!buckets[kind]) buckets[kind] = [];
+          buckets[kind].push(f);
+        });
+        // Cache counts + refresh UI counters/stats
+        var counts = {};
+        DEVICE_KINDS.forEach(function (k) { counts[k] = (buckets[k] || []).length; });
+        state.deviceCounts[id] = counts;
+        updateDeviceCountsUI(id);
+        // Create one sub-layer per kind; honour individual toggles
+        DEVICE_KINDS.forEach(function (kind) {
+          var feats = buckets[kind] || [];
+          if (!feats.length || !state.deviceVisible[kind]) return;
+          var s = STYLE.devices[kind] || STYLE.devices.valve;
+          var layer = L.geoJSON({ type: 'FeatureCollection', features: feats }, {
+            pointToLayer: function (f, latlng) {
+              return L.circleMarker(latlng, {
+                radius: s.radius, color: s.color, weight: s.weight,
+                fillColor: s.fillColor, fillOpacity: 0.95,
+              });
+            },
+            onEachFeature: function (f, lyr) {
+              lyr.bindTooltip(DEVICE_LABELS[kind], { sticky: true });
+            },
+          }).addTo(map);
+          state.activeLayers['devices:' + kind] = layer;
+        });
       }).catch(noop);
+    }
+
+    function updateDeviceCountsUI(id) {
+      var counts = state.deviceCounts[id] || {};
+      DEVICE_KINDS.forEach(function (k) {
+        var el = root.querySelector('.kdma-cnt[data-kind="' + k + '"]');
+        if (el) el.textContent = counts[k] || 0;
+        var cb = root.querySelector('.kdma-dev[data-kind="' + k + '"]');
+        if (cb) cb.disabled = !counts[k];
+      });
+      var meta = state.index && (state.index.dmas || []).find(function (d) { return d.id === id; });
+      if (meta) $stats.innerHTML = renderStats(meta);
     }
 
     function applyShowAll() {
@@ -242,6 +288,26 @@
     root.querySelectorAll('.kdma-lyr').forEach(function (cb) {
       cb.addEventListener('change', function () {
         state.layersVisible[cb.dataset.lyr] = cb.checked;
+        applyActive();
+      });
+    });
+    var $devAll = root.querySelector('.kdma-dev-all');
+    $devAll.addEventListener('change', function () {
+      var on = $devAll.checked;
+      root.querySelectorAll('.kdma-dev').forEach(function (cb) {
+        if (cb.disabled) return;
+        cb.checked = on;
+        state.deviceVisible[cb.dataset.kind] = on;
+      });
+      applyActive();
+    });
+    root.querySelectorAll('.kdma-dev').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        state.deviceVisible[cb.dataset.kind] = cb.checked;
+        // Sync parent checkbox state
+        var any = DEVICE_KINDS.some(function (k) { return state.deviceVisible[k]; });
+        $devAll.checked = any;
+        $devAll.indeterminate = any && !DEVICE_KINDS.every(function (k) { return state.deviceVisible[k]; });
         applyActive();
       });
     });
