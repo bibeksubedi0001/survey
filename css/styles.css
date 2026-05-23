@@ -1352,10 +1352,10 @@ a.brand:hover .brand-text h1{text-decoration:underline;}
   overflow-x:auto;
   overflow-y:hidden;
   -webkit-overflow-scrolling:touch;
-  scrollbar-width:thin;
+  scrollbar-width:none;          /* Firefox */
+  -ms-overflow-style:none;       /* IE/old Edge */
 }
-.nav-bar-inner::-webkit-scrollbar{height:4px;}
-.nav-bar-inner::-webkit-scrollbar-thumb{background:#000;}
+.nav-bar-inner::-webkit-scrollbar{display:none;height:0;width:0;}
 
 .nav-bar .tab{
   background:#fff;border:none;
