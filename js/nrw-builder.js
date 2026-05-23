@@ -328,6 +328,8 @@
         dailyTotal,
         status: STATUS_TEMPLATE.map(([id, name]) => ({ id, name, count: counts.get(name) || 0 })),
         statusTotal,
+        nrwVolume: dailyTotal - totalBill,
+        nrwPercent: dailyTotal > 0 ? ((dailyTotal - totalBill) / dailyTotal) * 100 : null,
         unmapped,
         dmaLabel,
       },
@@ -399,6 +401,11 @@
         }</ul></div>`
       : '';
 
+    const nrwPctText = (s.nrwPercent == null) ? '—' : (s.nrwPercent.toFixed(2) + '%');
+    const nrwCls = (s.nrwPercent == null) ? 'nrw-kpi-neutral'
+                 : (s.nrwPercent >= 40 ? 'nrw-kpi-bad'
+                 : (s.nrwPercent >= 25 ? 'nrw-kpi-warn' : 'nrw-kpi-good'));
+
     host.innerHTML =
       `<div class="nrw-preview">
         <h3>Summary preview &mdash; ${escapeHtml(s.dmaLabel)}</h3>
@@ -408,6 +415,7 @@
           <div class="nrw-kpi"><span>Total billable</span><b>${fmtNum(s.totalBill)}</b></div>
           <div class="nrw-kpi"><span>Daily SCADA total</span><b>${fmtNum(s.dailyTotal)}</b><i>${fmtNum(s.dailyCount)} days</i></div>
           <div class="nrw-kpi"><span>Meter-status total</span><b>${fmtNum(s.statusTotal)}</b></div>
+          <div class="nrw-kpi nrw-kpi-hl ${nrwCls}"><span>NRW %</span><b>${nrwPctText}</b><i>NRW vol: ${fmtNum(s.nrwVolume)}</i></div>
         </div>
         <div class="nrw-tables">
           <div class="nrw-table-wrap">
@@ -562,6 +570,7 @@
           `Customer rows: ${stats.customerCount}`,
           `Total consumption: ${stats.totalCons}    Total billable: ${stats.totalBill}`,
           `Daily SCADA entries: ${stats.dailyCount}    Sum: ${stats.dailyTotal}`,
+          `NRW volume: ${stats.nrwVolume}    NRW %: ${stats.nrwPercent == null ? '—' : stats.nrwPercent.toFixed(2) + '%'}`,
           `Meter-status total: ${stats.statusTotal}`,
         ];
         if (stats.unmapped && Object.keys(stats.unmapped).length) {
