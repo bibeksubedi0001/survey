@@ -44,7 +44,7 @@
   var STYLE = {
     boundary: { color: '#000', weight: 2, opacity: 0.9, fill: true, fillColor: '#000', fillOpacity: 0.05, dashArray: '4 4' },
     boundaryAll: { color: '#000', weight: 2, opacity: 1, fill: false },
-    boundaryCombined: { color: '#000', weight: 2, opacity: 0.9, fill: false, dashArray: '4 4' },
+    boundaryCombined: { color: '#d32f2f', weight: 3, opacity: 1, fill: false, lineJoin: 'round', lineCap: 'round' },
     pipes:    { color: '#0d47a1', weight: 1.4, opacity: 0.85 },
     pipesCombined:    { color: '#0d47a1', weight: 1, opacity: 0.6 },
     connection: { radius: 2, weight: 0, color: '#1565c0', fillColor: '#1976d2', fillOpacity: 0.85 },
@@ -180,6 +180,13 @@
           if (meta.layers.indexOf('devices') >= 0) jobsAll.push(addDevices(meta.id, true));
         });
         Promise.all(jobsAll).then(function () {
+          // Make sure every boundary sits on top of pipes/connections
+          Object.keys(state.activeLayers).forEach(function (k) {
+            if (k.indexOf('boundary:') === 0) {
+              var lyr = state.activeLayers[k];
+              if (lyr && lyr.bringToFront) { try { lyr.bringToFront(); } catch (_) {} }
+            }
+          });
           // Fit to the union of all bboxes
           var b = null;
           all.forEach(function (m) {
@@ -253,6 +260,7 @@
           style: multi ? STYLE.boundaryCombined : STYLE.boundary,
           interactive: false,
         }).addTo(map);
+        if (multi && layer.bringToFront) { try { layer.bringToFront(); } catch (_) {} }
         state.activeLayers[multi ? 'boundary:' + id : 'boundary'] = layer;
       }).catch(noop);
     }
