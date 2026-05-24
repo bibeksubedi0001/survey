@@ -1,7 +1,7 @@
 /* NRW Baishakh Report Builder
  * Mirrors the Python pipeline used to generate 9.1_baisakh.xlsx:
  *   - reads customer reading workbook + SCADA workbook
- *   - inserts billable consumption column (max(consumption,5))
+ *   - inserts billable consumption column (cons===0 → 5, else cons as-is)
  *   - appends grand-total row, daily SCADA block, and meter-status summary
  * Requires SheetJS (XLSX) loaded globally.
  */
@@ -205,7 +205,9 @@
       const cons = getCell(ws, r, CONS_COL);
       let bill;
       if (typeof cons === 'number') {
-        bill = Math.max(cons, 5);
+        // Only consumption of exactly 0 is bumped to the minimum billable (5).
+        // Values 1-4 are billed as-is (do NOT round up to 5).
+        bill = cons === 0 ? 5 : cons;
         totalCons += cons;
         totalBill += bill;
       } else {
