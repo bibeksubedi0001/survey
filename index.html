@@ -15,7 +15,19 @@
   <meta name="apple-mobile-web-app-title"          content="KUKL Survey" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?v=31" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="css/styles.css?v=33" />
+
+  <!-- Apply theme as early as possible to avoid FOUC -->
+  <script>
+    (function(){
+      try{
+        var t = localStorage.getItem('kukl-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      }catch(e){}
+    })();
+  </script>
 
   <!-- Third-party libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"   data-cfasync="false"></script>
@@ -23,6 +35,8 @@
   <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js"         data-cfasync="false"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"    data-cfasync="false"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"                   data-cfasync="false"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" data-cfasync="false"></script>
+  <script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"                  data-cfasync="false"></script>
 </head>
 <body>
 
@@ -50,16 +64,17 @@
        ============================================================ -->
   <nav class="nav-bar" id="appNav" role="tablist" aria-label="Sections">
     <div class="nav-bar-inner">
-      <button class="tab active" data-tab="home">⌂ HOME</button>
+      <button id="tabbtn-home"     class="tab active" role="tab" aria-selected="true"  aria-controls="tab-home"     tabindex="0"  data-tab="home">⌂ HOME</button>
       <span class="nav-sep" aria-hidden="true"></span>
-      <button class="tab" data-tab="capture">◉ NEW SURVEY <span id="recordCount" class="badge">0</span></button>
-      <button class="tab" data-tab="chief">★ CHIEF OFFICER <span id="chiefCount" class="badge">0</span></button>
-      <button class="tab" data-tab="leak">◆ LEAKAGE <span id="leakCount" class="badge">0</span></button>
-      <button class="tab" data-tab="pressure">↯ PRESSURE <span id="pressureCount" class="badge">0</span></button>
-      <button class="tab" data-tab="area">⬢ AREA SURVEY <span id="areaCount" class="badge">0</span></button>
+      <button id="tabbtn-capture"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-capture"  tabindex="-1" data-tab="capture">◉ NEW SURVEY <span id="recordCount" class="badge">0</span></button>
+      <button id="tabbtn-chief"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-chief"    tabindex="-1" data-tab="chief">★ CHIEF OFFICER <span id="chiefCount" class="badge">0</span></button>
+      <button id="tabbtn-leak"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-leak"     tabindex="-1" data-tab="leak">◆ LEAKAGE <span id="leakCount" class="badge">0</span></button>
+      <button id="tabbtn-pressure" class="tab"        role="tab" aria-selected="false" aria-controls="tab-pressure" tabindex="-1" data-tab="pressure">↯ PRESSURE <span id="pressureCount" class="badge">0</span></button>
+      <button id="tabbtn-area"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-area"     tabindex="-1" data-tab="area">⬢ AREA SURVEY <span id="areaCount" class="badge">0</span></button>
       <span class="nav-sep" aria-hidden="true"></span>
-      <button class="tab" data-tab="nrw">∑ NRW REPORT</button>
-      <button class="tab" data-tab="about">? HELP</button>
+      <button id="tabbtn-nrw"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-nrw"      tabindex="-1" data-tab="nrw">∑ NRW REPORT</button>
+      <button id="tabbtn-about"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-about"    tabindex="-1" data-tab="about">? HELP</button>
+      <button id="btnTheme" class="theme-toggle" type="button" title="Toggle theme (light / dark / sunlight)" aria-label="Toggle theme">◐ THEME</button>
       <!-- Hidden routing anchors for SURVEY/REPORT/MAP switcher and hub-go -->
       <button class="tab" data-tab="records" hidden aria-hidden="true" style="display:none;"></button>
       <button class="tab" data-tab="map"     hidden aria-hidden="true" style="display:none;"></button>
@@ -72,7 +87,7 @@
   <main class="container">
 
     <!-- ===== TAB: HOME (HUB) ===== -->
-    <section id="tab-home" class="tab-panel active">
+    <section id="tab-home" class="tab-panel active" role="tabpanel" aria-labelledby="tabbtn-home" tabindex="0">
       <div class="hub-section">
         <h2 class="hub-heading">FIELD REPORTS</h2>
         <div class="hub-grid">
@@ -165,7 +180,7 @@
     </section>
 
     <!-- ===== TAB: NEW SURVEY ===== -->
-    <section id="tab-capture" class="tab-panel">
+    <section id="tab-capture" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-capture" tabindex="0">
       <nav class="view-switcher main-switcher">
         <button type="button" class="vs-btn active" data-route="capture">SURVEY</button>
         <button type="button" class="vs-btn"        data-route="records">REPORT</button>
@@ -219,10 +234,12 @@
         <div class="card-head">
           <h2>3. Site &amp; Connection Details</h2>
         </div>
-        <form id="surveyForm" class="form-grid" autocomplete="off">
+        <form id="surveyForm" class="form-grid" autocomplete="off" novalidate>
+
+          <div id="formError" class="form-error" role="alert" aria-live="polite" hidden></div>
 
           <div class="field">
-            <label>Survey ID</label>
+            <label for="surveyId">Survey ID</label>
             <input type="text" id="surveyId" readonly />
           </div>
           <div class="field">
@@ -384,17 +401,50 @@
             <button id="btnClearAll"   class="btn btn-danger">DELETE ALL</button>
           </div>
         </div>
+        <div class="filter-row" role="region" aria-label="Filter records">
+          <label class="filter-cell">
+            <span>From</span>
+            <input type="date" id="filterDateFrom" />
+          </label>
+          <label class="filter-cell">
+            <span>To</span>
+            <input type="date" id="filterDateTo" />
+          </label>
+          <label class="filter-cell">
+            <span>Condition</span>
+            <select id="filterCondition">
+              <option value="">All</option>
+              <option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option><option>Critical</option>
+            </select>
+          </label>
+          <label class="filter-cell">
+            <span>Priority</span>
+            <select id="filterPriority">
+              <option value="">All</option>
+              <option>Normal</option><option>Medium</option><option>High</option><option>Urgent</option>
+            </select>
+          </label>
+          <label class="filter-cell">
+            <span>Leakage</span>
+            <select id="filterLeakage">
+              <option value="">All</option>
+              <option>No</option><option>Minor</option><option>Major</option>
+            </select>
+          </label>
+          <button id="filterClear" type="button" class="btn btn-outline btn-mini">CLEAR</button>
+          <span id="filterCount" class="filter-count" aria-live="polite"></span>
+        </div>
         <div class="table-wrap">
           <table id="recordTable">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Survey ID</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Address</th>
+                <th class="sortable" data-sort="id"        tabindex="0" role="button" aria-label="Sort by Survey ID">Survey ID</th>
+                <th class="sortable" data-sort="createdAt" tabindex="0" role="button" aria-label="Sort by Date" aria-sort="descending">Date</th>
+                <th class="sortable" data-sort="customer"  tabindex="0" role="button" aria-label="Sort by Customer">Customer</th>
+                <th class="sortable" data-sort="address"   tabindex="0" role="button" aria-label="Sort by Address">Address</th>
                 <th>Lat, Lng</th>
-                <th>Condition</th>
+                <th class="sortable" data-sort="condition" tabindex="0" role="button" aria-label="Sort by Condition">Condition</th>
                 <th>Photos</th>
                 <th>Actions</th>
               </tr>
@@ -407,7 +457,7 @@
     </section>
 
     <!-- ===== TAB: MAP ===== -->
-    <section id="tab-map" class="tab-panel">
+    <section id="tab-map" class="tab-panel" role="tabpanel" tabindex="0">
       <nav class="view-switcher main-switcher">
         <button type="button" class="vs-btn"        data-route="capture">SURVEY</button>
         <button type="button" class="vs-btn"        data-route="records">REPORT</button>
@@ -417,6 +467,7 @@
         <div class="card-head">
           <h2>Surveyed Locations</h2>
           <div class="btn-row">
+            <button id="btnMyLocation" class="btn btn-outline" type="button">○ MY LOCATION</button>
             <button id="btnFitMap"    class="btn btn-outline">FIT ALL</button>
             <button id="btnOpenGmaps" class="btn btn-outline">OPEN FIRST IN GOOGLE MAPS</button>
           </div>
@@ -433,7 +484,7 @@
     </section>
 
     <!-- ===== TAB: NRW REPORT ===== -->
-    <section id="tab-nrw" class="tab-panel">
+    <section id="tab-nrw" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-nrw" tabindex="0">
       <div class="card">
         <div class="card-head"><h2>NRW Baishakh Report Builder</h2></div>
 
@@ -478,19 +529,19 @@
     </section>
 
     <!-- ===== TAB: CHIEF OFFICER ===== -->
-    <section id="tab-chief"    class="tab-panel" data-extra-section="chief"></section>
+    <section id="tab-chief"    class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-chief"    tabindex="0" data-extra-section="chief"></section>
 
     <!-- ===== TAB: PIPE LEAKAGE ===== -->
-    <section id="tab-leak"     class="tab-panel" data-extra-section="leak"></section>
+    <section id="tab-leak"     class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-leak"     tabindex="0" data-extra-section="leak"></section>
 
     <!-- ===== TAB: PRESSURE ===== -->
-    <section id="tab-pressure" class="tab-panel" data-extra-section="pressure"></section>
+    <section id="tab-pressure" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-pressure" tabindex="0" data-extra-section="pressure"></section>
 
     <!-- ===== TAB: GENERAL SURVEY AREA ===== -->
-    <section id="tab-area"     class="tab-panel" data-extra-section="area"></section>
+    <section id="tab-area"     class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-area"     tabindex="0" data-extra-section="area"></section>
 
     <!-- ===== TAB: HELP ===== -->
-    <section id="tab-about" class="tab-panel">
+    <section id="tab-about" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-about" tabindex="0">
       <div class="card">
         <div class="card-head"><h2>How to Use</h2></div>
         <ol class="help-list">
@@ -566,11 +617,12 @@
        SCRIPTS
        ============================================================ -->
   <script src="js/media-widgets.js?v=1"   data-cfasync="false"></script>
-  <script src="js/gps-sampler.js?v=1"     data-cfasync="false"></script>
+  <script src="js/gps-sampler.js?v=2"     data-cfasync="false"></script>
+  <script src="js/geo-utils.js?v=1"       data-cfasync="false"></script>
   <script src="js/dma-overlay.js?v=8"     data-cfasync="false"></script>
-  <script src="js/app.js?v=15"             data-cfasync="false"></script>
+  <script src="js/app.js?v=17"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=4"      data-cfasync="false"></script>
-  <script src="js/extra-sections.js?v=9"   data-cfasync="false"></script>
+  <script src="js/extra-sections.js?v=10"   data-cfasync="false"></script>
 
   <!-- Global navigation wiring -->
   <script>

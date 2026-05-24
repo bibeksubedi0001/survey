@@ -7,9 +7,23 @@
 
 // ---------- Utilities ----------
 const $ = (id) => document.getElementById(id);
-const toast = (msg, ms = 2200) => {
+const toast = (msg, ms = 2200, action = null) => {
   const t = $('toast');
-  t.textContent = msg;
+  if (!t) return;
+  t.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  t.appendChild(span);
+  if (action && action.label && typeof action.onClick === 'function') {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'toast-action';
+    btn.textContent = action.label;
+    btn.addEventListener('click', () => {
+      try { action.onClick(); } finally { t.classList.remove('show'); clearTimeout(toast._t); }
+    });
+    t.appendChild(btn);
+  }
   t.classList.add('show');
   clearTimeout(toast._t);
   toast._t = setTimeout(() => t.classList.remove('show'), ms);
@@ -102,16 +116,82 @@ async function dbGet(id) {
 }
 
 // ---------- Tabs ----------
-document.querySelectorAll('.tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    $('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'records') renderRecords();
-    if (btn.dataset.tab === 'map') renderMap();
+function activateTab(btn, { focus = false } = {}) {
+  if (!btn) return;
+  const allTabs = document.querySelectorAll('.tab[data-tab]');
+  allTabs.forEach(b => {
+    b.classList.remove('active');
+    if (b.hasAttribute('role')) {
+      b.setAttribute('aria-selected', 'false');
+      b.setAttribute('tabindex', '-1');
+    }
   });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  if (btn.hasAttribute('role')) {
+    btn.setAttribute('aria-selected', 'true');
+    btn.setAttribute('tabindex', '0');
+  }
+  const panel = $('tab-' + btn.dataset.tab);
+  if (panel) panel.classList.add('active');
+  if (focus) btn.focus();
+  if (btn.dataset.tab === 'records') renderRecords();
+  if (btn.dataset.tab === 'map') renderMap();
+}
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => activateTab(btn));
 });
+// Roving focus / arrow-key nav across primary tabs
+(function wireTabKeyboard(){
+  const visibleTabs = () => Array.from(document.querySelectorAll('.nav-bar .tab[data-tab]'))
+    .filter(b => !b.hidden && b.offsetParent !== null);
+  document.querySelectorAll('.nav-bar .tab[data-tab]').forEach(btn => {
+    btn.addEventListener('keydown', (e) => {
+      const tabs = visibleTabs();
+      const idx = tabs.indexOf(btn);
+      if (idx < 0) return;
+      let next = -1;
+      switch (e.key) {
+        case 'ArrowRight': next = (idx + 1) % tabs.length; break;
+        case 'ArrowLeft':  next = (idx - 1 + tabs.length) % tabs.length; break;
+        case 'Home':       next = 0; break;
+        case 'End':        next = tabs.length - 1; break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          activateTab(btn, { focus: true });
+          return;
+        default: return;
+      }
+      e.preventDefault();
+      activateTab(tabs[next], { focus: true });
+    });
+  });
+})();
+
+// ---------- Theme toggle (light → dark → sunlight) ----------
+(function wireTheme(){
+  const btn = $('btnTheme');
+  if (!btn) return;
+  const ORDER = ['light', 'dark', 'sunlight'];
+  const LABELS = { light: '◐ LIGHT', dark: '◑ DARK', sunlight: '☼ SUNLIGHT' };
+  const read = () => {
+    try { return localStorage.getItem('kukl-theme') || 'light'; } catch(e) { return 'light'; }
+  };
+  const apply = (t) => {
+    document.documentElement.setAttribute('data-theme', t);
+    btn.textContent = LABELS[t] || LABELS.light;
+    btn.setAttribute('aria-label', `Theme: ${t}. Click to change.`);
+    try { localStorage.setItem('kukl-theme', t); } catch(e) {}
+  };
+  apply(read());
+  btn.addEventListener('click', () => {
+    const cur = read();
+    const next = ORDER[(ORDER.indexOf(cur) + 1) % ORDER.length] || 'light';
+    apply(next);
+    toast(`Theme: ${next}`, 1400);
+  });
+})();
 
 // ---------- Clock + Online status ----------
 function tickClock() {
@@ -213,6 +293,15 @@ function commitFused(reason) {
   stopGpsWatch(`${reason}  ·  fused ${fused.acc.toFixed(2)} m from ${fused.samples}/${gpsSamples.length} samples (best raw ${fused.rawBest.toFixed(2)} m)`);
   toast(`GPS locked at ${fused.acc.toFixed(2)} m`);
   if (typeof scheduleDraftSave === 'function') scheduleDraftSave();
+  // Auto-detect DMA for the current point and append to the status hint.
+  if (window.KUKLGeo) {
+    window.KUKLGeo.detectDma(fused.lat, fused.lng).then(d => {
+      const el = $('gpsStatus');
+      if (!el) return;
+      if (d) el.textContent += `  ·  ${d.label} (auto-detected)`;
+      else   el.textContent += `  ·  outside known DMA boundaries`;
+    }).catch(()=>{});
+  }
 }
 
 $('btnGetLocation').addEventListener('click', () => {
@@ -518,13 +607,12 @@ function resetForm(confirmReset = false) {
 $('surveyForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const rec = collectForm();
-  if (!rec.surveyor || !rec.customer || !rec.address) {
-    toast('Please fill required fields'); return;
-  }
-  if (!rec.gps || rec.gps.lat == null || rec.gps.lng == null) {
-    toast('GPS coordinates required — tap CAPTURE LOCATION first', 3500);
-    document.querySelector('#tab-capture .card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    $('btnGetLocation').focus();
+  const errs = validateSurvey(rec);
+  showFormErrors(errs);
+  if (errs.length) {
+    const firstId = errs[0].id;
+    const first = firstId && $(firstId);
+    if (first && first.focus) first.focus();
     return;
   }
   try {
@@ -537,6 +625,53 @@ $('surveyForm').addEventListener('submit', async (e) => {
     toast('Save failed: ' + err.message, 3500);
   }
 });
+
+function validateSurvey(rec) {
+  const errs = [];
+  if (!rec.surveyor) errs.push({ id: 'surveyor', msg: 'Surveyor name is required.' });
+  if (!rec.customer) errs.push({ id: 'customer', msg: 'Customer name is required.' });
+  if (!rec.address)  errs.push({ id: 'address',  msg: 'Address / Tole is required.' });
+  if (!rec.gps || rec.gps.lat == null || rec.gps.lng == null) {
+    errs.push({ id: 'btnGetLocation', msg: 'GPS coordinates required — tap CAPTURE LOCATION first.' });
+  }
+  return errs;
+}
+function showFormErrors(errs) {
+  // Clear previous
+  document.querySelectorAll('#surveyForm .field.invalid').forEach(f => f.classList.remove('invalid'));
+  document.querySelectorAll('#surveyForm .field-error').forEach(n => n.remove());
+  const banner = $('formError');
+  if (!errs.length) {
+    if (banner) { banner.hidden = true; banner.textContent = ''; }
+    return;
+  }
+  if (banner) {
+    banner.textContent = errs.length === 1
+      ? errs[0].msg
+      : `Please fix ${errs.length} issues before saving.`;
+    banner.hidden = false;
+  }
+  errs.forEach(err => {
+    const el = $(err.id);
+    if (!el) return;
+    const field = el.closest('.field');
+    if (field) {
+      field.classList.add('invalid');
+      const note = document.createElement('span');
+      note.className = 'field-error';
+      note.textContent = err.msg;
+      field.appendChild(note);
+    }
+  });
+}
+// Clear an inline error as soon as the user edits the field
+document.addEventListener('input', (e) => {
+  const field = e.target.closest('#surveyForm .field.invalid');
+  if (!field) return;
+  field.classList.remove('invalid');
+  const note = field.querySelector('.field-error');
+  if (note) note.remove();
+}, true);
 
 function collectForm() {
   return {
@@ -572,11 +707,53 @@ async function refreshCount() {
 refreshCount();
 
 async function renderRecords() {
-  const all = (await dbAll()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const all = (await dbAll());
+
+  // ----- Filters -----
   const q = ($('searchBox').value || '').toLowerCase().trim();
-  const list = q ? all.filter(r =>
-    [r.customer, r.address, r.id, r.surveyor, r.customerId].some(v => (v || '').toLowerCase().includes(q))
-  ) : all;
+  const fFrom = ($('filterDateFrom')?.value || '');
+  const fTo   = ($('filterDateTo')?.value   || '');
+  const fCond = ($('filterCondition')?.value || '');
+  const fPrio = ($('filterPriority')?.value  || '');
+  const fLeak = ($('filterLeakage')?.value   || '');
+  const inRange = (iso) => {
+    if (!fFrom && !fTo) return true;
+    const d = (iso || '').slice(0, 10);
+    if (fFrom && d < fFrom) return false;
+    if (fTo   && d > fTo)   return false;
+    return true;
+  };
+  let list = all.filter(r => {
+    if (q && ![r.customer, r.address, r.id, r.surveyor, r.customerId]
+      .some(v => (v || '').toLowerCase().includes(q))) return false;
+    if (!inRange(r.createdAt)) return false;
+    if (fCond && (r.condition || '') !== fCond) return false;
+    if (fPrio && (r.priority  || '') !== fPrio) return false;
+    if (fLeak && (r.leakage   || '') !== fLeak) return false;
+    return true;
+  });
+
+  // ----- Sort -----
+  const s = renderRecords._sort || { key: 'createdAt', dir: 'desc' };
+  const getVal = (r, k) => {
+    if (k === 'createdAt') return r.createdAt || '';
+    return String(r[k] ?? '').toLowerCase();
+  };
+  list.sort((a, b) => {
+    const av = getVal(a, s.key), bv = getVal(b, s.key);
+    if (av < bv) return s.dir === 'asc' ? -1 : 1;
+    if (av > bv) return s.dir === 'asc' ?  1 : -1;
+    return 0;
+  });
+  // Reflect sort indicator
+  document.querySelectorAll('#recordTable th.sortable').forEach(th => {
+    th.setAttribute('aria-sort', th.dataset.sort === s.key
+      ? (s.dir === 'asc' ? 'ascending' : 'descending')
+      : 'none');
+  });
+
+  const fc = $('filterCount');
+  if (fc) fc.textContent = `${list.length} of ${all.length}`;
 
   const body = $('recordBody');
   body.innerHTML = '';
@@ -617,6 +794,34 @@ async function renderRecords() {
   });
 }
 
+// Wire filter + sort controls once
+(function wireRecordControls(){
+  const ids = ['filterDateFrom','filterDateTo','filterCondition','filterPriority','filterLeakage'];
+  ids.forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('change', renderRecords);
+  });
+  const clr = $('filterClear');
+  if (clr) clr.addEventListener('click', () => {
+    ids.forEach(id => { const el = $(id); if (el) el.value = ''; });
+    const s = $('searchBox'); if (s) s.value = '';
+    renderRecords();
+  });
+  document.querySelectorAll('#recordTable th.sortable').forEach(th => {
+    const doSort = () => {
+      const key = th.dataset.sort;
+      const cur = renderRecords._sort || { key: 'createdAt', dir: 'desc' };
+      const dir = (cur.key === key && cur.dir === 'asc') ? 'desc' : 'asc';
+      renderRecords._sort = { key, dir };
+      renderRecords();
+    };
+    th.addEventListener('click', doSort);
+    th.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doSort(); }
+    });
+  });
+})();
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -627,11 +832,26 @@ async function handleRowAction(act, id) {
   if (act === 'view') showRecordModal(rec);
   else if (act === 'pdf') generateSurveyPdf(rec);
   else if (act === 'del') {
-    if (!confirm(`Delete record ${id}?`)) return;
+    // Soft delete with 5-second undo toast (no blocking confirm).
     await dbDel(id);
     await refreshCount();
     renderRecords();
-    toast('Deleted');
+    let undone = false;
+    toast(`Deleted ${rec.customer || id}`, 5000, {
+      label: 'UNDO',
+      onClick: async () => {
+        if (undone) return;
+        undone = true;
+        try {
+          await dbPut(rec);
+          await refreshCount();
+          renderRecords();
+          toast('Restored', 1500);
+        } catch (err) {
+          toast('Restore failed: ' + err.message, 3500);
+        }
+      }
+    });
   } else if (act === 'edit') {
     loadIntoForm(rec);
     document.querySelector('.tab[data-tab="capture"]').click();
@@ -827,6 +1047,8 @@ $('btnClearAll').addEventListener('click', async () => {
 // ---------- Map Tab (Leaflet + OpenStreetMap) ----------
 let leafletMap = null;
 let leafletMarkers = [];
+let leafletCluster = null;
+let liveLocation = null;   // { watchId, marker, circle, active }
 const KTM_DEFAULT = [27.7053, 85.3414]; // Kathmandu Baneshwor approx
 
 function conditionClass(c) {
@@ -848,11 +1070,10 @@ function ensureLeaflet() {
   // Guarantee non-zero height even if CSS is overridden
   if (!el.style.height) el.style.height = '520px';
   leafletMap = L.map(el, { zoomControl: true }).setView(KTM_DEFAULT, 14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    crossOrigin: true,
-    attribution: '© OpenStreetMap contributors',
-  }).addTo(leafletMap);
+
+  // ---- Base layer: try local PMTiles (offline), fall back to OSM ----
+  attachBaseLayer(leafletMap);
+
   // Resize support
   window.addEventListener('resize', () => leafletMap && leafletMap.invalidateSize());
   // DMA overlay (boundaries, pipes, connections, devices) — optional
@@ -860,6 +1081,28 @@ function ensureLeaflet() {
     try { window.KUKLDma.attach(leafletMap); } catch (e) { console.warn('[DMA] attach failed', e); }
   }
   return leafletMap;
+}
+
+async function attachBaseLayer(map) {
+  const osm = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, crossOrigin: true, attribution: '© OpenStreetMap contributors',
+  }).addTo(map);
+  const PMTILES_URL = './data/basemap/baneshwor.pmtiles';
+  try {
+    const head = await fetch(PMTILES_URL, { method: 'HEAD' });
+    if (!head.ok || !window.pmtiles || typeof window.pmtiles.leafletRasterLayer !== 'function') {
+      osm(); return;
+    }
+    const p = new window.pmtiles.PMTiles(PMTILES_URL);
+    const layer = window.pmtiles.leafletRasterLayer(p, {
+      attribution: 'Offline basemap (PMTiles)',
+      maxNativeZoom: 18, maxZoom: 19,
+    });
+    layer.addTo(map);
+    console.info('[map] offline PMTiles basemap loaded');
+  } catch (e) {
+    osm();
+  }
 }
 
 function kickMapResize() {
@@ -873,7 +1116,8 @@ async function renderMap() {
   if (!map) { toast('Map library not loaded — check internet'); return; }
   kickMapResize();
 
-  // Clear old markers
+  // Clear old markers / cluster group
+  if (leafletCluster) { map.removeLayer(leafletCluster); leafletCluster = null; }
   leafletMarkers.forEach(m => map.removeLayer(m));
   leafletMarkers = [];
 
@@ -882,6 +1126,15 @@ async function renderMap() {
     map.setView(KTM_DEFAULT, 14);
     kickMapResize();
     return;
+  }
+
+  const useCluster = typeof L.markerClusterGroup === 'function';
+  if (useCluster) {
+    leafletCluster = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      maxClusterRadius: 50,
+    });
   }
 
   all.forEach(r => {
@@ -893,7 +1146,7 @@ async function renderMap() {
       iconAnchor: [11, 22],
       popupAnchor: [0, -20],
     });
-    const marker = L.marker([r.gps.lat, r.gps.lng], { icon }).addTo(map);
+    const marker = L.marker([r.gps.lat, r.gps.lng], { icon });
 
     const photosHtml = (r.photos || []).slice(0, 4)
       .map((p, i) => `<img data-rid="${r.id}" data-pi="${i}" src="${p.dataUrl}" alt="">`).join('');
@@ -916,8 +1169,12 @@ async function renderMap() {
         showRecordModal(r);
       });
     });
+    if (useCluster) leafletCluster.addLayer(marker);
+    else marker.addTo(map);
     leafletMarkers.push(marker);
   });
+
+  if (useCluster) map.addLayer(leafletCluster);
 
   // Fit bounds
   const bounds = L.latLngBounds(all.map(r => [r.gps.lat, r.gps.lng]));
@@ -930,6 +1187,57 @@ $('btnFitMap')?.addEventListener('click', () => {
   const bounds = L.latLngBounds(leafletMarkers.map(m => m.getLatLng()));
   leafletMap.fitBounds(bounds.pad(0.2), { maxZoom: 18 });
 });
+
+// ---------- Live GPS on map (MY LOCATION toggle) ----------
+function startLiveLocation() {
+  if (!leafletMap) ensureLeaflet();
+  if (!leafletMap) { toast('Map not ready'); return; }
+  if (!navigator.geolocation) { toast('Geolocation not supported'); return; }
+  if (liveLocation && liveLocation.active) { stopLiveLocation(); return; }
+
+  const btn = $('btnMyLocation');
+  if (btn) { btn.classList.add('active'); btn.textContent = '● TRACKING'; }
+
+  liveLocation = liveLocation || { marker: null, circle: null };
+  liveLocation.active = true;
+  liveLocation.watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
+      const latlng = [lat, lng];
+      if (!liveLocation.marker) {
+        liveLocation.marker = L.circleMarker(latlng, {
+          radius: 7, color: '#000', weight: 2, fillColor: '#fff', fillOpacity: 1,
+        }).addTo(leafletMap).bindPopup('Your location');
+        liveLocation.circle = L.circle(latlng, {
+          radius: acc, color: '#000', weight: 1, fillColor: '#000', fillOpacity: 0.08, dashArray: '4 4',
+        }).addTo(leafletMap);
+        leafletMap.setView(latlng, Math.max(leafletMap.getZoom(), 17));
+      } else {
+        liveLocation.marker.setLatLng(latlng);
+        liveLocation.circle.setLatLng(latlng).setRadius(acc);
+      }
+    },
+    (err) => {
+      toast('Location error: ' + err.message, 3500);
+      stopLiveLocation();
+    },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+  );
+  toast('Tracking your location…');
+}
+function stopLiveLocation() {
+  if (!liveLocation) return;
+  liveLocation.active = false;
+  if (liveLocation.watchId != null && navigator.geolocation) {
+    try { navigator.geolocation.clearWatch(liveLocation.watchId); } catch (_) {}
+  }
+  liveLocation.watchId = null;
+  if (liveLocation.marker) { leafletMap.removeLayer(liveLocation.marker); liveLocation.marker = null; }
+  if (liveLocation.circle) { leafletMap.removeLayer(liveLocation.circle); liveLocation.circle = null; }
+  const btn = $('btnMyLocation');
+  if (btn) { btn.classList.remove('active'); btn.textContent = '○ MY LOCATION'; }
+}
+$('btnMyLocation')?.addEventListener('click', startLiveLocation);
 
 $('btnOpenGmaps').addEventListener('click', async () => {
   const all = (await dbAll()).filter(r => r.gps);

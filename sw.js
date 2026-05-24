@@ -5,7 +5,7 @@
      - OSM tiles (*.tile.openstreetmap.org)   → stale-while-revalidate (capped LRU)
      - Everything else → network-first, fall back to cache
 */
-const VERSION = 'v36-2026-05-24';
+const VERSION = 'v38-2026-05-24';
 const SHELL_CACHE = `kukl-shell-${VERSION}`;
 const LIB_CACHE   = `kukl-libs-${VERSION}`;
 const TILE_CACHE  = `kukl-tiles-${VERSION}`;
@@ -15,12 +15,13 @@ const SHELL_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/styles.css?v=31',
-  './js/app.js?v=15',
+  './css/styles.css?v=33',
+  './js/app.js?v=17',
   './js/nrw-builder.js?v=4',
-  './js/extra-sections.js?v=9',
+  './js/extra-sections.js?v=10',
   './js/media-widgets.js?v=1',
-  './js/gps-sampler.js?v=1',
+  './js/gps-sampler.js?v=2',
+  './js/geo-utils.js?v=1',
   './js/dma-overlay.js?v=8',
   './data/dma/index.json',
   './assets/kukl-logo.png',
@@ -29,6 +30,10 @@ const SHELL_ASSETS = [
 const LIB_URLS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
+  'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
+  'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+  'https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
   'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js',

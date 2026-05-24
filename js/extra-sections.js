@@ -211,6 +211,70 @@
     });
   }
 
+  // ---------- GPS capture hook: DMA auto-detect + snap-to-pipe ----------
+  async function onGpsCaptured(sectionKey, panel, fix, ctx) {
+    if (!fix || !window.KUKLGeo) return;
+    const dmaInput = panel.querySelector(`#${sectionKey}_dma`);
+    const hint = ctx && ctx.hint;
+    try {
+      const dma = await window.KUKLGeo.detectDma(fix.lat, fix.lng);
+      if (dma) {
+        if (dmaInput && !dmaInput.value.trim()) {
+          dmaInput.value = dma.id;
+          dmaInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (hint) hint.textContent = `\u00b1${fix.acc} m \u00b7 Auto-detected ${dma.label}.`;
+      } else if (hint) {
+        hint.textContent = `\u00b1${fix.acc} m \u00b7 Outside known DMA boundaries.`;
+      }
+
+      // Snap-to-pipe (Leakage section only) — silent if no pipe within 30 m.
+      if (sectionKey === 'leak' && dma) {
+        const snap = await window.KUKLGeo.snapToNearestPipe(fix.lat, fix.lng, { dmaId: dma.id, maxMeters: 30 });
+        if (snap) offerPipeSnap(panel, sectionKey, fix, snap, dma);
+      }
+    } catch (e) {
+      console.warn('[extra-sections] onGpsCaptured failed', e);
+    }
+  }
+
+  function offerPipeSnap(panel, sectionKey, original, snap, dma) {
+    const pipeId = (snap.pipe && (snap.pipe.id || snap.pipe.properties?.OBJECTID || snap.pipe.properties?.id)) || '';
+    const dist = snap.dist.toFixed(1);
+    const host = panel.querySelector('.gps-host') || panel;
+    // Remove prior banner
+    const prev = host.querySelector('.snap-banner');
+    if (prev) prev.remove();
+    const banner = el('div', { class: 'snap-banner' },
+      el('span', null, `Nearest pipe ${pipeId ? '#' + pipeId + ' ' : ''}is ${dist} m away (${dma.label}). Snap GPS to pipe?`),
+      el('button', { type: 'button', class: 'btn btn-mini btn-primary' }, 'SNAP TO PIPE'),
+      el('button', { type: 'button', class: 'btn btn-mini btn-outline' }, 'KEEP RAW'),
+    );
+    const [, snapBtn, keepBtn] = banner.children;
+    snapBtn.addEventListener('click', () => {
+      // The KUKLGps panel doesn't expose a direct setter for the running state;
+      // patch the displayed GPS by writing to its internal `_els` and calling setGps
+      // through a structured object. Easiest: stamp values on the GPS input row
+      // (the section's collectForm reads from the panel via getGps()), so update
+      // panel API directly if present.
+      const api = panel._gpsPanel;
+      if (api && typeof api.setGps === 'function') {
+        api.setGps({
+          lat: +snap.lat.toFixed(7),
+          lng: +snap.lng.toFixed(7),
+          acc: original.acc,
+          samples: original.samples,
+          capturedAt: original.capturedAt,
+          snappedFrom: { lat: original.lat, lng: original.lng, dist: snap.dist },
+        });
+      }
+      banner.remove();
+      toast(`Snapped to pipe (\u0394 ${dist} m)`);
+    });
+    keepBtn.addEventListener('click', () => banner.remove());
+    host.appendChild(banner);
+  }
+
   // ---------- Render a section ----------
   function renderSection(panel, key) {
     const section = SECTIONS[key];
@@ -295,6 +359,7 @@
       gpsPanelApi = window.KUKLGps.createPanel({
         container: gpsHost,
         title: 'GPS COORDINATES (HIGH ACCURACY)',
+        onCapture: (fix, ctx) => onGpsCaptured(key, panel, fix, ctx),
       });
     }
 

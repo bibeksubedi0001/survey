@@ -104,6 +104,10 @@
         };
         setStatus('CAPTURED', 'ok');
         els.hint.textContent = `Locked best fix (±${finalGps.acc} m from ${finalGps.samples} samples).`;
+        if (typeof opts.onCapture === 'function') {
+          try { opts.onCapture({ ...finalGps }, { hint: els.hint, root }); }
+          catch (e) { console.warn('[KUKLGps] onCapture handler failed', e); }
+        }
       } else if (!bestFix) {
         setStatus('NO FIX', 'err');
         els.hint.textContent = 'No GPS fix obtained. Move outdoors and retry.';
@@ -194,6 +198,7 @@
       setGps,
       reset,
       isCapturing: () => capturing,
+      _els: els,
     };
   }
 
