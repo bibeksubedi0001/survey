@@ -43,7 +43,7 @@
   // Styling
   var STYLE = {
     boundary: { color: '#000', weight: 2, opacity: 0.9, fill: true, fillColor: '#000', fillOpacity: 0.05, dashArray: '4 4' },
-    boundaryAll: { color: '#888', weight: 1, opacity: 0.8, fill: false, dashArray: '2 4' },
+    boundaryAll: { color: '#000', weight: 2, opacity: 1, fill: false },
     pipes:    { color: '#0d47a1', weight: 1.4, opacity: 0.85 },
     connection: { radius: 2, weight: 0, color: '#1565c0', fillColor: '#1976d2', fillOpacity: 0.85 },
     devices: {
@@ -81,7 +81,7 @@
         c.innerHTML =
           '<div class="kdma-row kdma-head">' +
             '<button type="button" class="kdma-toggle" title="Collapse / expand" aria-label="Collapse">–</button>' +
-            '<select class="kdma-select"><option value="">— DMA —</option></select>' +
+            '<select class="kdma-select"><option value="">— DMA —</option><option value="__all__">All DMAs (combined)</option></select>' +
             '<button type="button" class="kdma-fit" title="Fit to DMA">⤢</button>' +
             '<button type="button" class="kdma-close" title="Hide DMA layers">×</button>' +
           '</div>' +
@@ -164,6 +164,31 @@
       removeActive();
       $stats.hidden = !id;
       if (!id) return;
+
+      // Combined view: render every DMA's selected layers at once
+      if (id === '__all__') {
+        var all = (state.index && state.index.dmas) || [];
+        $stats.innerHTML = renderCombinedStats(all);
+        var jobsAll = [];
+        all.forEach(function (meta) {
+          if (state.layersVisible.boundary    && meta.layers.indexOf('boundary')    >= 0) jobsAll.push(addBoundary(meta.id, true));
+          if (state.layersVisible.pipes       && meta.layers.indexOf('pipes')       >= 0) jobsAll.push(addPipes(meta.id, true));
+          if (state.layersVisible.connections && meta.layers.indexOf('connections') >= 0) jobsAll.push(addConnections(meta.id, true));
+          if (meta.layers.indexOf('devices') >= 0) jobsAll.push(addDevices(meta.id, true));
+        });
+        Promise.all(jobsAll).then(function () {
+          // Fit to the union of all bboxes
+          var b = null;
+          all.forEach(function (m) {
+            if (!m.bbox) return;
+            var mb = L.latLngBounds([m.bbox[1], m.bbox[0]], [m.bbox[3], m.bbox[2]]);
+            b = b ? b.extend(mb) : mb;
+          });
+          if (b) { try { map.fitBounds(b, { padding: [20, 20] }); } catch (_) {} }
+        });
+        return;
+      }
+
       var meta = (state.index && state.index.dmas || []).find(function (d) { return d.id === id; });
       if (!meta) return;
       $stats.innerHTML = renderStats(meta);
@@ -179,6 +204,27 @@
           } catch (_) {}
         }
       });
+    }
+
+    function renderCombinedStats(all) {
+      var tot = { connections: 0, pipes: 0, devices: 0 };
+      var dtot = { valve: 0, hydrant: 0, flowmeter: 0, logger: 0 };
+      all.forEach(function (m) {
+        var c = m.counts || {};
+        tot.connections += c.connections || 0;
+        tot.pipes       += c.pipes       || 0;
+        tot.devices     += c.devices     || 0;
+        var dc = state.deviceCounts[m.id] || {};
+        DEVICE_KINDS.forEach(function (k) { dtot[k] += dc[k] || 0; });
+      });
+      var html = '<b>All DMAs (' + all.length + ')</b><br>' +
+        '<span class="kdma-pill">' + tot.connections + ' connections</span>' +
+        '<span class="kdma-pill">' + tot.pipes       + ' pipes</span>' +
+        '<span class="kdma-pill">' + tot.devices     + ' devices</span>';
+      DEVICE_KINDS.forEach(function (k) {
+        if (dtot[k]) html += '<span class="kdma-pill kdma-pill-' + k + '">' + dtot[k] + ' ' + DEVICE_LABELS_PLURAL[k].toLowerCase() + '</span>';
+      });
+      return html;
     }
 
     function renderStats(m) {
@@ -198,31 +244,31 @@
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    function addBoundary(id) {
+    function addBoundary(id, multi) {
       return loadLayer(id, 'boundary').then(function (gj) {
         var layer = L.geoJSON(gj, {
           style: STYLE.boundary,
           interactive: false,
         }).addTo(map);
-        state.activeLayers.boundary = layer;
+        state.activeLayers[multi ? 'boundary:' + id : 'boundary'] = layer;
       }).catch(noop);
     }
-    function addPipes(id) {
+    function addPipes(id, multi) {
       return loadLayer(id, 'pipes').then(function (gj) {
         var layer = L.geoJSON(gj, { style: STYLE.pipes, interactive: false }).addTo(map);
-        state.activeLayers.pipes = layer;
+        state.activeLayers[multi ? 'pipes:' + id : 'pipes'] = layer;
       }).catch(noop);
     }
-    function addConnections(id) {
+    function addConnections(id, multi) {
       return loadLayer(id, 'connections').then(function (gj) {
         var layer = L.geoJSON(gj, {
           pointToLayer: function (f, latlng) { return L.circleMarker(latlng, STYLE.connection); },
           interactive: false,
         }).addTo(map);
-        state.activeLayers.connections = layer;
+        state.activeLayers[multi ? 'connections:' + id : 'connections'] = layer;
       }).catch(noop);
     }
-    function addDevices(id) {
+    function addDevices(id, multi) {
       return loadLayer(id, 'devices').then(function (gj) {
         // Bucket features by kind
         var buckets = { valve: [], hydrant: [], flowmeter: [], logger: [] };
@@ -252,12 +298,28 @@
               lyr.bindTooltip(DEVICE_LABELS[kind], { sticky: true });
             },
           }).addTo(map);
-          state.activeLayers['devices:' + kind] = layer;
+          state.activeLayers['devices:' + (multi ? id + ':' : '') + kind] = layer;
         });
       }).catch(noop);
     }
 
     function updateDeviceCountsUI(id) {
+      if (state.activeId === '__all__') {
+        // Aggregate counts across every DMA we've loaded so far
+        var totals = { valve: 0, hydrant: 0, flowmeter: 0, logger: 0 };
+        Object.keys(state.deviceCounts).forEach(function (k) {
+          var c = state.deviceCounts[k] || {};
+          DEVICE_KINDS.forEach(function (kind) { totals[kind] += c[kind] || 0; });
+        });
+        DEVICE_KINDS.forEach(function (k) {
+          var el = root.querySelector('.kdma-cnt[data-kind="' + k + '"]');
+          if (el) el.textContent = totals[k] || 0;
+          var cb = root.querySelector('.kdma-dev[data-kind="' + k + '"]');
+          if (cb) cb.disabled = !totals[k];
+        });
+        $stats.innerHTML = renderCombinedStats((state.index && state.index.dmas) || []);
+        return;
+      }
       var counts = state.deviceCounts[id] || {};
       DEVICE_KINDS.forEach(function (k) {
         var el = root.querySelector('.kdma-cnt[data-kind="' + k + '"]');
@@ -299,6 +361,16 @@
     });
     $close.addEventListener('click', function () { setActiveDma(''); });
     $fit.addEventListener('click', function () {
+      if (state.activeId === '__all__') {
+        var b = null;
+        ((state.index && state.index.dmas) || []).forEach(function (m) {
+          if (!m.bbox) return;
+          var mb = L.latLngBounds([m.bbox[1], m.bbox[0]], [m.bbox[3], m.bbox[2]]);
+          b = b ? b.extend(mb) : mb;
+        });
+        if (b) { try { map.fitBounds(b, { padding: [20, 20] }); } catch (_) {} }
+        return;
+      }
       var meta = state.activeId && state.index.dmas.find(function (d) { return d.id === state.activeId; });
       if (meta && meta.bbox) {
         map.fitBounds([[meta.bbox[1], meta.bbox[0]], [meta.bbox[3], meta.bbox[2]]], { padding: [20, 20], maxZoom: 18 });
