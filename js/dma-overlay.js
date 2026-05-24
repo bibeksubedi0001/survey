@@ -44,8 +44,11 @@
   var STYLE = {
     boundary: { color: '#000', weight: 2, opacity: 0.9, fill: true, fillColor: '#000', fillOpacity: 0.05, dashArray: '4 4' },
     boundaryAll: { color: '#000', weight: 2, opacity: 1, fill: false },
+    boundaryCombined: { color: '#000', weight: 2, opacity: 0.9, fill: false, dashArray: '4 4' },
     pipes:    { color: '#0d47a1', weight: 1.4, opacity: 0.85 },
+    pipesCombined:    { color: '#0d47a1', weight: 1, opacity: 0.6 },
     connection: { radius: 2, weight: 0, color: '#1565c0', fillColor: '#1976d2', fillOpacity: 0.85 },
+    connectionCombined: { radius: 1, weight: 0, color: '#1565c0', fillColor: '#1976d2', fillOpacity: 0.45 },
     devices: {
       valve:     { color: '#000',     fillColor: '#fff',    radius: 5, weight: 1.5 },
       hydrant:   { color: '#b71c1c',  fillColor: '#e53935', radius: 5, weight: 1.5 },
@@ -247,7 +250,7 @@
     function addBoundary(id, multi) {
       return loadLayer(id, 'boundary').then(function (gj) {
         var layer = L.geoJSON(gj, {
-          style: STYLE.boundary,
+          style: multi ? STYLE.boundaryCombined : STYLE.boundary,
           interactive: false,
         }).addTo(map);
         state.activeLayers[multi ? 'boundary:' + id : 'boundary'] = layer;
@@ -255,14 +258,15 @@
     }
     function addPipes(id, multi) {
       return loadLayer(id, 'pipes').then(function (gj) {
-        var layer = L.geoJSON(gj, { style: STYLE.pipes, interactive: false }).addTo(map);
+        var layer = L.geoJSON(gj, { style: multi ? STYLE.pipesCombined : STYLE.pipes, interactive: false }).addTo(map);
         state.activeLayers[multi ? 'pipes:' + id : 'pipes'] = layer;
       }).catch(noop);
     }
     function addConnections(id, multi) {
       return loadLayer(id, 'connections').then(function (gj) {
+        var style = multi ? STYLE.connectionCombined : STYLE.connection;
         var layer = L.geoJSON(gj, {
-          pointToLayer: function (f, latlng) { return L.circleMarker(latlng, STYLE.connection); },
+          pointToLayer: function (f, latlng) { return L.circleMarker(latlng, style); },
           interactive: false,
         }).addTo(map);
         state.activeLayers[multi ? 'connections:' + id : 'connections'] = layer;
