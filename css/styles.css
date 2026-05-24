@@ -1780,3 +1780,18 @@ html,body{background:var(--bg);color:var(--fg);}
   font:800 12px var(--mono); letter-spacing:.5px;
 }
 
+/* ----- Export options (strip-EXIF toggle row) ----- */
+.export-options{
+  display:flex; flex-wrap:wrap; gap:14px;
+  padding:8px 12px; margin:6px 0 0;
+  border:1px dashed var(--border);
+  background:var(--card-bg); color:var(--fg);
+  font-size:12px; letter-spacing:.4px;
+}
+.export-options .export-opt{
+  display:inline-flex; align-items:center; gap:8px;
+  min-height:36px; cursor:pointer;
+}
+.export-options input[type="checkbox"]{
+  width:18px; height:18px; accent-color:var(--accent, #000);
+}

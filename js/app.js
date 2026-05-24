@@ -826,6 +826,25 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+/* Strip all EXIF (including GPS) from a JPEG data-URL. Returns the original
+   string on any failure so callers stay simple. piexif.remove() handles the
+   APP1 marker rewrite for us; non-JPEG inputs are returned untouched. */
+function stripExifFromDataUrl(dataUrl) {
+  if (typeof dataUrl !== 'string') return dataUrl;
+  if (!dataUrl.startsWith('data:image/jpeg')) return dataUrl;
+  if (typeof piexif === 'undefined' || !piexif.remove) return dataUrl;
+  try { return piexif.remove(dataUrl); }
+  catch (e) { console.warn('EXIF strip failed:', e); return dataUrl; }
+}
+function shouldStripExifOnExport() {
+  const el = $('stripExifOnExport');
+  return !!(el && el.checked);
+}
+function sanitizePhotosForExport(photos) {
+  if (!Array.isArray(photos) || !shouldStripExifOnExport()) return photos;
+  return photos.map(p => ({ ...p, dataUrl: stripExifFromDataUrl(p && p.dataUrl) }));
+}
+
 async function handleRowAction(act, id) {
   const rec = await dbGet(id);
   if (!rec) return;
@@ -923,15 +942,48 @@ function showRecordModal(r) {
     ['Samples', r.gps?.samples],
     ['Google Maps', r.gps ? `<a href="https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}" target="_blank" rel="noopener">OPEN ↗</a>` : ''],
   ];
-  const kv = rows.map(([k, v]) => `<div class="kv"><b>${k}</b><span>${v ?? '—'}</span></div>`).join('');
-  const photos = (r.photos || []).map((p, i) => `<img src="${p.dataUrl}" data-idx="${i}" alt="">`).join('');
-  $('modalBody').innerHTML = kv + (photos ? `<div class="modal-photos">${photos}</div>` : '');
-  // Wire photo clicks → lightbox
-  $('modalBody').querySelectorAll('.modal-photos img').forEach(img => {
-    img.addEventListener('click', () => {
-      openLightbox(r.photos.map(p => p.dataUrl), Number(img.dataset.idx), r.customer || r.id);
+  // Build the key/value table with safe DOM APIs so untrusted record fields
+  // (customer, address, remarks…) cannot inject HTML/scripts.
+  const body = $('modalBody');
+  body.textContent = '';
+  for (const [k, v] of rows) {
+    const row = document.createElement('div');
+    row.className = 'kv';
+    const b = document.createElement('b');
+    b.textContent = k;
+    const span = document.createElement('span');
+    if (k === 'Google Maps' && r.gps && isFinite(r.gps.lat) && isFinite(r.gps.lng)) {
+      const a = document.createElement('a');
+      a.href = `https://maps.google.com/?q=${r.gps.lat},${r.gps.lng}`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = 'OPEN \u2197';
+      span.appendChild(a);
+    } else {
+      span.textContent = (v === undefined || v === null || v === '') ? '\u2014' : String(v);
+    }
+    row.appendChild(b);
+    row.appendChild(span);
+    body.appendChild(row);
+  }
+  const photos = r.photos || [];
+  if (photos.length) {
+    const grid = document.createElement('div');
+    grid.className = 'modal-photos';
+    photos.forEach((p, i) => {
+      const img = document.createElement('img');
+      // Only allow data:image/* URLs as <img src> — guards against
+      // imported backups containing javascript:/http: URLs.
+      img.src = /^data:image\//.test(p && p.dataUrl) ? p.dataUrl : '';
+      img.alt = '';
+      img.dataset.idx = String(i);
+      img.addEventListener('click', () => {
+        openLightbox(photos.map(pp => pp.dataUrl), i, r.customer || r.id);
+      });
+      grid.appendChild(img);
     });
-  });
+    body.appendChild(grid);
+  }
   $('modal').hidden = false;
 }
 $('modalClose').addEventListener('click', () => $('modal').hidden = true);
@@ -1004,31 +1056,100 @@ $('btnExport').addEventListener('click', async () => {
 $('btnExportJson').addEventListener('click', async () => {
   const all = await dbAll();
   if (!all.length) { toast('No records'); return; }
-  const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
+  const stripped = shouldStripExifOnExport();
+  const payload = stripped
+    ? all.map(r => ({ ...r, photos: sanitizePhotosForExport(r.photos) }))
+    : all;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `KUKL_Survey_Backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `KUKL_Survey_Backup_${new Date().toISOString().slice(0,10)}${stripped ? '_no-gps' : ''}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  toast('Backup exported');
+  toast(stripped ? 'Backup exported (GPS stripped)' : 'Backup exported');
 });
+
+// ---- Backup-file schema validation ----
+// Caps protect against malicious / oversized imports running the device OOM.
+const IMPORT_MAX_BYTES   = 200 * 1024 * 1024; // 200 MB whole-file cap
+const IMPORT_MAX_RECORDS = 50000;
+const IMPORT_MAX_PHOTOS_PER_RECORD = 50;
+const IMPORT_MAX_PHOTO_BYTES = 15 * 1024 * 1024; // ~15 MB per dataURL
+const SAFE_STRING_FIELDS = [
+  'id','customer','customerId','address','ward','contact','connType','pipeMat',
+  'meterStatus','meterReading','meterSerial','pressure','leakage','supplyHrs',
+  'condition','priority','remarks','surveyor','createdAt'
+];
+const SAFE_STRING_MAX = 4000;
+const SAFE_REMARKS_MAX = 20000;
+
+function validateBackupRecord(r, idx) {
+  if (!r || typeof r !== 'object' || Array.isArray(r)) {
+    throw new Error(`Record #${idx + 1}: not an object`);
+  }
+  if (typeof r.id !== 'string' || !r.id || r.id.length > 128) {
+    throw new Error(`Record #${idx + 1}: missing or invalid id`);
+  }
+  for (const k of SAFE_STRING_FIELDS) {
+    if (r[k] === undefined || r[k] === null) continue;
+    if (typeof r[k] !== 'string' && typeof r[k] !== 'number') {
+      throw new Error(`Record #${idx + 1}: field '${k}' must be string/number`);
+    }
+    const max = (k === 'remarks') ? SAFE_REMARKS_MAX : SAFE_STRING_MAX;
+    if (String(r[k]).length > max) {
+      throw new Error(`Record #${idx + 1}: field '${k}' exceeds ${max} chars`);
+    }
+  }
+  if (r.gps != null) {
+    if (typeof r.gps !== 'object') throw new Error(`Record #${idx + 1}: gps must be object`);
+    const { lat, lng, acc } = r.gps;
+    if (lat !== undefined && (!isFinite(lat) || lat < -90  || lat > 90 )) throw new Error(`Record #${idx + 1}: gps.lat out of range`);
+    if (lng !== undefined && (!isFinite(lng) || lng < -180 || lng > 180)) throw new Error(`Record #${idx + 1}: gps.lng out of range`);
+    if (acc !== undefined && (!isFinite(acc) || acc < 0   || acc > 1e6 )) throw new Error(`Record #${idx + 1}: gps.acc out of range`);
+  }
+  if (r.photos != null) {
+    if (!Array.isArray(r.photos)) throw new Error(`Record #${idx + 1}: photos must be array`);
+    if (r.photos.length > IMPORT_MAX_PHOTOS_PER_RECORD) {
+      throw new Error(`Record #${idx + 1}: too many photos (>${IMPORT_MAX_PHOTOS_PER_RECORD})`);
+    }
+    r.photos.forEach((p, pi) => {
+      if (!p || typeof p !== 'object') throw new Error(`Record #${idx + 1} photo #${pi + 1}: invalid`);
+      if (typeof p.dataUrl !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/i.test(p.dataUrl)) {
+        throw new Error(`Record #${idx + 1} photo #${pi + 1}: must be a data:image/* URL`);
+      }
+      if (p.dataUrl.length > IMPORT_MAX_PHOTO_BYTES) {
+        throw new Error(`Record #${idx + 1} photo #${pi + 1}: too large`);
+      }
+    });
+  }
+  return true;
+}
 
 $('btnImportJson').addEventListener('click', () => $('importFile').click());
 $('importFile').addEventListener('change', async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
   try {
+    if (f.size > IMPORT_MAX_BYTES) {
+      throw new Error(`File too large (${(f.size / 1024 / 1024).toFixed(1)} MB, max ${IMPORT_MAX_BYTES / 1024 / 1024} MB)`);
+    }
     const text = await f.text();
-    const arr = JSON.parse(text);
-    if (!Array.isArray(arr)) throw new Error('Invalid file');
+    let arr;
+    try { arr = JSON.parse(text); }
+    catch { throw new Error('Not valid JSON'); }
+    if (!Array.isArray(arr)) throw new Error('Top-level value must be an array of records');
+    if (arr.length > IMPORT_MAX_RECORDS) throw new Error(`Too many records (${arr.length}, max ${IMPORT_MAX_RECORDS})`);
+    arr.forEach((r, i) => validateBackupRecord(r, i));
     if (!confirm(`Import ${arr.length} record(s)? Existing IDs will be overwritten.`)) return;
-    for (const r of arr) await dbPut(r);
+    let n = 0;
+    for (const r of arr) { await dbPut(r); n++; }
     await refreshCount();
     renderRecords();
-    toast('Import complete');
+    toast(`Imported ${n} record(s)`);
   } catch (err) {
-    toast('Import failed: ' + err.message, 3500);
+    toast('Import failed: ' + err.message, 5000);
+    console.error('JSON import rejected:', err);
   }
   e.target.value = '';
 });
@@ -1519,10 +1640,14 @@ $('lbClose').addEventListener('click', closeLightbox);
 $('lbNext').addEventListener('click', lbNext);
 $('lbPrev').addEventListener('click', lbPrev);
 $('lbDownload').addEventListener('click', () => {
+  let src = lbList[lbIdx];
+  // Honor the "Strip GPS from exported photos" toggle on individual downloads.
+  if (shouldStripExifOnExport()) src = stripExifFromDataUrl(src);
   const a = document.createElement('a');
-  a.href = lbList[lbIdx];
+  a.href = src;
   const safe = (lbLabel || 'photo').replace(/[^a-z0-9\-_]/gi, '_');
-  a.download = `${safe}_${lbIdx + 1}.jpg`;
+  const tag = shouldStripExifOnExport() ? '_no-gps' : '';
+  a.download = `${safe}_${lbIdx + 1}${tag}.jpg`;
   a.click();
 });
 lb.addEventListener('click', (e) => {

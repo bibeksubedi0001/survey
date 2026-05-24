@@ -4,6 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#000000" />
+
+  <!-- ============================================================
+       Content Security Policy
+       - script-src locked to self + pinned CDNs (all tags use SRI below)
+       - img-src allows OSM tile servers + data:/blob: for camera+exif photos
+       - connect-src allows OSM tile fetches (Leaflet may use XHR for some
+         providers) and PMTiles range-requests served from self
+       - style-src keeps 'unsafe-inline' because Leaflet injects inline
+         styles on dynamically-created tiles/markers
+       ============================================================ -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://unpkg.com https://cdn.jsdelivr.net;
+    style-src  'self' 'unsafe-inline' https://unpkg.com;
+    img-src    'self' data: blob: https://*.tile.openstreetmap.org https://*.openstreetmap.org;
+    connect-src 'self' https://*.tile.openstreetmap.org https://*.openstreetmap.org;
+    font-src   'self' data:;
+    worker-src 'self';
+    manifest-src 'self';
+    frame-src  'none';
+    object-src 'none';
+    base-uri   'self';
+    form-action 'self';
+  " />
+
   <title>KUKL Baneshwor — Site Survey System</title>
 
   <link rel="icon"            type="image/png" href="assets/kukl-logo.png" />
@@ -14,29 +39,61 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title"          content="KUKL Survey" />
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <link rel="stylesheet" href="css/styles.css?v=33" />
+  <!-- ============================================================
+       External stylesheets — pinned with Subresource Integrity (SRI).
+       If a CDN is compromised the browser refuses to apply the file.
+       ============================================================ -->
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+        integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+        integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/styles.css?v=34" />
 
-  <!-- Apply theme as early as possible to avoid FOUC -->
-  <script>
-    (function(){
-      try{
-        var t = localStorage.getItem('kukl-theme') || 'light';
-        document.documentElement.setAttribute('data-theme', t);
-      }catch(e){}
-    })();
-  </script>
+  <!-- Apply theme as early as possible to avoid FOUC.
+       External so CSP can drop 'unsafe-inline' for script-src. -->
+  <script src="js/theme-boot.js?v=1"></script>
 
-  <!-- Third-party libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"   data-cfasync="false"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"          data-cfasync="false"></script>
-  <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js"         data-cfasync="false"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"    data-cfasync="false"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"                   data-cfasync="false"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" data-cfasync="false"></script>
-  <script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"                  data-cfasync="false"></script>
+  <!-- ============================================================
+       Third-party libraries — all pinned with SRI hashes (sha-384)
+       and crossorigin="anonymous" so the browser performs the
+       integrity check. A compromised CDN cannot inject code.
+       ============================================================ -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+          integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          data-cfasync="false"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
+          integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          data-cfasync="false"></script>
+  <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js"
+          integrity="sha384-gLhg+4HrK9u/j3lhoXMbfugBBxOP2bNlOeGEWvf5QIEDD1qXDMMCU6ruAB2rUN/a"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          data-cfasync="false"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+          integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          data-cfasync="false"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          data-cfasync="false"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"
+          integrity="sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          data-cfasync="false"></script>
+  <script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"
+          integrity="sha384-MjejsnWXHmuz93aE35YWLh5AbS/6ceRB3Vb+ukOwqFzJRTpQ8vvbkLbNV7I0QK4f"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          data-cfasync="false"></script>
 </head>
 <body>
 
@@ -401,6 +458,12 @@
             <button id="btnClearAll"   class="btn btn-danger">DELETE ALL</button>
           </div>
         </div>
+        <div class="export-options" role="group" aria-label="Export options">
+          <label class="export-opt">
+            <input type="checkbox" id="stripExifOnExport" />
+            <span>Strip GPS from exported photos (lightbox download &amp; JSON backup)</span>
+          </label>
+        </div>
         <div class="filter-row" role="region" aria-label="Filter records">
           <label class="filter-cell">
             <span>From</span>
@@ -620,113 +683,11 @@
   <script src="js/gps-sampler.js?v=2"     data-cfasync="false"></script>
   <script src="js/geo-utils.js?v=1"       data-cfasync="false"></script>
   <script src="js/dma-overlay.js?v=8"     data-cfasync="false"></script>
-  <script src="js/app.js?v=17"             data-cfasync="false"></script>
+  <script src="js/app.js?v=18"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=4"      data-cfasync="false"></script>
   <script src="js/extra-sections.js?v=10"   data-cfasync="false"></script>
 
-  <!-- Global navigation wiring -->
-  <script>
-    (function () {
-      var brand   = document.getElementById('brandHome');
-      var btnHomeQuick = document.getElementById('btnHomeQuick');
-      var btnTop  = document.getElementById('btnBackToTop');
-      var btnBack = document.getElementById('btnBackHome');
-      var sectionLabel = document.getElementById('currentSection');
-      var navBar  = document.getElementById('appNav');
-
-      // ---- Section labels (shown in header subtitle) ----
-      var SECTION_TITLES = {
-        home: 'Home Hub',
-        capture: 'New Survey',
-        records: 'New Survey · Records',
-        map: 'New Survey · Map',
-        chief: 'Chief Officer Report',
-        leak: 'Leakage Survey',
-        pressure: 'Pressure Measurement',
-        area: 'Area Survey',
-        nrw: 'NRW Report Builder',
-        about: 'Help & About',
-      };
-      // Records/Map routes collapse into NEW SURVEY in the nav bar.
-      var NAV_FOR_ROUTE = { records: 'capture', map: 'capture' };
-
-      // ---- Main-panel SURVEY/REPORT/MAP switcher → activate the matching tab ----
-      document.addEventListener('click', function (e) {
-        var btn = e.target.closest('.main-switcher .vs-btn');
-        if (!btn) return;
-        var route = btn.getAttribute('data-route');
-        var navBtn = document.querySelector('.tab[data-tab="' + route + '"]');
-        if (navBtn) navBtn.click();
-      });
-
-      // ---- Update section label + nav-bar active state on every tab activation ----
-      function syncActive(route) {
-        if (SECTION_TITLES[route] && sectionLabel) {
-          sectionLabel.textContent = SECTION_TITLES[route];
-          document.title = 'KUKL · ' + SECTION_TITLES[route];
-        }
-        var navKey = NAV_FOR_ROUTE[route] || route;
-        document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
-          b.classList.toggle('active', b.getAttribute('data-tab') === navKey);
-        });
-        // Show BACK FAB on every non-home view
-        if (btnBack) btnBack.hidden = (navKey === 'home');
-        // Auto-scroll the active button into view on small screens
-        if (navBar) {
-          var active = navBar.querySelector('.tab.active:not([hidden])');
-          if (active && active.scrollIntoView) {
-            try { active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); } catch (_) {}
-          }
-        }
-      }
-      // Hook EVERY tab button (including hidden routing anchors)
-      document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
-        b.addEventListener('click', function () { syncActive(b.getAttribute('data-tab')); });
-      });
-      syncActive('home');
-
-      // ---- Brand → HOME ----
-      function gotoHome(e) {
-        if (e) e.preventDefault();
-        var t = document.querySelector('.tab[data-tab="home"]');
-        if (t) t.click();
-        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0,0); }
-      }
-      brand.addEventListener('click', gotoHome);
-      if (btnHomeQuick) btnHomeQuick.addEventListener('click', gotoHome);
-      if (btnBack)      btnBack.addEventListener('click', gotoHome);
-
-      // ---- Keyboard shortcuts ----
-      // Alt+H Home, Alt+N New Survey, Alt+R Records, Alt+M Map,
-      // Alt+C/L/P/A field reports, Alt+B NRW, Alt+/ Help.
-      var SHORTCUTS = {
-        h: 'home',  n: 'capture',  r: 'records',  m: 'map',
-        c: 'chief', l: 'leak',     p: 'pressure', a: 'area',
-        b: 'nrw',   '/': 'about',
-      };
-      document.addEventListener('keydown', function (e) {
-        if (!e.altKey || e.ctrlKey || e.metaKey) return;
-        var tag = (e.target && e.target.tagName) || '';
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-        var key = (e.key || '').toLowerCase();
-        var route = SHORTCUTS[key];
-        if (!route) return;
-        var t = document.querySelector('.tab[data-tab="' + route + '"]');
-        if (t) { e.preventDefault(); t.click(); }
-      });
-
-      // ---- Back-to-top FAB ----
-      function updateFab() {
-        if (!btnTop) return;
-        var show = (window.scrollY || window.pageYOffset || 0) > 400;
-        btnTop.hidden = !show;
-      }
-      window.addEventListener('scroll', updateFab, { passive: true });
-      if (btnTop) btnTop.addEventListener('click', function () {
-        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0,0); }
-      });
-      updateFab();
-    })();
-  </script>
+  <!-- Global navigation wiring (extracted from inline <script> for CSP) -->
+  <script src="js/nav-wiring.js?v=1" data-cfasync="false"></script>
 </body>
 </html>
