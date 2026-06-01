@@ -18,6 +18,8 @@
     leak: 'Leakage Survey',
     pressure: 'Pressure Measurement',
     area: 'Area Survey',
+    satisfaction: 'Customer Satisfaction',
+    water24: '24-Hour Supply Survey',
     nrw: 'NRW Report Builder',
     about: 'Help & About',
   };

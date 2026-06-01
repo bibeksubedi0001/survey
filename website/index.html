@@ -131,6 +131,8 @@
       <button id="tabbtn-leak"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-leak"     tabindex="-1" data-tab="leak">◆ LEAKAGE <span id="leakCount" class="badge">0</span></button>
       <button id="tabbtn-pressure" class="tab"        role="tab" aria-selected="false" aria-controls="tab-pressure" tabindex="-1" data-tab="pressure">↯ PRESSURE <span id="pressureCount" class="badge">0</span></button>
       <button id="tabbtn-area"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-area"     tabindex="-1" data-tab="area">⬢ AREA SURVEY <span id="areaCount" class="badge">0</span></button>
+      <button id="tabbtn-satisfaction" class="tab"    role="tab" aria-selected="false" aria-controls="tab-satisfaction" tabindex="-1" data-tab="satisfaction">☺ SATISFACTION <span id="satisfactionCount" class="badge">0</span></button>
+      <button id="tabbtn-water24"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-water24"  tabindex="-1" data-tab="water24">⏱ 24-HOUR SUPPLY <span id="water24Count" class="badge">0</span></button>
       <span class="nav-sep" aria-hidden="true"></span>
       <button id="tabbtn-nrw"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-nrw"      tabindex="-1" data-tab="nrw">∑ NRW REPORT</button>
       <button id="tabbtn-about"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-about"    tabindex="-1" data-tab="about">? HELP</button>
@@ -204,6 +206,28 @@
               <button class="btn btn-primary hub-go" data-goto="area" data-view="survey">SURVEY</button>
               <button class="btn btn-outline hub-go" data-goto="area" data-view="report">REPORT</button>
               <button class="btn btn-outline hub-go" data-goto="area" data-view="map">MAP</button>
+            </div>
+          </div>
+
+          <div class="hub-card" data-topic="satisfaction">
+            <div class="hub-icon">☺</div>
+            <h3>Customer Satisfaction</h3>
+            <p>Questionnaire on supply quality, pressure, reliability and willingness to pay.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="satisfaction" data-view="survey">SURVEY</button>
+              <button class="btn btn-outline hub-go" data-goto="satisfaction" data-view="report">REPORT</button>
+              <button class="btn btn-outline hub-go" data-goto="satisfaction" data-view="map">MAP</button>
+            </div>
+          </div>
+
+          <div class="hub-card" data-topic="water24">
+            <div class="hub-icon">⏱</div>
+            <h3>24-Hour Supply</h3>
+            <p>Questionnaire for 24-hour water supply customers (tanks, pumps, boring, usage).</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="water24" data-view="survey">SURVEY</button>
+              <button class="btn btn-outline hub-go" data-goto="water24" data-view="report">REPORT</button>
+              <button class="btn btn-outline hub-go" data-goto="water24" data-view="map">MAP</button>
             </div>
           </div>
 
@@ -606,6 +630,12 @@
     <!-- ===== TAB: GENERAL SURVEY AREA ===== -->
     <section id="tab-area"     class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-area"     tabindex="0" data-extra-section="area"></section>
 
+    <!-- ===== TAB: CUSTOMER SATISFACTION ===== -->
+    <section id="tab-satisfaction" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-satisfaction" tabindex="0" data-extra-section="satisfaction"></section>
+
+    <!-- ===== TAB: 24-HOUR WATER SUPPLY ===== -->
+    <section id="tab-water24"  class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-water24"  tabindex="0" data-extra-section="water24"></section>
+
     <!-- ===== TAB: HELP ===== -->
     <section id="tab-about" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-about" tabindex="0">
       <div class="card">
@@ -686,14 +716,14 @@
        SCRIPTS
        ============================================================ -->
   <script src="js/media-widgets.js?v=1"   data-cfasync="false"></script>
-  <script src="js/gps-sampler.js?v=2"     data-cfasync="false"></script>
+  <script src="js/gps-sampler.js?v=3"     data-cfasync="false"></script>
   <script src="js/geo-utils.js?v=1"       data-cfasync="false"></script>
   <script src="js/dma-overlay.js?v=8"     data-cfasync="false"></script>
-  <script src="js/app.js?v=18"             data-cfasync="false"></script>
+  <script src="js/app.js?v=19"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=4"      data-cfasync="false"></script>
-  <script src="js/extra-sections.js?v=10"   data-cfasync="false"></script>
+  <script src="js/extra-sections.js?v=11"   data-cfasync="false"></script>
 
   <!-- Global navigation wiring (extracted from inline <script> for CSP) -->
-  <script src="js/nav-wiring.js?v=1" data-cfasync="false"></script>
+  <script src="js/nav-wiring.js?v=2" data-cfasync="false"></script>
 </body>
 </html>

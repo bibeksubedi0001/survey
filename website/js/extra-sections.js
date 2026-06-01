@@ -13,8 +13,8 @@
 
   // ---------- IndexedDB ----------
   const DB_NAME = 'kukl_extra_db';
-  const DB_VER  = 1;
-  const STORES  = ['chief_reports', 'leakage_reports', 'pressure_reports', 'area_reports'];
+  const DB_VER  = 2;
+  const STORES  = ['chief_reports', 'leakage_reports', 'pressure_reports', 'area_reports', 'satisfaction_reports', 'water24_reports'];
   let dbPromise = null;
 
   function openDB() {
@@ -164,6 +164,72 @@
         { group: 'Notes & Media',   key: 'complaints', label: 'Public Complaint Summary', type: 'textarea', full: true },
         { group: 'Notes & Media',   key: 'remarks',    label: 'Remarks', type: 'textarea', full: true },
         { group: 'Notes & Media',   key: 'photos',     label: 'Photo Capture', type: 'photos', full: true },
+      ],
+    },
+
+    satisfaction: {
+      store: 'satisfaction_reports',
+      title: 'Customer Satisfaction Questionnaire',
+      idPrefix: 'SAT',
+      exportName: 'KUKL_Customer_Satisfaction_Survey',
+      sheetName: 'Satisfaction',
+      fields: (() => {
+        const SAT = ['5 — Much Satisfied','4 — A little Satisfied','3 — Neither','2 — A little Dissatisfied','1 — Much Dissatisfied'];
+        return [
+          { group: 'General Information', key: 'meterNo',     label: 'Meter Number',            type: 'text' },
+          { group: 'General Information', key: 'totalUnits',  label: 'Total Unit / Consumption',type: 'number', placeholder: 'units' },
+          { group: 'General Information', key: 'customer',    label: 'Customer Name',           type: 'text' },
+          { group: 'General Information', key: 'customerNo',  label: 'Customer Number',         type: 'text' },
+          { group: 'General Information', key: 'areaNo',      label: 'Area Number',             type: 'text' },
+          { group: 'General Information', key: 'contact',     label: 'Contact Number',          type: 'text' },
+          { group: 'General Information', key: 'address',     label: 'Address',                 type: 'text', full: true },
+          { group: 'General Information', key: 'noOfUsers',   label: 'No. of Users',            type: 'number' },
+          { group: 'General Information', key: 'gps',         label: 'GPS Coordinates',         type: 'location', full: true, required: true },
+          { group: 'Part I — Satisfaction', key: 'q_schedule',     label: 'Water supply schedule on time',          type: 'select', options: SAT },
+          { group: 'Part I — Satisfaction', key: 'q_quality',      label: 'Water quality (smell, taste etc.)',      type: 'select', options: SAT },
+          { group: 'Part I — Satisfaction', key: 'q_pressure',     label: 'Sufficient water pressure',              type: 'select', options: SAT },
+          { group: 'Part I — Satisfaction', key: 'q_reliability',  label: 'Reliability of water supply',            type: 'select', options: SAT },
+          { group: 'Part I — Satisfaction', key: 'q_response',     label: "Service provider's response to complaints", type: 'select', options: SAT },
+          { group: 'Part I — Satisfaction', key: 'q_transparency', label: 'Transparency of the service provider',   type: 'select', options: SAT },
+          { group: 'Part II — Willingness to Pay', key: 'willingPay', label: 'If sufficient quality water & sanitation were available, monthly amount willing to pay', type: 'select', full: true,
+            options: ['< Npr. 100','Npr. 100–200','Npr. 200–300','Npr. 300–500','Npr. 500–700','> Npr. 700'] },
+          { group: 'Reporter & Notes', key: 'reportedBy', label: 'Surveyor',        type: 'text' },
+          { group: 'Reporter & Notes', key: 'reportedAt', label: 'Date / Time',     type: 'datetime' },
+          { group: 'Reporter & Notes', key: 'remarks',    label: 'Remarks',         type: 'textarea', full: true },
+          { group: 'Reporter & Notes', key: 'photos',     label: 'Photo Capture',   type: 'photos', full: true },
+        ];
+      })(),
+    },
+
+    water24: {
+      store: 'water24_reports',
+      title: 'Questionnaire for 24-Hour Water Supply Customers',
+      idPrefix: 'W24',
+      exportName: 'KUKL_24hr_Supply_Survey',
+      sheetName: '24hr Supply',
+      fields: [
+        { group: 'Customer & Building', key: 'customer',     label: 'Customer Name',          type: 'text' },
+        { group: 'Customer & Building', key: 'contact',      label: 'Contact Number',         type: 'text' },
+        { group: 'Customer & Building', key: 'address',      label: 'Address / Landmark',     type: 'text', full: true },
+        { group: 'Customer & Building', key: 'gps',          label: 'GPS Coordinates',        type: 'location', full: true, required: true },
+        { group: 'Customer & Building', key: 'buildingType', label: 'Building Type',          type: 'select', options: ['Residential','Commercial','Industrial'] },
+        { group: 'Customer & Building', key: 'residents',    label: 'Number of Residents',    type: 'number' },
+        { group: 'Customer & Building', key: 'dailyUse',     label: 'Daily Water Consumption (m³/day)', type: 'number', placeholder: 'e.g. 2.5' },
+        { group: 'Underground Tank', key: 'undergroundTank',    label: 'Presence of Underground Tank', type: 'yesno' },
+        { group: 'Underground Tank', key: 'undergroundTankVol', label: 'Underground Tank Volume (m³, if yes)', type: 'number' },
+        { group: 'Rooftop Tank', key: 'rooftopTank',     label: 'Presence of Rooftop Tank', type: 'yesno' },
+        { group: 'Rooftop Tank', key: 'rooftopTankVol',  label: 'Rooftop Tank Volume (m³, if yes)', type: 'number' },
+        { group: 'Rooftop Tank', key: 'pumpAmount',      label: 'Water Pumped to Rooftop Each Time (m³)', type: 'text', placeholder: 'e.g. 1.5–2.0' },
+        { group: 'Rooftop Tank', key: 'pumpSituation',   label: 'Situations When You Pump Water to Rooftop', type: 'textarea', full: true, placeholder: "e.g. When water doesn't come from indoor faucet" },
+        { group: 'Pumps & Boring', key: 'vacuumPump',    label: 'Vacuum Pumps Connected to Service Pipes', type: 'yesno' },
+        { group: 'Pumps & Boring', key: 'privateBoring', label: 'Presence of Private Boring', type: 'yesno' },
+        { group: 'Pumps & Boring', key: 'borePreference', label: 'Preference During 24-hr Supply & Why (if boring)', type: 'textarea', full: true, placeholder: 'e.g. KUKL water — treated and safer than boring water' },
+        { group: 'Service Pipe Usage', key: 'pipeConnects', label: 'Where the Service Pipe Connects', type: 'select', options: ['Directly connected to underground tank','Direct use','Other'] },
+        { group: 'Service Pipe Usage', key: 'usagePattern', label: 'When/Why You Get Water From Service Pipe During 24-hr Supply', type: 'textarea', full: true, placeholder: 'e.g. 6:00–12:00 and 18:00–21:00, because a lot of water is used then' },
+        { group: 'Reporter & Notes', key: 'reportedBy', label: 'Surveyor',      type: 'text' },
+        { group: 'Reporter & Notes', key: 'reportedAt', label: 'Date / Time',   type: 'datetime' },
+        { group: 'Reporter & Notes', key: 'remarks',    label: 'Remarks',       type: 'textarea', full: true },
+        { group: 'Reporter & Notes', key: 'photos',     label: 'Photo Capture', type: 'photos', full: true },
       ],
     },
   };
