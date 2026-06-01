@@ -732,7 +732,7 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   .gps-cell{border-right:none !important;border-bottom:1px solid #000 !important;}
   .gps-cell:last-child{border-bottom:none !important;}
   .header-actions .clock{display:none;}
-  .brand-text p{display:none;}
+  .brand-text p{font-size:9px;letter-spacing:.5px;}
   .brand-text h1{font-size:13px;}
   .brand-logo{width:36px;height:36px;}
 }
@@ -859,7 +859,7 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   .brand{gap:10px;}
   .brand-logo{width:36px;height:36px;}
   .brand-text h1{font-size:13px;}
-  .brand-text p{display:none;}
+  .brand-text p{font-size:9px;letter-spacing:.5px;}
   .header-actions{gap:8px;}
   .status-pill{font-size:9px;padding:4px 8px;}
   .clock{font-size:11px;}
@@ -1685,12 +1685,15 @@ html,body{background:var(--bg);color:var(--fg);}
   padding:10px 14px;
   font-size:12px; font-weight:700; letter-spacing:1px;
   text-transform:uppercase;
-  display:flex; align-items:center; gap:10px;
+  align-items:center; gap:10px;
 }
+.form-error[hidden]{ display:none !important; }
+.form-error:not([hidden]){ display:flex; }
 .form-error::before{
   content:"!";
   display:inline-flex;align-items:center;justify-content:center;
   width:22px;height:22px;background:#000;color:#fff;font-weight:900;
+  flex-shrink:0;
 }
 .field.invalid input,
 .field.invalid select,

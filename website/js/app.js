@@ -628,9 +628,6 @@ $('surveyForm').addEventListener('submit', async (e) => {
 
 function validateSurvey(rec) {
   const errs = [];
-  if (!rec.surveyor) errs.push({ id: 'surveyor', msg: 'Surveyor name is required.' });
-  if (!rec.customer) errs.push({ id: 'customer', msg: 'Customer name is required.' });
-  if (!rec.address)  errs.push({ id: 'address',  msg: 'Address / Tole is required.' });
   if (!rec.gps || rec.gps.lat == null || rec.gps.lng == null) {
     errs.push({ id: 'btnGetLocation', msg: 'GPS coordinates required — tap CAPTURE LOCATION first.' });
   }
