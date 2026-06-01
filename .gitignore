@@ -1,19 +1,23 @@
-# OS / editor
+# ─── OS / Editor ───────────────────────────────────────────────
 Thumbs.db
 .DS_Store
 .vscode/
 *.log
 
-# Node (in case of future tooling)
+# ─── Node / Python environments ───────────────────────────────
 node_modules/
 package.json
 package-lock.json
+.venv/
 
-# Local data / generated reports (not part of the app)
-sabal/
+# ─── Tests (smoke tests, scratch output) ──────────────────────
+tests/
+
+# ─── Local data (large files, not for GitHub) ─────────────────
 GIS Files/
+sabal/
+chief/
 
-# Local smoke-test scratch
-_smoke.js
-_smoke_out.txt
+# ─── Generated / temporary ────────────────────────────────────
 out.log
+tools/gis_convert.log
