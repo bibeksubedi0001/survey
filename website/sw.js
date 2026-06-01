@@ -5,7 +5,7 @@
      - OSM tiles (*.tile.openstreetmap.org)   → stale-while-revalidate (capped LRU)
      - Everything else → network-first, fall back to cache
 */
-const VERSION = 'v42-2026-06-01-gov';
+const VERSION = 'v43-2026-06-01-gov';
 const SHELL_CACHE = `kukl-shell-${VERSION}`;
 const LIB_CACHE   = `kukl-libs-${VERSION}`;
 const TILE_CACHE  = `kukl-tiles-${VERSION}`;
@@ -15,7 +15,7 @@ const SHELL_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/styles.css?v=36',
+  './css/styles.css?v=37',
   './js/app.js?v=19',
   './js/nrw-builder.js?v=4',
   './js/extra-sections.js?v=11',

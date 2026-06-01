@@ -55,7 +55,7 @@
         href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
         integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+"
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="css/styles.css?v=36" />
+  <link rel="stylesheet" href="css/styles.css?v=37" />
 
   <!-- Apply theme as early as possible to avoid FOUC.
        External so CSP can drop 'unsafe-inline' for script-src. -->
@@ -97,6 +97,21 @@
 </head>
 <body>
 
+  <!-- SVG icon sprite (hidden) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="ico-home" viewBox="0 0 24 24"><path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3z"/></symbol>
+    <symbol id="ico-survey" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></symbol>
+    <symbol id="ico-chief" viewBox="0 0 24 24"><path d="M12 2L9 9H2l6 4.5L5.5 21 12 17l6.5 4L16 13.5 22 9h-7z"/></symbol>
+    <symbol id="ico-leak" viewBox="0 0 24 24"><path d="M12 2c-3 4.5-7 8-7 12a7 7 0 0 0 14 0c0-4-4-7.5-7-12z"/></symbol>
+    <symbol id="ico-pressure" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 3a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-4.5 3a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm9 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM12 8l3 6h-6l3-6z"/></symbol>
+    <symbol id="ico-area" viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 7h4v4H7V7zm6 0h4v4h-4V7zm-6 6h4v4H7v-4zm6 0h4v4h-4v-4z"/></symbol>
+    <symbol id="ico-satisfaction" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="10" r="1.2" fill="#fff"/><circle cx="15" cy="10" r="1.2" fill="#fff"/></symbol>
+    <symbol id="ico-water24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 6v6l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="ico-nrw" viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm0 5h10v2H4z"/><path d="M18 10l-2 3h4l-2 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ico-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1"/></symbol>
+    <symbol id="ico-theme" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18V4a8 8 0 0 1 0 16z"/></symbol>
+  </svg>
+
   <!-- Accessibility: skip directly to main content -->
   <a href="#main" class="skip-link">Skip to main content</a>
 
@@ -112,7 +127,7 @@
       </div>
     </a>
     <div class="header-actions">
-      <button id="btnHomeQuick" class="btn btn-mini" title="Home (Alt+H)" aria-label="Home">⌂ HOME</button>
+      <button id="btnHomeQuick" class="btn btn-mini" title="Home (Alt+H)" aria-label="Home"><svg class="tab-ico"><use href="#ico-home"/></svg> HOME</button>
       <button id="btnInstall" class="btn btn-mini" hidden title="Install app">INSTALL</button>
       <span id="onlineStatus" class="status-pill">● ONLINE</span>
       <span id="clock" class="clock">--:--:--</span>
@@ -124,19 +139,19 @@
        ============================================================ -->
   <nav class="nav-bar" id="appNav" role="tablist" aria-label="Sections">
     <div class="nav-bar-inner">
-      <button id="tabbtn-home"     class="tab active" role="tab" aria-selected="true"  aria-controls="tab-home"     tabindex="0"  data-tab="home">⌂ HOME</button>
+      <button id="tabbtn-home"     class="tab active" role="tab" aria-selected="true"  aria-controls="tab-home"     tabindex="0"  data-tab="home"><svg class="tab-ico"><use href="#ico-home"/></svg> HOME</button>
       <span class="nav-sep" aria-hidden="true"></span>
-      <button id="tabbtn-capture"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-capture"  tabindex="-1" data-tab="capture">◉ NEW SURVEY <span id="recordCount" class="badge">0</span></button>
-      <button id="tabbtn-chief"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-chief"    tabindex="-1" data-tab="chief">★ CHIEF OFFICER <span id="chiefCount" class="badge">0</span></button>
-      <button id="tabbtn-leak"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-leak"     tabindex="-1" data-tab="leak">◆ LEAKAGE <span id="leakCount" class="badge">0</span></button>
-      <button id="tabbtn-pressure" class="tab"        role="tab" aria-selected="false" aria-controls="tab-pressure" tabindex="-1" data-tab="pressure">↯ PRESSURE <span id="pressureCount" class="badge">0</span></button>
-      <button id="tabbtn-area"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-area"     tabindex="-1" data-tab="area">⬢ AREA SURVEY <span id="areaCount" class="badge">0</span></button>
-      <button id="tabbtn-satisfaction" class="tab"    role="tab" aria-selected="false" aria-controls="tab-satisfaction" tabindex="-1" data-tab="satisfaction">☺ SATISFACTION <span id="satisfactionCount" class="badge">0</span></button>
-      <button id="tabbtn-water24"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-water24"  tabindex="-1" data-tab="water24">⏱ 24-HOUR SUPPLY <span id="water24Count" class="badge">0</span></button>
+      <button id="tabbtn-capture"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-capture"  tabindex="-1" data-tab="capture"><svg class="tab-ico"><use href="#ico-survey"/></svg> NEW SURVEY <span id="recordCount" class="badge">0</span></button>
+      <button id="tabbtn-chief"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-chief"    tabindex="-1" data-tab="chief"><svg class="tab-ico"><use href="#ico-chief"/></svg> CHIEF OFFICER <span id="chiefCount" class="badge">0</span></button>
+      <button id="tabbtn-leak"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-leak"     tabindex="-1" data-tab="leak"><svg class="tab-ico"><use href="#ico-leak"/></svg> LEAKAGE <span id="leakCount" class="badge">0</span></button>
+      <button id="tabbtn-pressure" class="tab"        role="tab" aria-selected="false" aria-controls="tab-pressure" tabindex="-1" data-tab="pressure"><svg class="tab-ico"><use href="#ico-pressure"/></svg> PRESSURE <span id="pressureCount" class="badge">0</span></button>
+      <button id="tabbtn-area"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-area"     tabindex="-1" data-tab="area"><svg class="tab-ico"><use href="#ico-area"/></svg> AREA SURVEY <span id="areaCount" class="badge">0</span></button>
+      <button id="tabbtn-satisfaction" class="tab"    role="tab" aria-selected="false" aria-controls="tab-satisfaction" tabindex="-1" data-tab="satisfaction"><svg class="tab-ico"><use href="#ico-satisfaction"/></svg> SATISFACTION <span id="satisfactionCount" class="badge">0</span></button>
+      <button id="tabbtn-water24"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-water24"  tabindex="-1" data-tab="water24"><svg class="tab-ico"><use href="#ico-water24"/></svg> 24-HOUR SUPPLY <span id="water24Count" class="badge">0</span></button>
       <span class="nav-sep" aria-hidden="true"></span>
-      <button id="tabbtn-nrw"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-nrw"      tabindex="-1" data-tab="nrw">∑ NRW REPORT</button>
-      <button id="tabbtn-about"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-about"    tabindex="-1" data-tab="about">? HELP</button>
-      <button id="btnTheme" class="theme-toggle" type="button" title="Toggle theme (light / dark / sunlight)" aria-label="Toggle theme">◐ THEME</button>
+      <button id="tabbtn-nrw"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-nrw"      tabindex="-1" data-tab="nrw"><svg class="tab-ico"><use href="#ico-nrw"/></svg> NRW REPORT</button>
+      <button id="tabbtn-about"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-about"    tabindex="-1" data-tab="about"><svg class="tab-ico"><use href="#ico-help"/></svg> HELP</button>
+      <button id="btnTheme" class="theme-toggle" type="button" title="Toggle theme (light / dark / sunlight)" aria-label="Toggle theme"><svg class="tab-ico"><use href="#ico-theme"/></svg> THEME</button>
       <!-- Hidden routing anchors for SURVEY/REPORT/MAP switcher and hub-go -->
       <button class="tab" data-tab="records" hidden aria-hidden="true" style="display:none;"></button>
       <button class="tab" data-tab="map"     hidden aria-hidden="true" style="display:none;"></button>
@@ -155,7 +170,7 @@
         <div class="hub-grid">
 
           <div class="hub-card" data-topic="capture">
-            <div class="hub-icon">◉</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-survey"/></svg></div>
             <h3>New Survey</h3>
             <p>Standard customer / connection survey with photos and GPS.</p>
             <div class="hub-actions">
@@ -166,7 +181,7 @@
           </div>
 
           <div class="hub-card" data-topic="chief">
-            <div class="hub-icon">★</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-chief"/></svg></div>
             <h3>Chief Officer</h3>
             <p>Field observations escalated by the Chief Officer.</p>
             <div class="hub-actions">
@@ -177,7 +192,7 @@
           </div>
 
           <div class="hub-card" data-topic="leak">
-            <div class="hub-icon">◆</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-leak"/></svg></div>
             <h3>Pipe Leakage</h3>
             <p>Visible / underground leakage logging with severity.</p>
             <div class="hub-actions">
@@ -188,7 +203,7 @@
           </div>
 
           <div class="hub-card" data-topic="pressure">
-            <div class="hub-icon">↯</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-pressure"/></svg></div>
             <h3>Pressure</h3>
             <p>Hydraulic pressure readings across the DMA.</p>
             <div class="hub-actions">
@@ -199,7 +214,7 @@
           </div>
 
           <div class="hub-card" data-topic="area">
-            <div class="hub-icon">⬢</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-area"/></svg></div>
             <h3>Area Survey</h3>
             <p>Area / Tole level demographics and supply pattern.</p>
             <div class="hub-actions">
@@ -210,7 +225,7 @@
           </div>
 
           <div class="hub-card" data-topic="satisfaction">
-            <div class="hub-icon">☺</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-satisfaction"/></svg></div>
             <h3>Customer Satisfaction</h3>
             <p>Questionnaire on supply quality, pressure, reliability and willingness to pay.</p>
             <div class="hub-actions">
@@ -221,7 +236,7 @@
           </div>
 
           <div class="hub-card" data-topic="water24">
-            <div class="hub-icon">⏱</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-water24"/></svg></div>
             <h3>24-Hour Supply</h3>
             <p>Questionnaire for 24-hour water supply customers (tanks, pumps, boring, usage).</p>
             <div class="hub-actions">
@@ -238,7 +253,7 @@
         <h2 class="hub-heading">DATA CALCULATION</h2>
         <div class="hub-grid">
           <div class="hub-card" data-topic="nrw">
-            <div class="hub-icon">∑</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-nrw"/></svg></div>
             <h3>NRW Report</h3>
             <p>Non-Revenue Water monthly calculation workbook.</p>
             <div class="hub-actions">
@@ -252,7 +267,7 @@
         <h2 class="hub-heading">HELP</h2>
         <div class="hub-grid">
           <div class="hub-card" data-topic="about">
-            <div class="hub-icon">?</div>
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-help"/></svg></div>
             <h3>Help &amp; About</h3>
             <p>Usage tips, offline behavior, and credits.</p>
             <div class="hub-actions">

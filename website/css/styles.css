@@ -684,6 +684,7 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   text-transform:uppercase;
   border:2px solid #000;background:#fff;color:#000;cursor:pointer;
   font-family:inherit;
+  display:inline-flex;align-items:center;gap:4px;
 }
 .btn-mini:hover{background:#000;color:#fff;}
 .btn-mini.active{background:#B00020;color:#fff;border-color:#B00020;}
@@ -992,6 +993,19 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   line-height:1;
   margin-bottom:8px;
   letter-spacing:2px;
+}
+/* SVG icons in hub cards */
+.hub-svg{
+  width:32px;height:32px;
+  fill:currentColor;
+  display:block;
+}
+/* SVG icons in tab buttons and header */
+.tab-ico{
+  width:14px;height:14px;
+  fill:currentColor;
+  vertical-align:-2px;
+  flex-shrink:0;
 }
 .hub-card h3{
   margin:0 0 6px;
@@ -1864,7 +1878,8 @@ a:hover{ color:var(--navy); }
   letter-spacing:.2px; text-transform:none;
 }
 .app-header .brand-text p{
-  color:#cdd9ec; font-size:11.5px; letter-spacing:.8px; text-transform:uppercase;
+  color:#ffffff; font-size:12px; letter-spacing:1px; text-transform:uppercase;
+  opacity:.85;
 }
 .app-header .header-actions{ gap:10px; flex-wrap:wrap; justify-content:flex-end; }
 .app-header .clock{ color:#fff; font-family:var(--mono); }
