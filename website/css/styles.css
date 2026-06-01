@@ -1,29 +1,45 @@
 /* ========================================================
    KUKL Baneshwor — Site Survey System
-   Strict Black & White Theme
+   Official Government Theme (navy / white / slate)
+   Revamped UI/UX — utilitarian, grid-based, WCAG-minded.
    ======================================================== */
 
 :root{
+  /* Core surfaces & text */
   --bg:#ffffff;
-  --fg:#000000;
-  --muted:#5a5a5a;
-  --line:#000000;
-  --soft:#f4f4f4;
-  --softer:#fafafa;
-  --hover:#000000;
+  --fg:#1b1b1b;
+  --muted:#5b616b;
+  --line:#c9ced6;
+  --soft:#f0f3f7;
+  --softer:#f8f9fb;
+  --hover:#13294b;
   --hover-fg:#ffffff;
-  --danger:#000000;
-  --radius:0px;
-  --shadow:0 0 0 1px #000;
+  --danger:#b50909;
+  --radius:3px;
+  --shadow:none;
   --mono:'JetBrains Mono','Fira Code',Consolas,monospace;
+
+  /* Official government palette */
+  --navy:#13294b;          /* primary masthead / headers */
+  --navy-dark:#0b1d3a;     /* hover / active navy */
+  --blue:#1a4480;          /* primary action buttons */
+  --blue-strong:#162e51;
+  --link:#205493;          /* hyperlinks */
+  --slate:#4a4f54;
+  --slate-light:#71767a;
+  --border-strong:#5b616b; /* table / authoritative borders */
+  --success:#2e8540;
+  --gold:#fdb81e;
+  --alert-bg:#f9eff0;
+  --sans:'Public Sans','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{background:var(--bg);color:var(--fg);}
+html,body{background:var(--soft);color:var(--fg);}
 body{
-  font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
-  font-size:14px;
-  line-height:1.45;
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.5;
   -webkit-font-smoothing:antialiased;
   min-height:100vh;
   display:flex;flex-direction:column;
@@ -1559,15 +1575,15 @@ a.brand:hover .brand-text h1{text-decoration:underline;}
   .tab-panel{animation:none !important;}
 }
 
-/* ----- Theme variables ----- */
+/* ----- Theme variables (government light palette) ----- */
 :root,
 :root[data-theme="light"]{
-  --bg:#ffffff; --fg:#000000; --muted:#5a5a5a;
-  --line:#000000; --soft:#f4f4f4; --softer:#fafafa;
-  --hover:#000000; --hover-fg:#ffffff;
+  --bg:#ffffff; --fg:#1b1b1b; --muted:#5b616b;
+  --line:#c9ced6; --soft:#f0f3f7; --softer:#f8f9fb;
+  --hover:#13294b; --hover-fg:#ffffff;
   --card-bg:#ffffff; --input-bg:#ffffff;
-  --accent:#000000; --accent-fg:#ffffff;
-  --border:#000000;
+  --accent:#1a4480; --accent-fg:#ffffff;
+  --border:#c9ced6;
 }
 :root[data-theme="dark"]{
   --bg:#0c0c0c; --fg:#f0f0f0; --muted:#a0a0a0;
@@ -1795,3 +1811,219 @@ html,body{background:var(--bg);color:var(--fg);}
 .export-options input[type="checkbox"]{
   width:18px; height:18px; accent-color:var(--accent, #000);
 }
+
+/* =========================================================================
+   ===============  OFFICIAL GOVERNMENT THEME OVERRIDE LAYER  ===============
+   Appended last so it re-skins the original components without altering the
+   structural CSS above. Palette: navy / white / slate with accessible
+   accents (gov blue, success green, alert red, gold focus ring).
+   ========================================================================= */
+
+/* ----- Accessibility: skip link + visible focus ----- */
+.skip-link{
+  position:absolute; left:-9999px; top:0; z-index:300;
+  background:var(--navy); color:#fff; padding:10px 18px;
+  font-weight:700; letter-spacing:.4px; border:2px solid var(--gold);
+}
+.skip-link:focus{ left:8px; top:8px; }
+:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
+a{ color:var(--link); }
+a:hover{ color:var(--navy); }
+
+/* ----- Official top banner ----- */
+.gov-banner{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  background:#e8eef5; color:var(--slate);
+  font-size:12.5px; line-height:1.4;
+  padding:6px 20px; border-bottom:1px solid var(--line);
+}
+.gov-banner .gov-banner-flag{
+  width:16px;height:16px;border-radius:50%;
+  background:var(--navy); border:2px solid var(--gold); flex:0 0 auto;
+}
+.gov-banner strong{ color:var(--navy); }
+
+/* ----- Government masthead (re-using existing .app-header markup) ----- */
+.app-header{
+  display:flex !important;
+  align-items:center; justify-content:space-between; gap:16px;
+  background:var(--navy); color:#fff;
+  padding:12px 20px; border-bottom:4px solid var(--gold);
+  position:static;
+}
+.app-header .brand{ color:#fff; gap:14px; }
+.app-header .brand-logo{
+  width:50px;height:50px; background:#fff; padding:4px;
+  border-radius:var(--radius); flex-shrink:0;
+}
+.app-header .brand-text h1{
+  color:#fff; font-size:20px; font-weight:800;
+  letter-spacing:.2px; text-transform:none;
+}
+.app-header .brand-text p{
+  color:#cdd9ec; font-size:11.5px; letter-spacing:.8px; text-transform:uppercase;
+}
+.app-header .header-actions{ gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+.app-header .clock{ color:#fff; font-family:var(--mono); }
+.app-header .btn-mini{
+  background:transparent; color:#fff; border:1px solid rgba(255,255,255,.6);
+}
+.app-header .btn-mini:hover{ background:#fff; color:var(--navy); }
+
+/* ----- Status pills ----- */
+.status-pill{
+  background:var(--success); color:#fff; border:none;
+  border-radius:12px; font-weight:700;
+}
+.status-pill.offline{ background:var(--danger); color:#fff; }
+
+/* ----- Primary navigation bar (sticky section nav) ----- */
+.nav-bar{ background:#fff; border-bottom:2px solid var(--navy); }
+.nav-bar .tab,
+.tab{
+  color:var(--navy); font-weight:600; text-transform:uppercase;
+  letter-spacing:.5px; border-right:1px solid var(--line);
+}
+.nav-bar .tab:hover,
+.tab:hover{ background:var(--soft); color:var(--navy); }
+.nav-bar .tab.active,
+.tab.active{ background:var(--navy); color:#fff; }
+.nav-sep{ background:var(--line); }
+.badge{
+  background:var(--blue); color:#fff; border:none;
+  border-radius:11px; font-family:var(--sans); font-weight:700;
+}
+.tab.active .badge{ background:#fff; color:var(--navy); }
+.theme-toggle{
+  color:var(--navy); border:1px solid var(--navy); background:#fff;
+  text-transform:uppercase; letter-spacing:.5px; font-weight:600;
+}
+.theme-toggle:hover{ background:var(--navy); color:#fff; }
+
+/* ----- Buttons (standardized, authoritative) ----- */
+.btn{
+  border:1px solid var(--blue); color:var(--blue); background:#fff;
+  border-radius:var(--radius); text-transform:none; font-weight:600;
+  letter-spacing:.2px;
+}
+.btn:hover:not(:disabled){ background:var(--soft); color:var(--blue); }
+.btn-primary{ background:var(--blue); color:#fff; border-color:var(--blue); }
+.btn-primary:hover:not(:disabled){ background:var(--blue-strong); color:#fff; border-color:var(--blue-strong); }
+.btn-outline{ background:#fff; color:var(--blue); border-color:var(--blue); }
+.btn-outline:hover:not(:disabled){ background:var(--soft); color:var(--blue); }
+.btn-danger{ background:#fff; color:var(--danger); border:1px solid var(--danger); border-style:solid; }
+.btn-danger:hover{ background:var(--danger); color:#fff; border-style:solid; }
+.btn-mini{ background:#fff; color:var(--blue); border:1px solid var(--blue); }
+.btn-mini:hover{ background:var(--blue); color:#fff; }
+.btn-mini.active{ background:var(--danger); color:#fff; border-color:var(--danger); }
+.btn-capture{ background:var(--success); color:#fff; border:1px solid var(--success); }
+.btn-capture:hover:not(:disabled){ background:#1f6e34; border-color:#1f6e34; color:#fff; }
+
+/* ----- Cards & section heads ----- */
+.card{
+  background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:0 1px 2px rgba(11,29,58,.06);
+}
+.card-head{ background:var(--softer); border-bottom:1px solid var(--line); }
+.card-head h2, .card-title{
+  color:var(--navy); text-transform:none; letter-spacing:.2px; font-weight:700;
+}
+/* Section headings: navy text on a light surface with a gold underline and
+   a navy left accent bar — fixes the previous navy-on-black contrast issue. */
+.hub-heading{
+  background:#fff; color:var(--navy);
+  border:1px solid var(--line); border-left:6px solid var(--navy);
+  border-bottom:3px solid var(--gold);
+  text-transform:uppercase; letter-spacing:.8px; font-weight:800;
+  padding:10px 14px;
+}
+.hub-card{
+  background:#fff; border:1px solid var(--line);
+  border-top:4px solid var(--blue); border-radius:var(--radius);
+}
+.hub-card h3{ color:var(--navy); }
+.hub-card p{ color:var(--slate); }
+.hub-icon{ color:var(--blue); }
+
+/* ----- Grouped form headings (extra sections) ----- */
+.extra-form-body .group-title{
+  background:var(--navy); color:#fff; border:1px solid var(--navy);
+  border-radius:var(--radius); text-transform:uppercase; letter-spacing:.5px;
+}
+
+/* ----- Forms (clear labels, accessible focus) ----- */
+.field label, .form-grid label{ color:var(--slate); font-weight:600; }
+input, select, textarea{
+  font-family:var(--sans);
+  border:1px solid var(--border-strong);
+  border-radius:var(--radius);
+}
+.field input:focus, .field select:focus, .field textarea:focus,
+.form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus,
+input:focus, select:focus, textarea:focus, .search:focus{
+  outline:3px solid var(--gold); outline-offset:0;
+  border-color:var(--navy);
+}
+.req{ background:var(--gold); color:var(--navy-dark); border:none; border-radius:2px; }
+
+/* ----- Tables (standardized, authoritative) ----- */
+#recordTable thead th, .records-table thead th, .nrw-tbl thead th{
+  background:var(--navy); color:#fff; border-color:var(--navy);
+}
+#recordTable th, #recordTable td,
+.records-table th, .records-table td{ border-color:var(--line); }
+#recordBody tr:hover, .records-table tbody tr:hover{ background:var(--soft); }
+
+/* ----- View switcher (SURVEY / REPORT / MAP) ----- */
+.view-switcher{ border:1px solid var(--navy); border-radius:var(--radius); overflow:hidden; }
+.view-switcher .vs-btn{ color:var(--navy); border-right-color:var(--line); font-weight:600; }
+.view-switcher .vs-btn.active{ background:var(--navy); color:#fff; }
+.view-switcher .vs-btn:hover:not(.active){ background:var(--soft); }
+
+/* ----- GPS panel ----- */
+.gps-panel-card{ border:1px solid var(--line); }
+.gps-panel-title{ color:var(--navy); }
+.gps-panel-status{ background:var(--soft); color:var(--navy); border:1px solid var(--line); }
+.gps-panel-status.ok{ background:var(--success); color:#fff; border-color:var(--success); }
+.gps-panel-status.run{ background:var(--blue); color:#fff; border-color:var(--blue); }
+.gps-panel-status.err{ background:var(--danger); color:#fff; border-color:var(--danger); }
+
+/* ----- Misc global UI ----- */
+.toast{ background:var(--navy); color:#fff; }
+.draft-banner{ background:var(--gold); color:var(--navy-dark); border-color:var(--navy); }
+::selection{ background:var(--gold); color:var(--navy-dark); }
+
+/* Theme-consistent surfaces (replace stray pure-black with navy) */
+.modal-head{ background:var(--navy); }
+.modal-card{ border:1px solid var(--navy); }
+.cam-overlay{ background:var(--navy); }
+
+/* ----- Footer ----- */
+.gov-footer{
+  margin-top:auto;
+  background:var(--navy); color:#cdd9ec;
+  padding:26px 20px calc(26px + env(safe-area-inset-bottom));
+  font-size:13px; line-height:1.6;
+  border-top:4px solid var(--gold);
+  text-align:center; text-transform:none; letter-spacing:normal;
+}
+.gov-footer a{ color:#fff; text-decoration:underline; }
+.gov-footer strong{ color:#fff; }
+.gov-footer-brand{
+  display:flex; flex-direction:column; gap:4px;
+  max-width:1200px; margin:0 auto;
+}
+.gov-footer-brand strong{
+  font-size:16px; font-weight:700; letter-spacing:.3px; color:#fff;
+}
+.gov-footer-brand span{
+  font-size:13px; color:#aebfd8; letter-spacing:.4px;
+}
+
+/* GPS grid: keep cell borders inside the panel padding (no right overflow) */
+.gps-grid{ box-sizing:border-box; }
+.gps-grid .gps-cell{ box-sizing:border-box; min-width:0; }
+.gps-cell output{ overflow-wrap:anywhere; }
+
+/* Subtle, consistent hover transitions for interactive cards */
+.hub-card{ transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; }

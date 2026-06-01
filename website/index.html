@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#000000" />
+  <meta name="theme-color" content="#13294b" />
 
   <!-- ============================================================
        Content Security Policy
@@ -55,7 +55,7 @@
         href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
         integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+"
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="css/styles.css?v=34" />
+  <link rel="stylesheet" href="css/styles.css?v=36" />
 
   <!-- Apply theme as early as possible to avoid FOUC.
        External so CSP can drop 'unsafe-inline' for script-src. -->
@@ -96,6 +96,17 @@
           data-cfasync="false"></script>
 </head>
 <body>
+
+  <!-- Accessibility: skip directly to main content -->
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <!-- ============================================================
+       OFFICIAL GOVERNMENT BANNER
+       ============================================================ -->
+  <div class="gov-banner" role="note">
+    <span class="gov-banner-flag" aria-hidden="true"></span>
+    <span>Field-survey system of <strong>Kathmandu Upatyaka Khanepani Limited (KUKL)</strong> &mdash; Baneshwor Branch.</span>
+  </div>
 
   <!-- ============================================================
        HEADER
@@ -141,7 +152,7 @@
   <!-- ============================================================
        MAIN CONTENT
        ============================================================ -->
-  <main class="container">
+  <main class="container" id="main">
 
     <!-- ===== TAB: HOME (HUB) ===== -->
     <section id="tab-home" class="tab-panel active" role="tabpanel" aria-labelledby="tabbtn-home" tabindex="0">
@@ -666,8 +677,11 @@
     </div>
   </div>
 
-  <footer class="app-footer">
-    <span>KUKL Baneshwor &middot; Site Survey System &middot; Built for field engineers</span>
+  <footer class="app-footer gov-footer">
+    <div class="gov-footer-brand">
+      <strong>Kathmandu Upatyaka Khanepani Limited</strong>
+      <span>Baneshwor Branch &middot; Site Survey System</span>
+    </div>
   </footer>
 
   <!-- Floating back-to-top button (appears on scroll) -->
