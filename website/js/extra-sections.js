@@ -442,6 +442,8 @@
     });
     const btnExport     = el('button', { type: 'button', class: 'btn btn-primary', id: `${key}_export` }, 'EXPORT EXCEL');
     const btnExportJson = el('button', { type: 'button', class: 'btn btn-outline', id: `${key}_export_json` }, 'EXPORT JSON');
+    const btnImportXlsx = el('button', { type: 'button', class: 'btn btn-outline', id: `${key}_import_xlsx` }, 'IMPORT EXCEL');
+    const importXlsxFile = el('input', { type: 'file', accept: '.xlsx,.xls,.csv', id: `${key}_import_xlsx_file`, style: 'display:none;' });
     const btnImportJson = el('button', { type: 'button', class: 'btn btn-outline', id: `${key}_import_json` }, 'IMPORT JSON');
     const importFile    = el('input', { type: 'file', accept: 'application/json,.json', id: `${key}_import_file`, style: 'display:none;' });
     const btnClear      = el('button', { type: 'button', class: 'btn btn-danger',  id: `${key}_clear`  }, 'DELETE ALL');
@@ -453,7 +455,7 @@
     const recordsCard = el('div', { class: 'card' },
       el('div', { class: 'card-head' },
         el('h2', null, 'Saved Reports'),
-        el('div', { class: 'btn-row' }, searchBox, btnExport, btnExportJson, btnImportJson, importFile, btnClear),
+        el('div', { class: 'btn-row' }, searchBox, btnExport, btnExportJson, btnImportXlsx, importXlsxFile, btnImportJson, importFile, btnClear),
       ),
       statusLine,
       recordsHost,
@@ -552,6 +554,13 @@
 
     $(`${key}_export`).addEventListener('click', () => exportSection(key));
     btnExportJson.addEventListener('click', () => exportSectionJson(key));
+    btnImportXlsx.addEventListener('click', () => importXlsxFile.click());
+    importXlsxFile.addEventListener('change', async () => {
+      const f = importXlsxFile.files && importXlsxFile.files[0];
+      importXlsxFile.value = '';
+      if (!f) return;
+      await importSectionExcel(key, f);
+    });
     btnImportJson.addEventListener('click', () => importFile.click());
     importFile.addEventListener('change', async () => {
       const f = importFile.files && importFile.files[0];
@@ -974,66 +983,188 @@
     document.body.appendChild(overlay);
   }
 
-  // ---------- Single-record PDF ----------
+  // ---------- Single-record PDF (professional branded layout) ----------
   function exportRecordPdf(key, r) {
     const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (!jsPDFCtor) { toast('PDF library not loaded'); return; }
     const section = SECTIONS[key];
-    const doc = new jsPDFCtor({ unit: 'pt', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const margin = 36;
-    let y = margin;
+    const doc = new jsPDFCtor({ unit: 'pt', format: 'a4', compress: true });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const M = 40;
+    const CW = W - 2 * M;
+    let y;
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
-    doc.text('KUKL BANESHWOR — ' + section.title.toUpperCase(), margin, y); y += 18;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-    doc.text('Survey ID: ' + r.id, margin, y); y += 14;
-    doc.text('Saved: ' + (r.createdAt || '').replace('T',' ').slice(0,19), margin, y); y += 18;
+    // Colors
+    const NAVY = [19, 41, 75];
+    const WHITE = [255, 255, 255];
+    const BLACK = [0, 0, 0];
+    const GREY = [90, 90, 90];
+    const GREY_LINE = [200, 200, 200];
+    const GREY_LIGHT = [245, 247, 250];
+    const GOLD = [253, 184, 30];
+    let zebraIdx = 0;
 
-    doc.setDrawColor(0); doc.line(margin, y, pageW - margin, y); y += 12;
+    const setFill = (c) => doc.setFillColor(c[0], c[1], c[2]);
+    const setText = (c) => doc.setTextColor(c[0], c[1], c[2]);
+    const setDraw = (c) => doc.setDrawColor(c[0], c[1], c[2]);
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-    doc.text('Field Data', margin, y); y += 14;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    function drawHeader() {
+      setFill(NAVY);
+      doc.rect(0, 0, W, 72, 'F');
+      setFill(GOLD);
+      doc.rect(0, 72, W, 4, 'F');
+      setText(WHITE);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(15);
+      doc.text('KUKL BANESHWOR — ' + section.title.toUpperCase(), M, 32);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('Kathmandu Upatyaka Khanepani Limited · Site Survey System', M, 50);
+      setText([180, 200, 220]);
+      doc.setFontSize(8);
+      doc.text('Report generated: ' + new Date().toLocaleString(), M, 64);
+      setText(BLACK);
+    }
 
-    const colLabelW = 150;
+    function drawFooter(pageNo) {
+      setDraw(GREY_LINE);
+      doc.setLineWidth(0.5);
+      doc.line(M, H - 30, W - M, H - 30);
+      setText(GREY);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text('KUKL BANESHWOR · ' + section.title.toUpperCase(), M, H - 18);
+      doc.text('CONFIDENTIAL — INTERNAL USE ONLY', W / 2, H - 18, { align: 'center' });
+      doc.text('Page ' + pageNo, W - M, H - 18, { align: 'right' });
+      setText(BLACK);
+    }
+
+    function ensure(need) {
+      if (y + need > H - 45) {
+        doc.addPage();
+        drawHeader();
+        y = 92;
+      }
+    }
+
+    function groupHeader(label) {
+      ensure(30);
+      setFill(NAVY);
+      doc.rect(M, y, CW, 20, 'F');
+      setText(WHITE);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(label.toUpperCase(), M + 10, y + 14);
+      setText(BLACK);
+      y += 26;
+      zebraIdx = 0;
+    }
+
+    function fieldRow(label, value) {
+      const padX = 8, padY = 6;
+      const labelW = 140;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      const valStr = (value == null || value === '') ? '—' : String(value);
+      const wrapped = doc.splitTextToSize(valStr, CW - labelW - padX * 3);
+      const rowH = Math.max(20, wrapped.length * 12 + padY * 2);
+      ensure(rowH + 2);
+
+      if (zebraIdx % 2 === 0) {
+        setFill(GREY_LIGHT);
+        doc.rect(M, y, CW, rowH, 'F');
+      }
+      zebraIdx++;
+      setDraw(GREY_LINE);
+      doc.setLineWidth(0.3);
+      doc.line(M, y + rowH, M + CW, y + rowH);
+
+      setText(GREY);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.text(label.toUpperCase(), M + padX, y + padY + 9);
+      setText(BLACK);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.text(wrapped, M + labelW + padX, y + padY + 9);
+      y += rowH;
+    }
+
+    // --- Page 1 ---
+    drawHeader();
+    y = 92;
+
+    // Survey ID card
+    setDraw(NAVY);
+    doc.setLineWidth(1.2);
+    doc.rect(M, y, CW, 52);
+    setFill(NAVY);
+    doc.rect(M, y, 5, 52, 'F');
+    setText(BLACK);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Survey ID: ' + r.id, M + 16, y + 22);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    setText(GREY);
+    doc.text('Saved: ' + (r.createdAt || '').replace('T', ' ').slice(0, 19), M + 16, y + 40);
+    const reporter = r.reportedBy || r.surveyor || '';
+    if (reporter) doc.text('Reported by: ' + reporter, M + 280, y + 40);
+    setText(BLACK);
+    y += 64;
+
+    // Group fields by their group property
+    let currentGroup = null;
     section.fields.forEach(f => {
       if (f.type === 'photos') return;
-      const v = r[f.key];
-      let txt;
-      if (f.type === 'location') {
-        if (v && isFinite(v.lat)) txt = `${v.lat.toFixed(6)}, ${v.lng.toFixed(6)}${v.acc != null ? ` (acc ${v.acc} m)` : ''}`;
-        else txt = '—';
-      } else if (v == null || v === '') {
-        txt = '—';
-      } else {
-        txt = String(v);
+      const grp = f.group || 'Details';
+      if (grp !== currentGroup) {
+        currentGroup = grp;
+        groupHeader(grp);
       }
-      const lines = doc.splitTextToSize(txt, pageW - margin * 2 - colLabelW - 10);
-      if (y + lines.length * 12 + 4 > pageH - margin) { doc.addPage(); y = margin; }
-      doc.setFont('helvetica', 'bold');
-      doc.text(stripStar(f.label) + ':', margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(lines, margin + colLabelW, y);
-      y += Math.max(14, lines.length * 12 + 2);
+      const v = r[f.key];
+      let display;
+      if (f.type === 'location') {
+        if (v && isFinite(v.lat)) {
+          display = `${v.lat.toFixed(6)}, ${v.lng.toFixed(6)}` + (v.acc != null ? `  (accuracy: ${v.acc} m)` : '');
+        } else {
+          display = '—';
+        }
+      } else {
+        display = v;
+      }
+      fieldRow(stripStar(f.label), display);
     });
 
+    // Photos
     const photos = r.photos || [];
     if (photos.length) {
-      doc.addPage(); y = margin;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-      doc.text(`Photos (${photos.length})`, margin, y); y += 12;
-      const imgW = (pageW - margin * 2 - 12) / 2;
-      const imgH = imgW * 0.75;
+      doc.addPage();
+      drawHeader();
+      y = 92;
+      groupHeader('Photo Evidence (' + photos.length + ')');
+      const imgW = (CW - 12) / 2;
+      const imgH = imgW * 0.7;
       let col = 0;
       photos.forEach((p) => {
-        if (y + imgH > pageH - margin) { doc.addPage(); y = margin; col = 0; }
-        const x = margin + col * (imgW + 12);
-        try { doc.addImage(p.dataUrl, 'JPEG', x, y, imgW, imgH); } catch (_) {}
+        ensure(imgH + 16);
+        const x = M + col * (imgW + 12);
+        try {
+          doc.addImage(p.dataUrl, 'JPEG', x, y, imgW, imgH);
+          setDraw(GREY_LINE);
+          doc.rect(x, y, imgW, imgH);
+        } catch (_) {}
         col++;
         if (col >= 2) { col = 0; y += imgH + 12; }
       });
+    }
+
+    // Add page numbers
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      drawFooter(i);
     }
 
     const fname = `${section.exportName}_${r.id}.pdf`;
@@ -1076,15 +1207,15 @@
     if (!all.length) { toast('No records to export'); return; }
 
     const rows = all.map((r, i) => {
-      const out = { '#': i + 1, 'ID': r.id, 'Saved At': (r.createdAt || '').replace('T', ' ').slice(0, 19) };
+      const out = { '#': i + 1, 'Survey ID': r.id, 'Date & Time': (r.createdAt || '').replace('T', ' ').slice(0, 19) };
       section.fields.forEach(f => {
-        if (f.type === 'photos') { out['Photos'] = (r[f.key] || []).length; return; }
+        if (f.type === 'photos') { out['Photos Count'] = (r[f.key] || []).length; return; }
         if (f.type === 'location') {
           const g = r[f.key];
           out['Latitude']  = g && isFinite(g.lat) ? g.lat : '';
           out['Longitude'] = g && isFinite(g.lng) ? g.lng : '';
           out['GPS Accuracy (m)'] = g && g.acc != null ? g.acc : '';
-          out['Maps Link'] = g && isFinite(g.lat) ? `https://maps.google.com/?q=${g.lat},${g.lng}` : '';
+          out['Google Maps Link'] = g && isFinite(g.lat) ? `https://maps.google.com/?q=${g.lat},${g.lng}` : '';
           return;
         }
         out[stripStar(f.label)] = r[f.key] == null ? '' : r[f.key];
@@ -1092,15 +1223,120 @@
       return out;
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
+    // Build worksheet with header styling
+    const ws = XLSX.utils.json_to_sheet(rows, { origin: 'A2' });
+
+    // Title row
     const keys = Object.keys(rows[0]);
-    ws['!cols'] = keys.map(k => ({ wch: Math.min(40, Math.max(k.length, ...rows.map(r => String(r[k] ?? '').length))) + 2 }));
+    XLSX.utils.sheet_add_aoa(ws, [keys], { origin: 'A1' });
+
+    // Column widths — intelligent auto-fit
+    ws['!cols'] = keys.map(k => {
+      const maxLen = Math.max(k.length, ...rows.map(r => String(r[k] ?? '').length));
+      return { wch: Math.min(45, maxLen + 3) };
+    });
+
+    // Freeze the header row
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+    // Autofilter on the header row
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
+
     const wb = XLSX.utils.book_new();
+    wb.Props = {
+      Title: section.title,
+      Subject: 'KUKL Baneshwor Site Survey Export',
+      Author: 'KUKL Survey System',
+      CreatedDate: new Date(),
+    };
     XLSX.utils.book_append_sheet(wb, ws, section.sheetName);
-    const fname = `${section.exportName}_${new Date().toISOString().slice(0,10)}.xlsx`;
+
+    // Summary sheet
+    const summaryData = [
+      ['KUKL Baneshwor — Site Survey System'],
+      [''],
+      ['Report Type', section.title],
+      ['Export Date', new Date().toLocaleString()],
+      ['Total Records', all.length],
+      ['Date Range', all.length ? (all[all.length - 1].createdAt || '').slice(0, 10) + ' to ' + (all[0].createdAt || '').slice(0, 10) : '—'],
+      [''],
+      ['Fields Included:'],
+      ...section.fields.filter(f => f.type !== 'photos').map(f => ['  • ' + stripStar(f.label)]),
+    ];
+    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+    summaryWs['!cols'] = [{ wch: 20 }, { wch: 50 }];
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+
+    const fname = `${section.exportName}_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(wb, fname);
-    toast('Excel exported');
+    toast('Excel exported (' + all.length + ' records)');
   }
+
+  // ---------- Import from Excel ----------
+  async function importSectionExcel(key, file) {
+    if (typeof XLSX === 'undefined') { toast('XLSX library not loaded'); return; }
+    const section = SECTIONS[key];
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const jsonRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      if (!jsonRows.length) { toast('No data found in the Excel file'); return; }
+
+      // Build a reverse label→key map
+      const labelToKey = {};
+      section.fields.forEach(f => {
+        if (f.type === 'photos' || f.type === 'location') return;
+        labelToKey[stripStar(f.label).toLowerCase()] = f.key;
+      });
+
+      const existing = await dbAll(section.store);
+      const existingIds = new Set(existing.map(r => r.id));
+      let added = 0, skipped = 0;
+
+      for (const row of jsonRows) {
+        // Try to match row columns to section fields
+        const rec = { createdAt: new Date().toISOString() };
+
+        // Check for an ID column
+        const rowId = row['Survey ID'] || row['ID'] || row['id'] || '';
+        if (rowId && existingIds.has(rowId)) { skipped++; continue; }
+        rec.id = rowId || (section.idPrefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6));
+
+        // Map columns by label
+        for (const [colName, val] of Object.entries(row)) {
+          const k = labelToKey[colName.toLowerCase()];
+          if (k) rec[k] = val;
+        }
+
+        // Handle GPS columns
+        const lat = parseFloat(row['Latitude'] || row['latitude'] || row['Lat'] || '');
+        const lng = parseFloat(row['Longitude'] || row['longitude'] || row['Lng'] || row['Long'] || '');
+        if (isFinite(lat) && isFinite(lng)) {
+          const gpsField = section.fields.find(f => f.type === 'location');
+          if (gpsField) rec[gpsField.key] = { lat, lng, acc: parseFloat(row['GPS Accuracy (m)'] || '') || null };
+        }
+
+        // Handle date column
+        if (row['Date & Time'] || row['Saved At']) {
+          rec.createdAt = row['Date & Time'] || row['Saved At'];
+        }
+
+        await dbPut(section.store, rec);
+        existingIds.add(rec.id);
+        added++;
+      }
+
+      await refreshRecords(key);
+      toast(`Imported ${added} records from Excel${skipped ? ', ' + skipped + ' duplicates skipped' : ''}`);
+    } catch (err) {
+      console.error(err);
+      toast('Excel import failed: ' + (err.message || 'invalid file'));
+    }
+  }
+
   function stripStar(s) { return (s || '').replace(/\s*\*$/, ''); }
 
   // ---------- JSON export / import ----------
