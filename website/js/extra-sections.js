@@ -417,7 +417,7 @@
     const reportView  = el('div', { class: 'section-view',        'data-view': 'report' }, recordsCard);
     const mapView     = el('div', { class: 'section-view',        'data-view': 'map'    }, mapCard);
 
-    const switcher = el('nav', { class: 'view-switcher', id: `${key}_switcher` },
+    const switcher = el('nav', { class: 'view-switcher main-switcher', id: `${key}_switcher` },
       el('button', { type: 'button', class: 'vs-btn active', 'data-view': 'survey' }, 'SURVEY'),
       el('button', { type: 'button', class: 'vs-btn',        'data-view': 'report' }, 'REPORT'),
       el('button', { type: 'button', class: 'vs-btn',        'data-view': 'map'    }, 'MAP'),
