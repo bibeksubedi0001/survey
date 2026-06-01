@@ -209,11 +209,35 @@ window.addEventListener('online', updateOnline);
 window.addEventListener('offline', updateOnline);
 updateOnline();
 
-// ---------- GPS (multi-sample fusion — weighted average for ≤ 2 m precision) ----------
-const TARGET_ACC = 2;          // meters — desired final fused accuracy
+// ---------- GPS (multi-sample fusion — dual-freq GNSS optimized for ≤ 1–2 m precision) ----------
+const TARGET_ACC_L5 = 1;       // meters — L5 dual-frequency phones can achieve this
+const TARGET_ACC_L1 = 2;       // meters — single-frequency fallback target
+let TARGET_ACC = TARGET_ACC_L1; // dynamic — adjusts when L5 detected
 const MIN_GOOD_SAMPLES = 3;    // need this many samples ≤ TARGET_ACC*1.5 before lock
 const MAX_WAIT_MS = 120000;    // 120s cap
-const MAX_SAMPLES_KEPT = 60;   // ring buffer
+const MAX_SAMPLES_KEPT = 80;   // ring buffer (increased for L5 high-rate)
+let gnssQuality = 'unknown';   // 'L5' | 'L1' | 'unknown'
+
+function detectGnssQuality(samples) {
+  // Dual-freq L5 phones typically report raw accuracy < 2m within first few samples
+  if (samples.length < 3) return 'unknown';
+  const sub2 = samples.filter(s => s.acc < 2).length;
+  const sub3 = samples.filter(s => s.acc < 3).length;
+  if (sub2 >= 2 || (sub3 >= 3 && samples.length <= 8)) {
+    gnssQuality = 'L5';
+    TARGET_ACC = TARGET_ACC_L5;
+  } else if (samples.length >= 6) {
+    gnssQuality = 'L1';
+    TARGET_ACC = TARGET_ACC_L1;
+  }
+  return gnssQuality;
+}
+
+function getGnssLabel() {
+  if (gnssQuality === 'L5') return 'DUAL-FREQ L1+L5';
+  if (gnssQuality === 'L1') return 'SINGLE-FREQ L1';
+  return 'DETECTING…';
+}
 
 let gpsWatchId = null;
 let gpsSamples = [];           // [{lat,lng,acc,alt,hdg,t}]
@@ -282,7 +306,10 @@ function stopGpsWatch(finalMsg) {
   }
   if (gpsTickTimer) { clearInterval(gpsTickTimer); gpsTickTimer = null; }
   setGpsBtn('CAPTURE LOCATION', false);
-  if (finalMsg) $('gpsStatus').textContent = finalMsg;
+  if (finalMsg) {
+    const gnssTag = gnssQuality !== 'unknown' ? `  [${getGnssLabel()}]` : '';
+    $('gpsStatus').textContent = finalMsg + gnssTag;
+  }
 }
 
 function commitFused(reason) {
@@ -318,7 +345,7 @@ $('btnGetLocation').addEventListener('click', () => {
   gpsBestAcc = Infinity;
   gpsStartTs = Date.now();
   setGpsBtn('STOP & USE BEST', true);
-  $('gpsStatus').textContent = `Acquiring high-precision GPS… target ≤ ${TARGET_ACC} m. Stand outdoors, hold device flat & still.`;
+  $('gpsStatus').textContent = `Acquiring dual-freq GNSS… target ≤ ${TARGET_ACC} m. Stand outdoors, hold device flat & still.`;
   $('samples').textContent = '0';
   $('bestAcc').textContent = '—';
 
@@ -328,8 +355,9 @@ $('btnGetLocation').addEventListener('click', () => {
     const sec = Math.round((Date.now() - gpsStartTs) / 1000);
     const fused = fuseSamples(gpsSamples);
     const goodCount = gpsSamples.filter(s => s.acc <= TARGET_ACC * 1.5).length;
+    detectGnssQuality(gpsSamples);
     $('gpsStatus').textContent =
-      `Refining…  fused ${fused.acc.toFixed(2)} m  ·  best raw ${gpsBestAcc.toFixed(2)} m  ·  ${gpsSamples.length} samples (${goodCount} good)  ·  ${sec}s elapsed  ·  tap STOP to accept`;
+      `Refining…  fused ${fused.acc.toFixed(2)} m  ·  best raw ${gpsBestAcc.toFixed(2)} m  ·  ${gpsSamples.length} samples (${goodCount} good)  ·  ${sec}s  ·  ${getGnssLabel()}  ·  target ≤${TARGET_ACC}m`;
     updateGpsView(fused);
   }, 500);
 

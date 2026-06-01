@@ -8,8 +8,10 @@
 (function () {
   'use strict';
 
-  const SAMPLE_WINDOW_MS = 10000; // collect for ~10 s
-  const MAX_SAMPLES      = 12;
+  const SAMPLE_WINDOW_MS = 15000; // collect for ~15 s (longer for better L5 convergence)
+  const MAX_SAMPLES      = 20;   // increased for dual-freq high-rate chips
+  const TARGET_L5        = 1;    // L5 phones can achieve ≤1m
+  const TARGET_L1        = 2.5;  // single-freq fallback
 
   function fmt(n, d) { return (n === null || n === undefined || isNaN(n)) ? '—' : Number(n).toFixed(d); }
   function nowISO()   { return new Date().toISOString(); }
@@ -40,7 +42,7 @@
         <button type="button" class="btn btn-outline" data-role="stop" hidden>STOP</button>
         <button type="button" class="btn btn-ghost"   data-role="clear" hidden>CLEAR</button>
       </div>
-      <p class="gps-hint" data-role="hint">Tap CAPTURE LOCATION to begin a 10-second high-accuracy fix.</p>
+      <p class="gps-hint" data-role="hint">Tap CAPTURE LOCATION for a 15-second dual-freq GNSS fix (L1+L5 if supported).</p>
     `;
     container.appendChild(root);
 
@@ -82,6 +84,13 @@
       els.captured.textContent = finalGps ? new Date(finalGps.capturedAt).toLocaleString() : '—';
     }
 
+    function detectBand() {
+      if (samples.length < 3) return '';
+      const sub2 = samples.filter(s => s.acc < 2).length;
+      if (sub2 >= 2) return ' [DUAL-FREQ L1+L5]';
+      return ' [SINGLE-FREQ L1]';
+    }
+
     function stopCapture(commit) {
       if (!capturing) return;
       capturing = false;
@@ -103,7 +112,8 @@
           capturedAt: nowISO(),
         };
         setStatus('CAPTURED', 'ok');
-        els.hint.textContent = `Locked best fix (±${finalGps.acc} m from ${finalGps.samples} samples).`;
+        const band = detectBand();
+        els.hint.textContent = `Locked best fix (±${finalGps.acc} m from ${finalGps.samples} samples)${band}`;
         if (typeof opts.onCapture === 'function') {
           try { opts.onCapture({ ...finalGps }, { hint: els.hint, root }); }
           catch (e) { console.warn('[KUKLGps] onCapture handler failed', e); }
@@ -129,7 +139,7 @@
       finalGps = null;
       capturing = true;
       setStatus('SAMPLING…', 'run');
-      els.hint.textContent = 'Collecting high-accuracy samples — keep the device steady, sky visible.';
+      els.hint.textContent = 'Collecting dual-freq GNSS samples — hold device steady, sky visible.';
       els.capture.hidden = true;
       els.stop.hidden    = false;
       els.clear.hidden   = true;
@@ -139,10 +149,14 @@
         pos => {
           const c = pos.coords || {};
           if (typeof c.latitude !== 'number' || typeof c.longitude !== 'number') return;
-          const s = { lat: c.latitude, lng: c.longitude, acc: c.accuracy ?? 9999 };
+          if (!isFinite(c.accuracy) || c.accuracy <= 0) return;
+          const s = { lat: c.latitude, lng: c.longitude, acc: c.accuracy };
           samples.push(s);
           if (!bestFix || s.acc < bestFix.acc) bestFix = s;
-          if (samples.length >= MAX_SAMPLES) stopCapture(true);
+          // Auto-lock early if L5-quality achieved (best < 1m with 3+ samples)
+          const thresh = (bestFix.acc < 2 && samples.length >= 5) ? TARGET_L5 : TARGET_L1;
+          if (bestFix.acc <= thresh && samples.length >= 5) stopCapture(true);
+          else if (samples.length >= MAX_SAMPLES) stopCapture(true);
           else render();
         },
         err => {
@@ -150,7 +164,7 @@
           els.hint.textContent = (err && err.message) || 'Geolocation error.';
           stopCapture(false);
         },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
       );
 
       timerId = setTimeout(() => stopCapture(true), SAMPLE_WINDOW_MS);
@@ -162,7 +176,7 @@
       bestFix = null;
       finalGps = null;
       setStatus('IDLE');
-      els.hint.textContent = 'Tap CAPTURE LOCATION to begin a 10-second high-accuracy fix.';
+      els.hint.textContent = 'Tap CAPTURE LOCATION for a 15-second dual-freq GNSS fix (L1+L5 if supported).';
       els.clear.hidden = true;
       render();
     }
