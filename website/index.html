@@ -18,8 +18,8 @@
     default-src 'self';
     script-src 'self' https://unpkg.com https://cdn.jsdelivr.net;
     style-src  'self' 'unsafe-inline' https://unpkg.com;
-    img-src    'self' data: blob: https://*.tile.openstreetmap.org https://*.openstreetmap.org;
-    connect-src 'self' https://*.tile.openstreetmap.org https://*.openstreetmap.org;
+    img-src    'self' data: blob: https://*.tile.openstreetmap.org https://*.openstreetmap.org https://server.arcgisonline.com https://unpkg.com;
+    connect-src 'self' https://*.tile.openstreetmap.org https://*.openstreetmap.org https://server.arcgisonline.com;
     font-src   'self' data:;
     worker-src 'self';
     manifest-src 'self';
@@ -55,7 +55,8 @@
         href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
         integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+"
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="css/styles.css?v=37" />
+  <link rel="stylesheet" href="assets/vendor/leaflet-geoman.css" />
+  <link rel="stylesheet" href="css/styles.css?v=38" />
 
   <!-- Apply theme as early as possible to avoid FOUC.
        External so CSP can drop 'unsafe-inline' for script-src. -->
@@ -108,6 +109,7 @@
     <symbol id="ico-satisfaction" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="10" r="1.2" fill="#fff"/><circle cx="15" cy="10" r="1.2" fill="#fff"/></symbol>
     <symbol id="ico-water24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 6v6l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="ico-nrw" viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm0 5h10v2H4z"/><path d="M18 10l-2 3h4l-2 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ico-gis" viewBox="0 0 24 24"><path d="M9 2 3 4v18l6-2 6 2 6-2V2l-6 2-6-2zm0 2.2 6 2v13.6l-6-2V4.2z"/></symbol>
     <symbol id="ico-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1"/></symbol>
     <symbol id="ico-theme" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18V4a8 8 0 0 1 0 16z"/></symbol>
   </svg>
@@ -149,6 +151,7 @@
       <button id="tabbtn-satisfaction" class="tab"    role="tab" aria-selected="false" aria-controls="tab-satisfaction" tabindex="-1" data-tab="satisfaction"><svg class="tab-ico"><use href="#ico-satisfaction"/></svg> SATISFACTION <span id="satisfactionCount" class="badge">0</span></button>
       <button id="tabbtn-water24"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-water24"  tabindex="-1" data-tab="water24"><svg class="tab-ico"><use href="#ico-water24"/></svg> 24-HOUR SUPPLY <span id="water24Count" class="badge">0</span></button>
       <span class="nav-sep" aria-hidden="true"></span>
+      <button id="tabbtn-gis"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-gis"      tabindex="-1" data-tab="gis"><svg class="tab-ico"><use href="#ico-gis"/></svg> MAP / GIS</button>
       <button id="tabbtn-nrw"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-nrw"      tabindex="-1" data-tab="nrw"><svg class="tab-ico"><use href="#ico-nrw"/></svg> NRW REPORT</button>
       <button id="tabbtn-about"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-about"    tabindex="-1" data-tab="about"><svg class="tab-ico"><use href="#ico-help"/></svg> HELP</button>
       <button id="btnTheme" class="theme-toggle" type="button" title="Toggle theme (light / dark / sunlight)" aria-label="Toggle theme"><svg class="tab-ico"><use href="#ico-theme"/></svg> THEME</button>
@@ -588,6 +591,19 @@
       </div>
     </section>
 
+    <!-- ===== TAB: MAP / GIS EDITOR ===== -->
+    <section id="tab-gis" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-gis" tabindex="0">
+      <div class="card gis-card">
+        <div class="card-head">
+          <h2>Field GIS — Map &amp; Feature Editor</h2>
+          <p class="hint" style="border:none;background:none;padding:0;margin:0;">
+            Draw, edit and import layers (Shapefile / GeoJSON / KML / GPX). Edits are saved offline on this device.
+          </p>
+        </div>
+        <div id="gisEditor" class="gis-editor"></div>
+      </div>
+    </section>
+
     <!-- ===== TAB: NRW REPORT ===== -->
     <section id="tab-nrw" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-nrw" tabindex="0">
       <div class="card">
@@ -734,11 +750,15 @@
   <script src="js/gps-sampler.js?v=3"     data-cfasync="false"></script>
   <script src="js/geo-utils.js?v=1"       data-cfasync="false"></script>
   <script src="js/dma-overlay.js?v=8"     data-cfasync="false"></script>
-  <script src="js/app.js?v=19"             data-cfasync="false"></script>
+  <script src="assets/vendor/leaflet-geoman.min.js" data-cfasync="false"></script>
+  <script src="assets/vendor/shp.min.js"            data-cfasync="false"></script>
+  <script src="assets/vendor/togeojson.js"          data-cfasync="false"></script>
+  <script src="js/gis-editor.js?v=1"      data-cfasync="false"></script>
+  <script src="js/app.js?v=20"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=4"      data-cfasync="false"></script>
   <script src="js/extra-sections.js?v=12"   data-cfasync="false"></script>
 
   <!-- Global navigation wiring (extracted from inline <script> for CSP) -->
-  <script src="js/nav-wiring.js?v=2" data-cfasync="false"></script>
+  <script src="js/nav-wiring.js?v=3" data-cfasync="false"></script>
 </body>
 </html>

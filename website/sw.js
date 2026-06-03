@@ -5,7 +5,7 @@
      - OSM tiles (*.tile.openstreetmap.org)   → stale-while-revalidate (capped LRU)
      - Everything else → network-first, fall back to cache
 */
-const VERSION = 'v44-2026-06-01-gov';
+const VERSION = 'v45-2026-06-03-gis';
 const SHELL_CACHE = `kukl-shell-${VERSION}`;
 const LIB_CACHE   = `kukl-libs-${VERSION}`;
 const TILE_CACHE  = `kukl-tiles-${VERSION}`;
@@ -15,16 +15,21 @@ const SHELL_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/styles.css?v=37',
-  './js/app.js?v=19',
+  './css/styles.css?v=38',
+  './js/app.js?v=20',
   './js/nrw-builder.js?v=4',
   './js/extra-sections.js?v=12',
   './js/media-widgets.js?v=1',
   './js/gps-sampler.js?v=3',
   './js/geo-utils.js?v=1',
   './js/dma-overlay.js?v=8',
+  './js/gis-editor.js?v=1',
   './js/theme-boot.js?v=1',
-  './js/nav-wiring.js?v=2',
+  './js/nav-wiring.js?v=3',
+  './assets/vendor/leaflet-geoman.min.js',
+  './assets/vendor/leaflet-geoman.css',
+  './assets/vendor/shp.min.js',
+  './assets/vendor/togeojson.js',
   './data/dma/index.json',
   './assets/kukl-logo.png',
 ];
@@ -68,7 +73,8 @@ self.addEventListener('message', (event) => {
 });
 
 function isTile(url) {
-  return /\.tile\.openstreetmap\.org/.test(url.hostname);
+  return /\.tile\.openstreetmap\.org/.test(url.hostname) ||
+         /server\.arcgisonline\.com/.test(url.hostname);
 }
 function isLib(url) {
   return ['unpkg.com', 'cdn.jsdelivr.net'].includes(url.hostname);

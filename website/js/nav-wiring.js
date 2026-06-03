@@ -20,6 +20,7 @@
     area: 'Area Survey',
     satisfaction: 'Customer Satisfaction',
     water24: '24-Hour Supply Survey',
+    gis: 'Field GIS — Map & Editor',
     nrw: 'NRW Report Builder',
     about: 'Help & About',
   };
@@ -78,7 +79,7 @@
   var SHORTCUTS = {
     h: 'home',  n: 'capture',  r: 'records',  m: 'map',
     c: 'chief', l: 'leak',     p: 'pressure', a: 'area',
-    b: 'nrw',   '/': 'about',
+    b: 'nrw',   g: 'gis',      '/': 'about',
   };
   document.addEventListener('keydown', function (e) {
     if (!e.altKey || e.ctrlKey || e.metaKey) return;

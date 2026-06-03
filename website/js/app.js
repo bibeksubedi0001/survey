@@ -137,6 +137,15 @@ function activateTab(btn, { focus = false } = {}) {
   if (focus) btn.focus();
   if (btn.dataset.tab === 'records') renderRecords();
   if (btn.dataset.tab === 'map') renderMap();
+  if (btn.dataset.tab === 'gis') {
+    if (window.KUKLGis) {
+      const host = $('gisEditor');
+      if (host) {
+        const api = host._kuklGis || window.KUKLGis.mount(host);
+        if (api && api.refresh) api.refresh();
+      }
+    }
+  }
 }
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => activateTab(btn));
