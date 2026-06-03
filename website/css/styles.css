@@ -590,6 +590,32 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-layer-row .gis-ic-del:hover{background:#ffe5e5;border-color:#e53935;color:#b71c1c;}
 .gis-import{display:flex;flex-direction:column;gap:5px;}
 .gis-import .gis-file{text-align:center;cursor:pointer;}
+.gis-new-row{display:flex;gap:5px;align-items:center;}
+.gis-cat-select{flex:1;min-width:0;font:inherit;font-size:11px;padding:3px 4px;border:1px solid #999;border-radius:3px;background:#fff;}
+.gis-layer-row .gis-cat{
+  font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
+  color:#36507e;background:#eef3fb;border:1px solid #cdd9ee;border-radius:6px;
+  padding:0 4px;flex:0 0 auto;
+}
+/* Attribute editor overlay */
+.gis-attr{position:absolute;top:10px;right:10px;z-index:1000;width:282px;max-width:86%;}
+@media (max-width:780px){ .gis-attr{left:10px;right:10px;width:auto;top:8px;} }
+.gis-attr-card{background:#fff;border:2px solid #000;border-radius:8px;
+  box-shadow:0 6px 24px rgba(0,0,0,.3);overflow:hidden;}
+.gis-attr-head{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;background:var(--accent,#13294b);color:#fff;}
+.gis-attr-head strong{font-size:12px;letter-spacing:.5px;text-transform:uppercase;}
+.gis-attr-x{background:none;border:none;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 2px;}
+.gis-attr-body{padding:10px;max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:7px;}
+.gis-attr-field{display:flex;flex-direction:column;gap:2px;
+  font-size:10px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:.3px;}
+.gis-attr-field input,.gis-attr-field select,.gis-attr-field textarea{
+  font:inherit;font-weight:400;text-transform:none;letter-spacing:0;
+  padding:6px 7px;border:1px solid #aaa;border-radius:4px;background:#fff;}
+.gis-attr-field input[readonly]{background:#f1f1f1;color:#555;}
+.gis-attr-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #ddd;background:var(--softer);}
+.gis-attr-foot .btn{flex:1;}
+.gis-attr-foot .btn-primary{flex:1.4;}
 .gis-ref-toggle{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;}
 .gis-tip{font-size:11px;line-height:1.45;color:var(--muted,#555);margin:6px 0 0;}
 @media (max-width:780px){

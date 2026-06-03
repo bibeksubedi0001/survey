@@ -85,6 +85,60 @@
   // ---------------------------------------------------------------
   var KTM_DEFAULT = [27.6915, 85.3420];
   var PALETTE = ['#c1001f', '#1b6fd6', '#1a7f1a', '#e07a00', '#7d3cb5', '#0a8f8f', '#d4007a', '#444'];
+  var CATEGORY_COLOR = { building: '#1b6fd6', valve: '#c1001f', pipe: '#1a7f1a', generic: '#7d3cb5' };
+
+  // ---- Feature schemas (QField-style typed layers) ----
+  var SCHEMAS = {
+    building: {
+      label: 'Building', geom: 'point', titleKey: 'building_name', fallbackKey: 'building_id',
+      fields: [
+        { key: 'surveyor', label: 'Surveyor', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'building_id', label: 'Building ID', type: 'text' },
+        { key: 'block', label: 'Block', type: 'text' },
+        { key: 'building_name', label: 'Building Name', type: 'text' },
+      ],
+    },
+    valve: {
+      label: 'Valve', geom: 'point', titleKey: 'valve_id', fallbackKey: 'valve_type',
+      fields: [
+        { key: 'surveyor', label: 'Surveyor', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'valve_id', label: 'Valve ID', type: 'text' },
+        { key: 'valve_type', label: 'Valve Type', type: 'select', options: ['Gate', 'Butterfly', 'Sluice', 'Air Release', 'Check', 'Washout', 'Pressure Reducing'] },
+        { key: 'diameter_mm', label: 'Diameter (mm)', type: 'number' },
+        { key: 'status', label: 'Status', type: 'select', options: ['Open', 'Closed', 'Partially Open', 'Unknown'] },
+        { key: 'chamber', label: 'Chamber / Cover', type: 'select', options: ['Good', 'Damaged', 'Buried', 'Missing'] },
+        { key: 'depth_m', label: 'Depth (m)', type: 'number' },
+        { key: 'remarks', label: 'Remarks', type: 'textarea' },
+      ],
+    },
+    pipe: {
+      label: 'Pipe', geom: 'line', titleKey: 'pipe_id', fallbackKey: 'material',
+      fields: [
+        { key: 'surveyor', label: 'Surveyor', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'pipe_id', label: 'Pipe ID', type: 'text' },
+        { key: 'material', label: 'Material', type: 'select', options: ['HDPE', 'PVC', 'DI', 'GI', 'MS', 'PE', 'AC', 'Concrete'] },
+        { key: 'diameter_mm', label: 'Diameter (mm)', type: 'number' },
+        { key: 'length_m', label: 'Length (m) \u2014 auto', type: 'number', readonly: true },
+        { key: 'status', label: 'Status', type: 'select', options: ['In Service', 'Abandoned', 'Proposed', 'Under Construction'] },
+        { key: 'remarks', label: 'Remarks', type: 'textarea' },
+      ],
+    },
+    generic: {
+      label: 'Feature', geom: 'any', titleKey: 'name',
+      fields: [
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'surveyor', label: 'Surveyor', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'notes', label: 'Notes', type: 'textarea' },
+      ],
+    },
+  };
+
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function defaultSurveyor() { try { return localStorage.getItem('kukl_gis_surveyor') || ''; } catch (_) { return ''; } }
 
   function uid() { return 'L' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function esc(s) {
@@ -154,8 +208,14 @@
     host.classList.add('gis-host');
     host.innerHTML =
       '<div class="gis-sidebar" data-role="sidebar">' +
-      '  <div class="gis-side-head">' +
-      '    <strong>Layers</strong>' +
+      '  <div class="gis-side-head"><strong>Layers</strong></div>' +
+      '  <div class="gis-new-row">' +
+      '    <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
+      '      <option value="building">Buildings (point)</option>' +
+      '      <option value="valve">Valves (point)</option>' +
+      '      <option value="pipe">Pipes (line)</option>' +
+      '      <option value="generic">Generic</option>' +
+      '    </select>' +
       '    <button type="button" class="btn btn-mini btn-primary" data-act="new-layer">+ NEW</button>' +
       '  </div>' +
       '  <div class="gis-layer-list" data-role="layers"></div>' +
@@ -173,12 +233,29 @@
       '  </div>' +
       '  <div class="gis-side-head"><strong>Reference</strong></div>' +
       '  <label class="gis-ref-toggle"><input type="checkbox" data-role="dma-toggle"> Show DMA network</label>' +
-      '  <p class="gis-tip">Use the toolbar (top-left of the map) to draw points, lines and polygons into the <em>active</em> layer. Tap a feature to edit or delete it. Everything is saved offline automatically.</p>' +
+      '  <p class="gis-tip">Pick a layer type, tap <strong>+ NEW</strong>, then use the map toolbar to draw. Each feature opens an attribute form (buildings, valves and pipes have ready-made fields). Tap any feature later to edit it. Pipe length is measured automatically. Everything saves offline.</p>' +
       '</div>' +
-      '<div class="gis-map-wrap"><div class="gis-map" data-role="map"></div></div>';
+      '<div class="gis-map-wrap"><div class="gis-map" data-role="map"></div>' +
+      '  <div class="gis-attr" data-role="attr" hidden>' +
+      '    <div class="gis-attr-card">' +
+      '      <div class="gis-attr-head"><strong data-role="attr-title">Attributes</strong>' +
+      '        <button type="button" class="gis-attr-x" data-act="attr-close" title="Close">\u00d7</button></div>' +
+      '      <div class="gis-attr-body" data-role="attr-body"></div>' +
+      '      <div class="gis-attr-foot">' +
+      '        <button type="button" class="btn btn-mini btn-outline" data-act="attr-zoom">ZOOM</button>' +
+      '        <button type="button" class="btn btn-mini btn-danger" data-act="attr-del">DELETE</button>' +
+      '        <button type="button" class="btn btn-mini btn-primary" data-act="attr-save">SAVE</button>' +
+      '      </div>' +
+      '    </div>' +
+      '  </div>' +
+      '</div>';
 
     var $ = function (r) { return host.querySelector('[data-role="' + r + '"]'); };
     var mapEl = $('map');
+    var attrPanel = $('attr');
+    var attrTitle = $('attr-title');
+    var attrBody = $('attr-body');
+    var editorTarget = null;
 
     // ---- Init map ----
     var map = L.map(mapEl, { zoomControl: true }).setView(KTM_DEFAULT, 14);
@@ -211,6 +288,7 @@
     var dmaCtl = null;
 
     function nextColor() { var c = PALETTE[colorIdx % PALETTE.length]; colorIdx++; return c; }
+    function catSelectValue() { var s = $('cat-select'); return (s && s.value) || 'generic'; }
 
     function styleFor(color) {
       return { color: color, weight: 3, fillColor: color, fillOpacity: 0.25 };
@@ -230,7 +308,7 @@
       if (!meta) return;
       var fc = groupToGeoJSON(meta.group);
       dbPutLayer({
-        id: id, name: meta.name, color: meta.color,
+        id: id, name: meta.name, category: meta.category, color: meta.color,
         visible: meta.visible, geojson: fc, updatedAt: Date.now(),
       }).catch(function (e) { console.warn('[GIS] persist failed', e); });
     }
@@ -251,12 +329,15 @@
     function createLayer(opts) {
       opts = opts || {};
       var id = opts.id || uid();
-      var color = opts.color || nextColor();
+      var category = opts.category || 'generic';
+      if (!SCHEMAS[category]) category = 'generic';
+      var color = opts.color || CATEGORY_COLOR[category] || nextColor();
       var group = L.featureGroup();
       if (opts.visible !== false) group.addTo(map);
       var meta = {
         id: id,
-        name: opts.name || ('Layer ' + (Object.keys(layers).length + 1)),
+        name: opts.name || (SCHEMAS[category].label + ' ' + (Object.keys(layers).length + 1)),
+        category: category,
         color: color,
         visible: opts.visible !== false,
         group: group,
@@ -281,16 +362,155 @@
             fillColor: meta.color, fillOpacity: 0.9,
           });
         },
-        onEachFeature: function (f, lyr) { bindFeature(meta, lyr, f); },
+        onEachFeature: function (f, lyr) { attachFeatureBehavior(meta, lyr, false); },
       });
       added.eachLayer(function (lyr) { meta.group.addLayer(lyr); });
     }
 
-    function bindFeature(meta, lyr, f) {
-      var p = (f && f.properties) || {};
-      var label = p.name || p.Name || p.NAME || '';
-      if (label) lyr.bindTooltip(String(label), { sticky: true });
-      lyr.feature = f || lyr.feature || { type: 'Feature', properties: {}, geometry: null };
+    function ensureFeatureProps(meta, lyr, isNew) {
+      if (!lyr.feature) lyr.feature = { type: 'Feature', properties: {}, geometry: null };
+      if (!lyr.feature.properties) lyr.feature.properties = {};
+      var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+      var p = lyr.feature.properties;
+      schema.fields.forEach(function (f) { if (p[f.key] == null) p[f.key] = ''; });
+      if (isNew) {
+        if (!p.surveyor) p.surveyor = defaultSurveyor();
+        if (!p.date) p.date = today();
+      }
+      if (schema.geom === 'line') {
+        var len = lineLength(lyr);
+        if (len != null && (isNew || !p.length_m)) p.length_m = len;
+      }
+    }
+
+    function lineLength(lyr) {
+      try {
+        var lls = lyr.getLatLngs ? lyr.getLatLngs() : null;
+        if (!lls) return null;
+        while (lls.length && Array.isArray(lls[0])) lls = lls[0];
+        var total = 0;
+        for (var i = 1; i < lls.length; i++) total += map.distance(lls[i - 1], lls[i]);
+        return Math.round(total * 100) / 100;
+      } catch (_) { return null; }
+    }
+
+    function featureTitle(meta, p) {
+      var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+      p = p || {};
+      var t = (schema.titleKey && p[schema.titleKey]) ||
+              (schema.fallbackKey && p[schema.fallbackKey]) || '';
+      return t ? String(t) : schema.label;
+    }
+
+    function updateTooltip(meta, lyr) {
+      var t = featureTitle(meta, lyr.feature && lyr.feature.properties);
+      try {
+        if (lyr.getTooltip && lyr.getTooltip()) lyr.setTooltipContent(t);
+        else lyr.bindTooltip(t, { sticky: true });
+      } catch (_) {}
+    }
+
+    function inEditMode() {
+      if (!map.pm) return false;
+      return (map.pm.globalEditModeEnabled && map.pm.globalEditModeEnabled()) ||
+             (map.pm.globalDragModeEnabled && map.pm.globalDragModeEnabled()) ||
+             (map.pm.globalRemovalModeEnabled && map.pm.globalRemovalModeEnabled()) ||
+             (map.pm.globalCutModeEnabled && map.pm.globalCutModeEnabled()) ||
+             (map.pm.globalRotateModeEnabled && map.pm.globalRotateModeEnabled());
+    }
+
+    function attachFeatureBehavior(meta, lyr, isNew) {
+      ensureFeatureProps(meta, lyr, isNew);
+      updateTooltip(meta, lyr);
+      lyr.on('click', function () {
+        if (inEditMode()) return;
+        openAttributeEditor(meta, lyr);
+      });
+      lyr.on('pm:edit pm:update pm:dragend', function () {
+        var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+        if (schema.geom === 'line' && lyr.feature && lyr.feature.properties) {
+          var len = lineLength(lyr);
+          if (len != null) lyr.feature.properties.length_m = len;
+        }
+        persist(meta.id);
+      });
+      lyr.on('pm:remove', function () { persist(meta.id); updateCount(meta); });
+    }
+
+    function openAttributeEditor(meta, lyr) {
+      var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+      ensureFeatureProps(meta, lyr, false);
+      var props = lyr.feature.properties;
+      editorTarget = { meta: meta, lyr: lyr };
+      if (attrTitle) attrTitle.textContent = schema.label + ' attributes';
+      attrBody.innerHTML = '';
+      schema.fields.forEach(function (fld) {
+        var val = props[fld.key] != null ? props[fld.key] : '';
+        var wrap = document.createElement('label');
+        wrap.className = 'gis-attr-field';
+        var span = document.createElement('span');
+        span.textContent = fld.label;
+        wrap.appendChild(span);
+        var input;
+        if (fld.type === 'select') {
+          input = document.createElement('select');
+          var blank = document.createElement('option');
+          blank.value = ''; blank.textContent = '\u2014';
+          input.appendChild(blank);
+          (fld.options || []).forEach(function (o) {
+            var op = document.createElement('option');
+            op.value = o; op.textContent = o;
+            if (String(val) === o) op.selected = true;
+            input.appendChild(op);
+          });
+        } else if (fld.type === 'textarea') {
+          input = document.createElement('textarea');
+          input.rows = 2; input.value = val;
+        } else {
+          input = document.createElement('input');
+          input.type = fld.type === 'number' ? 'number' : (fld.type === 'date' ? 'date' : 'text');
+          input.value = val;
+        }
+        if (fld.readonly) input.readOnly = true;
+        input.dataset.key = fld.key;
+        wrap.appendChild(input);
+        attrBody.appendChild(wrap);
+      });
+      attrPanel.hidden = false;
+    }
+
+    function saveAttrFromEditor() {
+      if (!editorTarget) return;
+      var meta = editorTarget.meta, lyr = editorTarget.lyr;
+      var props = (lyr.feature && lyr.feature.properties) || {};
+      attrBody.querySelectorAll('[data-key]').forEach(function (inp) {
+        props[inp.dataset.key] = inp.value;
+      });
+      lyr.feature.properties = props;
+      if (props.surveyor) { try { localStorage.setItem('kukl_gis_surveyor', props.surveyor); } catch (_) {} }
+      updateTooltip(meta, lyr);
+      persist(meta.id);
+      attrPanel.hidden = true;
+      toast('Attributes saved');
+    }
+
+    function deleteFeatureFromEditor() {
+      if (!editorTarget) return;
+      var meta = editorTarget.meta, lyr = editorTarget.lyr;
+      if (!confirm('Delete this feature? This cannot be undone.')) return;
+      try { meta.group.removeLayer(lyr); } catch (_) {}
+      persist(meta.id); updateCount(meta);
+      attrPanel.hidden = true;
+      editorTarget = null;
+    }
+
+    function zoomFeatureFromEditor() {
+      if (!editorTarget) return;
+      var lyr = editorTarget.lyr;
+      try {
+        if (lyr.getBounds) map.fitBounds(lyr.getBounds().pad(0.4), { maxZoom: 19 });
+        else if (lyr.getLatLng) map.setView(lyr.getLatLng(), 19);
+      } catch (_) {}
     }
 
     // ---- Active layer handling ----
@@ -313,6 +533,7 @@
         '<span class="gis-swatch" style="background:' + meta.color + '"></span>' +
         '<input type="color" class="gis-color" value="' + meta.color + '" title="Layer colour">' +
         '<span class="gis-name" tabindex="0" title="Click to make active; double-click to rename">' + esc(meta.name) + '</span>' +
+        '<span class="gis-cat" title="Feature type">' + esc((SCHEMAS[meta.category] || SCHEMAS.generic).label) + '</span>' +
         '<span class="gis-count" data-role="count">0</span>' +
         '<button type="button" class="gis-ic" data-act="zoom" title="Zoom to layer">⤢</button>' +
         '<button type="button" class="gis-ic" data-act="export" title="Export GeoJSON">⤓</button>' +
@@ -410,7 +631,7 @@
       var lyr = e.layer;
       var meta = layers[activeId];
       if (!meta) {
-        meta = createLayer({ name: 'Layer 1' });
+        meta = createLayer({ category: catSelectValue() });
         setActive(meta.id);
       }
       // Remove from map's default placement, add to the active group + style it.
@@ -421,13 +642,10 @@
       }
       lyr.feature = lyr.feature || { type: 'Feature', properties: {}, geometry: null };
       meta.group.addLayer(lyr);
-
-      // Re-persist on later edits of this individual feature.
-      lyr.on('pm:edit pm:update pm:dragend', function () { persist(meta.id); });
-      lyr.on('pm:remove', function () { persist(meta.id); updateCount(meta); });
-
+      attachFeatureBehavior(meta, lyr, true);
       updateCount(meta);
       persist(meta.id);
+      openAttributeEditor(meta, lyr);
     });
 
     // Global remove (toolbar trash) → recount/persist everything.
@@ -437,12 +655,16 @@
 
     // ---- New-layer button ----
     host.querySelector('[data-act="new-layer"]').addEventListener('click', function () {
-      var name = prompt('New layer name:', 'Layer ' + (Object.keys(layers).length + 1));
-      if (name === null) return;
-      var meta = createLayer({ name: name.trim() || undefined });
+      var meta = createLayer({ category: catSelectValue() });
       setActive(meta.id);
       persist(meta.id);
     });
+
+    // ---- Attribute editor wiring ----
+    host.querySelector('[data-act="attr-close"]').addEventListener('click', function () { attrPanel.hidden = true; });
+    host.querySelector('[data-act="attr-save"]').addEventListener('click', saveAttrFromEditor);
+    host.querySelector('[data-act="attr-del"]').addEventListener('click', deleteFeatureFromEditor);
+    host.querySelector('[data-act="attr-zoom"]').addEventListener('click', zoomFeatureFromEditor);
 
     // ---- DMA reference overlay ----
     $('dma-toggle').addEventListener('change', function (e) {
@@ -525,15 +747,19 @@
       recs.sort(function (a, b) { return (a.updatedAt || 0) - (b.updatedAt || 0); });
       recs.forEach(function (rec) {
         var meta = createLayer({
-          id: rec.id, name: rec.name, color: rec.color, visible: rec.visible !== false,
+          id: rec.id, name: rec.name, category: rec.category,
+          color: rec.color, visible: rec.visible !== false,
         });
         if (rec.geojson) loadGeoJSONInto(meta, rec.geojson);
         updateCount(meta);
       });
       if (!recs.length) {
-        // Start with one empty default layer so drawing works immediately.
-        var m = createLayer({ name: 'My Survey Layer' });
-        persist(m.id);
+        // Seed with the standard KUKL field-survey layers.
+        ['building', 'pipe', 'valve'].forEach(function (cat) {
+          var m = createLayer({ category: cat, name: SCHEMAS[cat].label + 's' });
+          persist(m.id);
+        });
+        setActive(Object.keys(layers)[0]);
       } else {
         setActive(recs[recs.length - 1].id);
       }
