@@ -208,7 +208,8 @@
     host.classList.add('gis-host');
     host.innerHTML =
       '<div class="gis-sidebar" data-role="sidebar">' +
-      '  <div class="gis-side-head"><strong>Layers</strong></div>' +
+      '  <div class="gis-side-head gis-side-top"><strong>Layers</strong>' +
+      '    <button type="button" class="gis-panel-close" data-act="panel-close" title="Hide panel">\u00d7</button></div>' +
       '  <div class="gis-new-row">' +
       '    <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
       '      <option value="building">Buildings (point)</option>' +
@@ -253,6 +254,7 @@
       '  <p class="gis-tip">Pick a layer type, tap <strong>+ NEW</strong>, then use the map toolbar to draw. Each feature opens an attribute form (buildings, valves and pipes have ready-made fields). Tap any feature later to edit it. Pipe length is measured automatically. Everything saves offline.</p>' +
       '</div>' +
       '<div class="gis-map-wrap"><div class="gis-map" data-role="map"></div>' +
+      '  <button type="button" class="gis-panel-toggle" data-act="panel-toggle" title="Show tools">\u2630 Tools</button>' +
       '  <div class="gis-attr" data-role="attr" hidden>' +
       '    <div class="gis-attr-card">' +
       '      <div class="gis-attr-head"><strong data-role="attr-title">Attributes</strong>' +
@@ -295,6 +297,91 @@
       map.pm.setGlobalOptions({ snappable: true, snapDistance: 20 });
     } else {
       toast('Drawing tools failed to load');
+    }
+
+    // Show only the draw tools that match the active layer's geometry.
+    function applyToolsForCategory(category) {
+      if (!map.pm || !map.pm.Toolbar || !map.pm.Toolbar.getButtons) return;
+      var schema = SCHEMAS[category] || SCHEMAS.generic;
+      var geom = schema.geom; // 'point' | 'line' | 'any'
+      var isPoint = geom === 'point';
+      var isLine = geom === 'line';
+      var anyGeom = !isPoint && !isLine;
+      var vis = {
+        drawMarker: isPoint || anyGeom,
+        drawPolyline: isLine || anyGeom,
+        drawRectangle: anyGeom,
+        drawPolygon: anyGeom,
+        drawCircle: anyGeom,
+        drawText: anyGeom,
+      };
+      var btns = map.pm.Toolbar.getButtons();
+      Object.keys(vis).forEach(function (name) {
+        var b = btns[name];
+        var node = b && (b.buttonsDomNode || (b._button && b._button.buttonsDomNode));
+        if (node) node.style.display = vis[name] ? '' : 'none';
+      });
+    }
+
+    // ---- Live user location (device GPS blue-dot, like Google Maps) ----
+    var meWatchId = null, meMarker = null, meAccCircle = null, meFollow = false, meCenteredOnce = false;
+    var LocateControl = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function () {
+        var c = L.DomUtil.create('div', 'leaflet-bar gis-locate-ctl');
+        var a = L.DomUtil.create('a', 'gis-locate-btn', c);
+        a.href = '#'; a.title = 'Show my live location'; a.setAttribute('role', 'button');
+        a.innerHTML = '\u25C9';
+        L.DomEvent.on(a, 'click', function (e) {
+          L.DomEvent.stop(e);
+          toggleLocate();
+        });
+        this._btn = a;
+        return c;
+      },
+    });
+    var locateCtl = new LocateControl();
+    map.addControl(locateCtl);
+
+    function setLocateActive(on) {
+      meFollow = on;
+      if (locateCtl._btn) locateCtl._btn.classList.toggle('active', on);
+    }
+
+    function toggleLocate() {
+      if (meWatchId != null) { stopLocate(); return; }
+      if (!navigator.geolocation) { toast('Geolocation not available on this device'); return; }
+      toast('Locating you…');
+      meCenteredOnce = false;
+      setLocateActive(true);
+      meWatchId = navigator.geolocation.watchPosition(function (pos) {
+        var ll = [pos.coords.latitude, pos.coords.longitude];
+        var acc = pos.coords.accuracy || 0;
+        if (!meMarker) {
+          meMarker = L.circleMarker(ll, {
+            radius: 7, color: '#fff', weight: 3, fillColor: '#1a73e8', fillOpacity: 1,
+            className: 'gis-me-dot', pane: 'markerPane',
+          }).addTo(map);
+          meMarker.bindTooltip('You are here', { direction: 'top' });
+        } else { meMarker.setLatLng(ll); }
+        if (acc > 0) {
+          if (!meAccCircle) {
+            meAccCircle = L.circle(ll, { radius: acc, color: '#1a73e8', weight: 1, fillColor: '#1a73e8', fillOpacity: 0.1, interactive: false }).addTo(map);
+          } else { meAccCircle.setLatLng(ll); meAccCircle.setRadius(acc); }
+        }
+        if (!meCenteredOnce) { meCenteredOnce = true; try { map.setView(ll, Math.max(map.getZoom(), 17)); } catch (_) {} }
+      }, function (err) {
+        console.warn('[GIS] geolocation error', err);
+        toast(err && err.code === 1 ? 'Location permission denied' : 'Could not get your location');
+        stopLocate();
+      }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+    }
+
+    function stopLocate() {
+      if (meWatchId != null) { try { navigator.geolocation.clearWatch(meWatchId); } catch (_) {} meWatchId = null; }
+      setLocateActive(false);
+      if (meMarker) { try { map.removeLayer(meMarker); } catch (_) {} meMarker = null; }
+      if (meAccCircle) { try { map.removeLayer(meAccCircle); } catch (_) {} meAccCircle = null; }
     }
 
     // ---- Layer model ----
@@ -537,6 +624,8 @@
         var r = layers[k].row;
         if (r) r.classList.toggle('active', k === id);
       });
+      var meta = layers[id];
+      if (meta) applyToolsForCategory(meta.category);
     }
 
     // ---- Sidebar row ----
@@ -676,6 +765,18 @@
       setActive(meta.id);
       persist(meta.id);
     });
+
+    // ---- Mobile panel drawer toggle ----
+    var sidebarEl = $('sidebar');
+    function setPanelOpen(open) {
+      if (sidebarEl) sidebarEl.classList.toggle('open', open);
+      host.classList.toggle('panel-open', open);
+      setTimeout(function () { try { map.invalidateSize(); } catch (_) {} }, 220);
+    }
+    var pToggle = host.querySelector('[data-act="panel-toggle"]');
+    var pClose = host.querySelector('[data-act="panel-close"]');
+    if (pToggle) pToggle.addEventListener('click', function () { setPanelOpen(true); });
+    if (pClose) pClose.addEventListener('click', function () { setPanelOpen(false); });
 
     // ---- Attribute editor wiring ----
     host.querySelector('[data-act="attr-close"]').addEventListener('click', function () { attrPanel.hidden = true; });
@@ -895,6 +996,7 @@
     }
     function destroy() {
       try { if (gnss) gnss.disconnect(); } catch (_) {}
+      try { stopLocate(); } catch (_) {}
       try { map.remove(); } catch (_) {}
       host._kuklGis = null;
       host.innerHTML = '';

@@ -636,11 +636,45 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-attr-foot .btn-primary{flex:1.4;}
 .gis-ref-toggle{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;}
 .gis-tip{font-size:11px;line-height:1.45;color:var(--muted,#555);margin:6px 0 0;}
+/* Live-location control + dot */
+.gis-locate-ctl a.gis-locate-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:34px;height:34px;font-size:18px;color:#1a73e8;text-decoration:none;font-weight:700;
+}
+.gis-locate-ctl a.gis-locate-btn.active{background:#1a73e8;color:#fff;}
+.gis-me-dot{filter:drop-shadow(0 0 3px rgba(26,115,232,.8));}
+/* Mobile panel drawer */
+.gis-panel-toggle{display:none;}
+.gis-panel-close{display:none;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:#333;padding:0 4px;}
 @media (max-width:780px){
-  .gis-editor{height:78vh;min-height:520px;}
+  .gis-editor{height:80vh;min-height:520px;}
   .gis-host{flex-direction:column;}
-  .gis-host .gis-sidebar{width:100%;flex:0 0 auto;max-height:42%;border-right:none;border-bottom:2px solid #000;}
-  .gis-host .gis-map-wrap{flex:1;}
+  .gis-host .gis-sidebar{
+    position:absolute;z-index:1200;top:0;left:-110%;bottom:0;width:86%;max-width:330px;
+    max-height:none;border-right:2px solid #000;border-bottom:none;
+    transition:left .22s ease;
+    box-shadow:4px 0 18px rgba(0,0,0,.28);
+  }
+  .gis-host .gis-sidebar.open{left:0;}
+  .gis-host .gis-map-wrap{flex:1;position:relative;}
+  .gis-panel-toggle{
+    display:inline-flex;align-items:center;gap:5px;position:absolute;z-index:1100;top:10px;left:50px;
+    background:#fff;border:2px solid #000;border-radius:7px;padding:6px 11px;
+    font-size:12px;font-weight:800;letter-spacing:.5px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);
+  }
+  .gis-host.panel-open .gis-panel-toggle{display:none;}
+  .gis-panel-close{display:block;}
+  /* Bigger touch targets on phones */
+  .gis-layer-row{padding:7px 6px;gap:7px;}
+  .gis-layer-row .gis-color{width:28px;height:28px;}
+  .gis-layer-row .gis-ic{width:28px;height:28px;font-size:15px;}
+  .gis-layer-row .gis-name{font-size:13px;}
+  .gis-cat-select,.gis-import .gis-file,.gis-gnss-btns .btn,.gis-gnss-drop{min-height:38px;}
+  .gis-attr-field input,.gis-attr-field select,.gis-attr-field textarea{padding:9px 9px;font-size:15px;}
+  .gis-attr-foot .btn{min-height:40px;}
+  .leaflet-pm-toolbar .button-container a,.gis-locate-ctl a.gis-locate-btn{width:40px;height:40px;line-height:40px;}
+  .gis-attr{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;}
+  .gis-attr-body{max-height:40vh;}
 }
 
 .leaflet-popup-content{font-family:inherit;font-size:13px;line-height:1.5;}
