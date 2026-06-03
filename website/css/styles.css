@@ -590,6 +590,24 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-layer-row .gis-ic-del:hover{background:#ffe5e5;border-color:#e53935;color:#b71c1c;}
 .gis-import{display:flex;flex-direction:column;gap:5px;}
 .gis-import .gis-file{text-align:center;cursor:pointer;}
+/* GNSS receiver panel */
+.gis-gnss{display:flex;flex-direction:column;gap:6px;}
+.gis-gnss-status{font-size:11px;font-weight:700;color:#36507e;background:#eef3fb;
+  border:1px solid #cdd9ee;border-radius:5px;padding:5px 7px;}
+.gis-gnss-status[data-state="connected"]{color:#0a6b13;background:#e9f8ec;border-color:#bfe6c6;}
+.gis-gnss-status[data-state="connecting"]{color:#8a5a00;background:#fdf4e3;border-color:#f0dcae;}
+.gis-gnss-status[data-state="error"]{color:#a4001a;background:#fdecec;border-color:#f3c9c9;}
+.gis-gnss-readout{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;}
+.gis-gnss-readout > div{display:flex;flex-direction:column;background:#f6f8fb;border:1px solid #e1e8f2;
+  border-radius:5px;padding:3px 5px;}
+.gis-gnss-readout > div.wide{grid-column:span 3;flex-direction:row;justify-content:space-between;align-items:center;}
+.gis-gnss-readout span{font-size:8.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#7a8aa3;}
+.gis-gnss-readout b{font-size:12px;color:#13294b;font-variant-numeric:tabular-nums;}
+.gis-gnss-btns{display:flex;gap:5px;}
+.gis-gnss-btns .btn{flex:1;}
+.gis-gnss-drop{width:100%;}
+.gis-gnss [hidden]{display:none !important;}
+.gis-gnss-readout[hidden]{display:none !important;}
 .gis-new-row{display:flex;gap:5px;align-items:center;}
 .gis-cat-select{flex:1;min-width:0;font:inherit;font-size:11px;padding:3px 4px;border:1px solid #999;border-radius:3px;background:#fff;}
 .gis-layer-row .gis-cat{

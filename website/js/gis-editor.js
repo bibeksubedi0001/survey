@@ -231,6 +231,23 @@
       '      KML / GPX<input type="file" accept=".kml,.gpx" data-role="imp-kmlgpx" hidden>' +
       '    </label>' +
       '  </div>' +
+      '  <div class="gis-side-head"><strong>GNSS Receiver</strong></div>' +
+      '  <div class="gis-gnss">' +
+      '    <div class="gis-gnss-status" data-role="gnss-status">Internal device GPS</div>' +
+      '    <div class="gis-gnss-readout" data-role="gnss-readout" hidden>' +
+      '      <div><span>Fix</span><b data-role="gnss-fix">\u2014</b></div>' +
+      '      <div><span>Sats</span><b data-role="gnss-sats">\u2014</b></div>' +
+      '      <div><span>\u00b1 m</span><b data-role="gnss-acc">\u2014</b></div>' +
+      '      <div class="wide"><span>Lat</span><b data-role="gnss-lat">\u2014</b></div>' +
+      '      <div class="wide"><span>Lng</span><b data-role="gnss-lng">\u2014</b></div>' +
+      '    </div>' +
+      '    <div class="gis-gnss-btns">' +
+      '      <button type="button" class="btn btn-mini btn-outline" data-act="gnss-ble">BLUETOOTH</button>' +
+      '      <button type="button" class="btn btn-mini btn-outline" data-act="gnss-serial">SERIAL / USB</button>' +
+      '      <button type="button" class="btn btn-mini btn-danger" data-act="gnss-disconnect" hidden>DISCONNECT</button>' +
+      '    </div>' +
+      '    <button type="button" class="btn btn-mini btn-primary gis-gnss-drop" data-act="gnss-drop" hidden>DROP POINT AT GNSS</button>' +
+      '  </div>' +
       '  <div class="gis-side-head"><strong>Reference</strong></div>' +
       '  <label class="gis-ref-toggle"><input type="checkbox" data-role="dma-toggle"> Show DMA network</label>' +
       '  <p class="gis-tip">Pick a layer type, tap <strong>+ NEW</strong>, then use the map toolbar to draw. Each feature opens an attribute form (buildings, valves and pipes have ready-made fields). Tap any feature later to edit it. Pipe length is measured automatically. Everything saves offline.</p>' +
@@ -678,6 +695,102 @@
       }
     });
 
+    // ---- GNSS receiver (external BLE / Serial GPS, SW Maps style) ----
+    var gnss = null, gnssMarker = null, gnssAcc = null, gnssLastFix = null, gnssCentered = false;
+    var gnssStatusEl = $('gnss-status');
+    var gnssReadout = $('gnss-readout');
+    var gnssBleBtn = host.querySelector('[data-act="gnss-ble"]');
+    var gnssSerialBtn = host.querySelector('[data-act="gnss-serial"]');
+    var gnssDisconnectBtn = host.querySelector('[data-act="gnss-disconnect"]');
+    var gnssDropBtn = host.querySelector('[data-act="gnss-drop"]');
+
+    function gnssSetText(role, v) { var el = $(role); if (el) el.textContent = (v == null || v === '') ? '\u2014' : v; }
+
+    function gnssShowFix(fix) {
+      gnssLastFix = fix;
+      gnssReadout.hidden = false;
+      gnssSetText('gnss-fix', fix.fixLabel + (fix.fixType ? '' : ''));
+      gnssSetText('gnss-sats', fix.sats);
+      gnssSetText('gnss-acc', fix.acc != null ? fix.acc.toFixed(1) : null);
+      gnssSetText('gnss-lat', fix.lat.toFixed(7));
+      gnssSetText('gnss-lng', fix.lng.toFixed(7));
+      gnssDropBtn.hidden = false;
+      var ll = [fix.lat, fix.lng];
+      if (!gnssMarker) {
+        gnssMarker = L.circleMarker(ll, {
+          radius: 7, color: '#0a8f8f', weight: 3, fillColor: '#19e6d6', fillOpacity: 0.95,
+        }).addTo(map);
+        gnssMarker.bindTooltip('GNSS receiver', { direction: 'top' });
+      } else { gnssMarker.setLatLng(ll); }
+      if (fix.acc != null && fix.acc > 0) {
+        if (!gnssAcc) {
+          gnssAcc = L.circle(ll, { radius: fix.acc, color: '#0a8f8f', weight: 1, fillColor: '#0a8f8f', fillOpacity: 0.08, interactive: false }).addTo(map);
+        } else { gnssAcc.setLatLng(ll); gnssAcc.setRadius(fix.acc); }
+      }
+      if (!gnssCentered) { gnssCentered = true; try { map.setView(ll, Math.max(map.getZoom(), 18)); } catch (_) {} }
+    }
+
+    function gnssOnStatus(s) {
+      gnssStatusEl.textContent = s.message || s.state;
+      gnssStatusEl.dataset.state = s.state;
+      var connected = s.state === 'connected';
+      var busy = s.state === 'connecting';
+      gnssBleBtn.hidden = connected;
+      gnssSerialBtn.hidden = connected;
+      gnssDisconnectBtn.hidden = !connected;
+      gnssBleBtn.disabled = busy;
+      gnssSerialBtn.disabled = busy;
+      if (s.state === 'disconnected' || s.state === 'error' || s.state === 'idle') {
+        gnssCentered = false;
+        if (s.state !== 'idle') {
+          gnssDropBtn.hidden = true;
+          if (gnssMarker) { try { map.removeLayer(gnssMarker); } catch (_) {} gnssMarker = null; }
+          if (gnssAcc) { try { map.removeLayer(gnssAcc); } catch (_) {} gnssAcc = null; }
+        }
+        if (s.state !== 'connecting') gnssReadout.hidden = (s.state === 'disconnected');
+      }
+      if (s.message) toast(s.message);
+    }
+
+    function gnssEnsure() {
+      if (gnss) return gnss;
+      if (!window.KUKLGnss) { toast('GNSS module not loaded'); return null; }
+      gnss = window.KUKLGnss.create({ onFix: gnssShowFix, onStatus: gnssOnStatus });
+      return gnss;
+    }
+
+    function gnssDropPoint() {
+      if (!gnssLastFix) { toast('No GNSS fix yet'); return; }
+      var meta = layers[activeId];
+      if (!meta) { meta = createLayer({ category: catSelectValue() }); setActive(meta.id); }
+      var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+      if (schema.geom === 'line') { toast('Active layer is a line layer — pick a point layer to drop a GNSS point'); return; }
+      var lyr = L.circleMarker([gnssLastFix.lat, gnssLastFix.lng], {
+        radius: 6, color: meta.color, weight: 2, fillColor: meta.color, fillOpacity: 0.9,
+      });
+      lyr.feature = { type: 'Feature', properties: {}, geometry: null };
+      meta.group.addLayer(lyr);
+      attachFeatureBehavior(meta, lyr, true);
+      // Record the capture accuracy where the schema has a remarks-style field.
+      if (gnssLastFix.acc != null && lyr.feature.properties.remarks === '') {
+        lyr.feature.properties.remarks = 'GNSS ' + gnssLastFix.fixLabel + ', \u00b1' + gnssLastFix.acc.toFixed(1) + ' m';
+      }
+      updateCount(meta);
+      persist(meta.id);
+      openAttributeEditor(meta, lyr);
+    }
+
+    if (gnssBleBtn) {
+      if (!window.KUKLGnss || !window.KUKLGnss.supported.ble) { gnssBleBtn.disabled = true; gnssBleBtn.title = 'Web Bluetooth not available in this browser'; }
+      gnssBleBtn.addEventListener('click', function () { var g = gnssEnsure(); if (g) g.connectBLE(); });
+    }
+    if (gnssSerialBtn) {
+      if (!window.KUKLGnss || !window.KUKLGnss.supported.serial) { gnssSerialBtn.disabled = true; gnssSerialBtn.title = 'Web Serial not available in this browser'; }
+      gnssSerialBtn.addEventListener('click', function () { var g = gnssEnsure(); if (g) g.connectSerial({ baudRate: 9600 }); });
+    }
+    if (gnssDisconnectBtn) gnssDisconnectBtn.addEventListener('click', function () { if (gnss) gnss.disconnect(); });
+    if (gnssDropBtn) gnssDropBtn.addEventListener('click', gnssDropPoint);
+
     // ---- Import handlers ----
     $('imp-shp').addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];
@@ -781,6 +894,7 @@
       setTimeout(function () { try { map.invalidateSize(); } catch (_) {} }, 60);
     }
     function destroy() {
+      try { if (gnss) gnss.disconnect(); } catch (_) {}
       try { map.remove(); } catch (_) {}
       host._kuklGis = null;
       host.innerHTML = '';
