@@ -231,6 +231,9 @@
       '    <label class="btn btn-outline btn-mini gis-file">' +
       '      KML / GPX<input type="file" accept=".kml,.gpx" data-role="imp-kmlgpx" hidden>' +
       '    </label>' +
+      '    <label class="btn btn-outline btn-mini gis-file">' +
+      '      EXCEL / CSV<input type="file" accept=".xlsx,.xls,.csv" data-role="imp-excel" hidden>' +
+      '    </label>' +
       '  </div>' +
       '  <div class="gis-side-head"><strong>GNSS Receiver</strong></div>' +
       '  <div class="gis-gnss">' +
@@ -267,6 +270,17 @@
       '      </div>' +
       '    </div>' +
       '  </div>' +
+      '  <div class="gis-table" data-role="table" hidden>' +
+      '    <div class="gis-table-card">' +
+      '      <div class="gis-table-head"><strong data-role="table-title">Attribute table</strong>' +
+      '        <span class="gis-table-actions">' +
+      '          <button type="button" class="gis-table-exp" data-act="table-csv" title="Export to CSV">CSV</button>' +
+      '          <button type="button" class="gis-table-exp" data-act="table-xlsx" title="Export to Excel">XLSX</button>' +
+      '        </span>' +
+      '        <button type="button" class="gis-attr-x" data-act="table-close" title="Close">\u00d7</button></div>' +
+      '      <div class="gis-table-wrap" data-role="table-wrap"></div>' +
+      '    </div>' +
+      '  </div>' +
       '</div>';
 
     var $ = function (r) { return host.querySelector('[data-role="' + r + '"]'); };
@@ -274,15 +288,21 @@
     var attrPanel = $('attr');
     var attrTitle = $('attr-title');
     var attrBody = $('attr-body');
+    var tablePanel = $('table');
+    var tableTitle = $('table-title');
+    var tableWrap = $('table-wrap');
     var editorTarget = null;
+    var currentTableMeta = null;
 
     // ---- Init map ----
-    var map = L.map(mapEl, { zoomControl: true }).setView(KTM_DEFAULT, 14);
+    // maxZoom 22 lets phones zoom in far closer than the tiles natively go;
+    // tiles upscale past maxNativeZoom (19) so close survey work stays usable.
+    var map = L.map(mapEl, { zoomControl: true, maxZoom: 22 }).setView(KTM_DEFAULT, 14);
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '© OpenStreetMap',
+      maxZoom: 22, maxNativeZoom: 19, attribution: '© OpenStreetMap',
     }).addTo(map);
     var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19, attribution: 'Esri',
+      maxZoom: 22, maxNativeZoom: 19, attribution: 'Esri',
     });
     L.control.layers({ 'Street': osm, 'Satellite': sat }, null, { position: 'topright', collapsed: true }).addTo(map);
 
@@ -397,14 +417,103 @@
     function styleFor(color) {
       return { color: color, weight: 3, fillColor: color, fillOpacity: 0.25 };
     }
-    function applyStyleToGroup(group, color) {
-      group.eachLayer(function (lyr) {
-        if (lyr.setStyle) { try { lyr.setStyle(styleFor(color)); } catch (_) {} }
-        if (lyr instanceof L.CircleMarker) {
-          try { lyr.setStyle({ color: color, fillColor: color, fillOpacity: 0.9 }); } catch (_) {}
+
+    // ---- Custom point symbols (category-shaped divIcons, like SW Maps) ----
+    function pointSymbolSVG(category, color) {
+      var c = esc(color);
+      if (category === 'building') {
+        return '<svg viewBox="0 0 22 22" width="22" height="22">' +
+          '<polygon points="3,9 11,2 19,9" fill="' + c + '" stroke="#fff" stroke-width="1.6"/>' +
+          '<rect x="5" y="8.5" width="12" height="10.5" rx="1" fill="' + c + '" stroke="#fff" stroke-width="1.6"/>' +
+          '<rect x="9" y="12" width="4" height="7" fill="#fff" opacity="0.85"/></svg>';
+      }
+      if (category === 'valve') {
+        return '<svg viewBox="0 0 22 22" width="22" height="22">' +
+          '<polygon points="11,2 20,11 11,20 2,11" fill="' + c + '" stroke="#fff" stroke-width="1.8"/>' +
+          '<rect x="9.6" y="6" width="2.8" height="10" fill="#fff" opacity="0.9"/>' +
+          '<rect x="6" y="9.6" width="10" height="2.8" fill="#fff" opacity="0.9"/></svg>';
+      }
+      // generic / other → circle dot
+      return '<svg viewBox="0 0 22 22" width="22" height="22">' +
+        '<circle cx="11" cy="11" r="7.5" fill="' + c + '" stroke="#fff" stroke-width="2"/></svg>';
+    }
+    function makePointIcon(category, color) {
+      return L.divIcon({
+        className: 'gis-sym gis-sym-' + category,
+        html: pointSymbolSVG(category, color),
+        iconSize: [22, 22], iconAnchor: [11, 11], tooltipAnchor: [0, -10],
+      });
+    }
+    function makePointMarker(meta, latlng) {
+      return L.marker(latlng, { icon: makePointIcon(meta.category, meta.color) });
+    }
+    function isIconMarker(lyr) {
+      return (lyr instanceof L.Marker) && !(lyr instanceof L.CircleMarker);
+    }
+
+    function applyStyleToGroup(meta, color) {
+      meta.group.eachLayer(function (lyr) {
+        if (isIconMarker(lyr)) {
+          try { lyr.setIcon(makePointIcon(meta.category, color)); } catch (_) {}
+        } else if (lyr.setStyle) {
+          try { lyr.setStyle(styleFor(color)); } catch (_) {}
+          if (lyr instanceof L.CircleMarker) {
+            try { lyr.setStyle({ color: color, fillColor: color, fillOpacity: 0.9 }); } catch (_) {}
+          }
         }
       });
     }
+
+    // ---- Legend (auto-built from current layers) ----
+    var legendCtl = null, legendBody = null, legendCollapsed = false;
+    var LegendControl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function () {
+        var c = L.DomUtil.create('div', 'gis-legend');
+        var head = L.DomUtil.create('div', 'gis-legend-head', c);
+        head.innerHTML = '<span>Legend</span><button type="button" class="gis-legend-toggle" title="Collapse">\u2013</button>';
+        legendBody = L.DomUtil.create('div', 'gis-legend-body', c);
+        L.DomEvent.disableClickPropagation(c);
+        L.DomEvent.on(head.querySelector('.gis-legend-toggle'), 'click', function () {
+          legendCollapsed = !legendCollapsed;
+          c.classList.toggle('collapsed', legendCollapsed);
+          head.querySelector('.gis-legend-toggle').textContent = legendCollapsed ? '+' : '\u2013';
+        });
+        return c;
+      },
+    });
+
+    function legendSwatch(category, color) {
+      var schema = SCHEMAS[category] || SCHEMAS.generic;
+      if (schema.geom === 'line') {
+        return '<span class="gis-leg-line" style="background:' + esc(color) + '"></span>';
+      }
+      return '<span class="gis-leg-sym">' + pointSymbolSVG(category, color) + '</span>';
+    }
+    function rebuildLegend() {
+      if (!legendBody) return;
+      var ids = Object.keys(layers);
+      if (!ids.length) { legendBody.innerHTML = '<div class="gis-leg-empty">No layers</div>'; return; }
+      legendBody.innerHTML = ids.map(function (k) {
+        var m = layers[k];
+        var schema = SCHEMAS[m.category] || SCHEMAS.generic;
+        return '<div class="gis-leg-row' + (m.visible ? '' : ' off') + '">' +
+          legendSwatch(m.category, m.color) +
+          '<span class="gis-leg-name">' + esc(m.name) + '</span>' +
+          '<span class="gis-leg-cat">' + esc(schema.label) + '</span></div>';
+      }).join('');
+    }
+    legendCtl = new LegendControl();
+    map.addControl(legendCtl);
+
+    // ---- Declutter permanent labels at low zoom ----
+    var LABEL_MIN_ZOOM = 17;
+    function updateLabelDeclutter() {
+      var hide = map.getZoom() < LABEL_MIN_ZOOM;
+      if (mapEl) mapEl.classList.toggle('gis-hide-labels', hide);
+    }
+    map.on('zoomend', updateLabelDeclutter);
+    updateLabelDeclutter();
 
     // Persist one layer to IndexedDB.
     function persist(id) {
@@ -454,6 +563,7 @@
 
       buildRow(meta);
       if (!activeId) setActive(id);
+      rebuildLegend();
       return meta;
     }
 
@@ -461,10 +571,7 @@
       var added = L.geoJSON(fc, {
         style: styleFor(meta.color),
         pointToLayer: function (f, latlng) {
-          return L.circleMarker(latlng, {
-            radius: 6, color: meta.color, weight: 2,
-            fillColor: meta.color, fillOpacity: 0.9,
-          });
+          return makePointMarker(meta, latlng);
         },
         onEachFeature: function (f, lyr) { attachFeatureBehavior(meta, lyr, false); },
       });
@@ -506,11 +613,50 @@
       return t ? String(t) : schema.label;
     }
 
+    // Map label text. Buildings get "ID · Block" so completed survey points
+    // are identifiable straight on the map; other point layers show their title.
+    function featureLabel(meta, p) {
+      p = p || {};
+      if (meta.category === 'building') {
+        var id = p.building_id || p.building_name || '';
+        var blk = p.block || '';
+        var s = [id, blk].filter(Boolean).join(' \u00b7 ');
+        return s || '';
+      }
+      if (meta.category === 'valve') return p.valve_id || '';
+      if (meta.category === 'pipe') return p.pipe_id || '';
+      return featureTitle(meta, p) === (SCHEMAS[meta.category] || SCHEMAS.generic).label ? '' : featureTitle(meta, p);
+    }
+
+    function isPointLayer(lyr) {
+      return (lyr instanceof L.CircleMarker) || (lyr instanceof L.Marker);
+    }
+
     function updateTooltip(meta, lyr) {
-      var t = featureTitle(meta, lyr.feature && lyr.feature.properties);
+      var props = lyr.feature && lyr.feature.properties;
+      var point = isPointLayer(lyr);
+      // Buildings/valves/points → permanent label on the map (survey markers).
+      // Lines/polygons → sticky hover tooltip showing the title.
+      var label = point ? featureLabel(meta, props) : '';
       try {
-        if (lyr.getTooltip && lyr.getTooltip()) lyr.setTooltipContent(t);
-        else lyr.bindTooltip(t, { sticky: true });
+        if (point) {
+          if (label) {
+            if (lyr.getTooltip && lyr.getTooltip()) {
+              lyr.setTooltipContent(label);
+            } else {
+              lyr.bindTooltip(label, {
+                permanent: true, direction: 'top', offset: [0, -6],
+                className: 'gis-feat-label', opacity: 1,
+              });
+            }
+          } else if (lyr.getTooltip && lyr.getTooltip()) {
+            lyr.unbindTooltip();
+          }
+        } else {
+          var t = featureTitle(meta, props);
+          if (lyr.getTooltip && lyr.getTooltip()) lyr.setTooltipContent(t);
+          else lyr.bindTooltip(t, { sticky: true });
+        }
       } catch (_) {}
     }
 
@@ -548,7 +694,15 @@
       editorTarget = { meta: meta, lyr: lyr };
       if (attrTitle) attrTitle.textContent = schema.label + ' attributes';
       attrBody.innerHTML = '';
-      schema.fields.forEach(function (fld) {
+      // Schema fields first, then any extra imported properties as text inputs.
+      var fields = schema.fields.slice();
+      var known = {};
+      fields.forEach(function (f) { known[f.key] = true; });
+      Object.keys(props).forEach(function (k) {
+        if (k.charAt(0) === '_') return;
+        if (!known[k]) { known[k] = true; fields.push({ key: k, label: k, type: 'text' }); }
+      });
+      fields.forEach(function (fld) {
         var val = props[fld.key] != null ? props[fld.key] : '';
         var wrap = document.createElement('label');
         wrap.className = 'gis-attr-field';
@@ -580,7 +734,89 @@
         wrap.appendChild(input);
         attrBody.appendChild(wrap);
       });
+      buildPhotoSection(lyr);
       attrPanel.hidden = false;
+    }
+
+    // ---- Field photos per feature (stored as dataURLs in props._photos) ----
+    function buildPhotoSection(lyr) {
+      var props = lyr.feature.properties;
+      if (!Array.isArray(props._photos)) props._photos = [];
+      var sec = document.createElement('div');
+      sec.className = 'gis-photo-sec';
+      var head = document.createElement('div');
+      head.className = 'gis-photo-head';
+      head.innerHTML = '<span>Photos</span>';
+      var addLbl = document.createElement('label');
+      addLbl.className = 'gis-photo-add';
+      addLbl.textContent = '\uff0b Add';
+      var fileIn = document.createElement('input');
+      fileIn.type = 'file'; fileIn.accept = 'image/*';
+      fileIn.setAttribute('capture', 'environment');
+      fileIn.multiple = true; fileIn.hidden = true;
+      addLbl.appendChild(fileIn);
+      head.appendChild(addLbl);
+      sec.appendChild(head);
+      var strip = document.createElement('div');
+      strip.className = 'gis-photo-strip';
+      sec.appendChild(strip);
+      attrBody.appendChild(sec);
+
+      function renderStrip() {
+        strip.innerHTML = '';
+        if (!props._photos.length) {
+          strip.innerHTML = '<span class="gis-photo-empty">No photos yet</span>';
+          return;
+        }
+        props._photos.forEach(function (ph, idx) {
+          var t = document.createElement('div');
+          t.className = 'gis-photo-thumb';
+          var img = document.createElement('img');
+          img.src = ph.dataUrl; img.alt = ph.name || ('photo ' + (idx + 1));
+          img.addEventListener('click', function () { openPhotoLightbox(ph.dataUrl); });
+          var rm = document.createElement('button');
+          rm.type = 'button'; rm.className = 'gis-photo-rm'; rm.textContent = '\u00d7';
+          rm.title = 'Remove photo';
+          rm.addEventListener('click', function () {
+            props._photos.splice(idx, 1);
+            renderStrip();
+          });
+          t.appendChild(img); t.appendChild(rm);
+          strip.appendChild(t);
+        });
+      }
+      renderStrip();
+
+      fileIn.addEventListener('change', function () {
+        var files = Array.prototype.slice.call(fileIn.files || []);
+        fileIn.value = '';
+        if (!files.length) return;
+        var pending = files.length;
+        files.forEach(function (file) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            props._photos.push({
+              dataUrl: reader.result,
+              name: file.name,
+              time: Date.now(),
+            });
+            pending -= 1;
+            if (pending === 0) renderStrip();
+          };
+          reader.onerror = function () { pending -= 1; if (pending === 0) renderStrip(); };
+          reader.readAsDataURL(file);
+        });
+      });
+    }
+
+    function openPhotoLightbox(src) {
+      var ov = document.createElement('div');
+      ov.className = 'gis-photo-lightbox';
+      var img = document.createElement('img');
+      img.src = src;
+      ov.appendChild(img);
+      ov.addEventListener('click', function () { ov.remove(); });
+      host.appendChild(ov);
     }
 
     function saveAttrFromEditor() {
@@ -617,6 +853,85 @@
       } catch (_) {}
     }
 
+    // ---- QGIS-style attribute table (all features of a layer) ----
+    function zoomToLayerFeature(lyr) {
+      try {
+        if (lyr.getBounds) map.fitBounds(lyr.getBounds().pad(0.4), { maxZoom: 20 });
+        else if (lyr.getLatLng) map.setView(lyr.getLatLng(), 20);
+      } catch (_) {}
+    }
+
+    function openAttributeTable(meta) {
+      var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+      var feats = meta.group.getLayers();
+      currentTableMeta = meta;
+      if (tableTitle) tableTitle.textContent = meta.name + ' \u2014 ' + feats.length + ' feature' + (feats.length === 1 ? '' : 's');
+      tableWrap.innerHTML = '';
+
+      if (!feats.length) {
+        tableWrap.innerHTML = '<p class="gis-table-empty">No features yet. Draw on the map to add some.</p>';
+        tablePanel.hidden = false;
+        return;
+      }
+
+      // Columns = schema fields + any extra properties found on features
+      // (so imported Excel/Shapefile/GeoJSON columns are visible too).
+      var cols = schema.fields.map(function (f) { return { key: f.key, label: f.label }; });
+      var seen = {};
+      cols.forEach(function (c) { seen[c.key] = true; });
+      feats.forEach(function (lyr) {
+        var p = (lyr.feature && lyr.feature.properties) || {};
+        Object.keys(p).forEach(function (k) {
+          if (k.charAt(0) === '_') return;
+          if (!seen[k]) { seen[k] = true; cols.push({ key: k, label: k }); }
+        });
+      });
+
+      var table = document.createElement('table');
+      table.className = 'gis-attr-table';
+      var thead = document.createElement('thead');
+      var htr = document.createElement('tr');
+      htr.innerHTML = '<th>#</th>' +
+        cols.map(function (c) { return '<th>' + esc(c.label) + '</th>'; }).join('') +
+        '<th></th>';
+      thead.appendChild(htr);
+      table.appendChild(thead);
+
+      var tbody = document.createElement('tbody');
+      feats.forEach(function (lyr, i) {
+        ensureFeatureProps(meta, lyr, false);
+        var p = lyr.feature.properties || {};
+        var tr = document.createElement('tr');
+        var cells = '<td class="gis-tcell-n">' + (i + 1) + '</td>';
+        cols.forEach(function (c) {
+          cells += '<td>' + esc(p[c.key] != null ? p[c.key] : '') + '</td>';
+        });
+        cells += '<td class="gis-tcell-act">' +
+          '<button type="button" class="gis-trow-btn" data-tact="edit" title="Edit / view">\u270e</button>' +
+          '<button type="button" class="gis-trow-btn" data-tact="zoom" title="Zoom to feature">\u2922</button>' +
+          '<button type="button" class="gis-trow-btn gis-trow-del" data-tact="del" title="Delete feature">\u2715</button>' +
+          '</td>';
+        tr.innerHTML = cells;
+        tr.querySelector('[data-tact="edit"]').addEventListener('click', function () {
+          tablePanel.hidden = true;
+          openAttributeEditor(meta, lyr);
+        });
+        tr.querySelector('[data-tact="zoom"]').addEventListener('click', function () {
+          zoomToLayerFeature(lyr);
+        });
+        tr.querySelector('[data-tact="del"]').addEventListener('click', function () {
+          if (!confirm('Delete this feature? This cannot be undone.')) return;
+          try { meta.group.removeLayer(lyr); } catch (_) {}
+          persist(meta.id); updateCount(meta);
+          openAttributeTable(meta); // refresh table
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      tablePanel.hidden = false;
+    }
+
     // ---- Active layer handling ----
     function setActive(id) {
       activeId = id;
@@ -641,6 +956,7 @@
         '<span class="gis-name" tabindex="0" title="Click to make active; double-click to rename">' + esc(meta.name) + '</span>' +
         '<span class="gis-cat" title="Feature type">' + esc((SCHEMAS[meta.category] || SCHEMAS.generic).label) + '</span>' +
         '<span class="gis-count" data-role="count">0</span>' +
+        '<button type="button" class="gis-ic" data-act="table" title="Open attribute table">\u2637</button>' +
         '<button type="button" class="gis-ic" data-act="zoom" title="Zoom to layer">⤢</button>' +
         '<button type="button" class="gis-ic" data-act="export" title="Export GeoJSON">⤓</button>' +
         '<button type="button" class="gis-ic gis-ic-del" data-act="del" title="Delete layer">✕</button>';
@@ -655,12 +971,14 @@
       visCb.addEventListener('change', function () {
         meta.visible = visCb.checked;
         if (meta.visible) meta.group.addTo(map); else map.removeLayer(meta.group);
+        rebuildLegend();
         persist(meta.id);
       });
       colorIn.addEventListener('input', function () {
         meta.color = colorIn.value;
         swatch.style.background = meta.color;
-        applyStyleToGroup(meta.group, meta.color);
+        applyStyleToGroup(meta, meta.color);
+        rebuildLegend();
         persist(meta.id);
       });
       nameEl.addEventListener('click', function () { setActive(meta.id); });
@@ -671,6 +989,7 @@
 
       row.querySelector('[data-act="zoom"]').addEventListener('click', function () { zoomTo(meta); });
       row.querySelector('[data-act="export"]').addEventListener('click', function () { exportLayer(meta); });
+      row.querySelector('[data-act="table"]').addEventListener('click', function () { openAttributeTable(meta); });
       row.querySelector('[data-act="del"]').addEventListener('click', function () { deleteLayer(meta); });
 
       updateCount(meta);
@@ -697,6 +1016,7 @@
         span.addEventListener('click', function () { setActive(meta.id); });
         span.addEventListener('dblclick', function () { renameLayer(meta, span); });
         input.replaceWith(span);
+        rebuildLegend();
         persist(meta.id);
       }
       input.addEventListener('blur', commit);
@@ -719,12 +1039,60 @@
       download(base + '.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
     }
 
+    // Build tabular rows (schema fields + extra props + lat/lng) for a layer.
+    function layerToRows(meta) {
+      var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+      var feats = meta.group.getLayers();
+      var cols = schema.fields.map(function (f) { return f.key; });
+      var seen = {};
+      cols.forEach(function (k) { seen[k] = true; });
+      feats.forEach(function (lyr) {
+        var p = (lyr.feature && lyr.feature.properties) || {};
+        Object.keys(p).forEach(function (k) {
+          if (k.charAt(0) === '_') return;
+          if (!seen[k]) { seen[k] = true; cols.push(k); }
+        });
+      });
+      var isPoint = schema.geom !== 'line';
+      return feats.map(function (lyr) {
+        ensureFeatureProps(meta, lyr, false);
+        var p = lyr.feature.properties || {};
+        var row = {};
+        cols.forEach(function (k) { row[k] = p[k] != null ? p[k] : ''; });
+        if (isPoint && lyr.getLatLng) {
+          var ll = lyr.getLatLng();
+          row.lat = ll.lat; row.lng = ll.lng;
+        }
+        return row;
+      });
+    }
+
+    function exportTableSpreadsheet(meta, kind) {
+      if (!meta) { toast('Open a layer table first'); return; }
+      if (!window.XLSX) { toast('Excel library not loaded'); return; }
+      var rows = layerToRows(meta);
+      if (!rows.length) { toast('Nothing to export'); return; }
+      var base = (meta.name || 'layer').replace(/[^\w.-]+/g, '_');
+      var ws = window.XLSX.utils.json_to_sheet(rows);
+      if (kind === 'csv') {
+        var csv = window.XLSX.utils.sheet_to_csv(ws);
+        download(base + '.csv', csv, 'text/csv');
+      } else {
+        var wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, 'Data');
+        var buf = window.XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+        download(base + '.xlsx', buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      }
+      toast('Exported ' + rows.length + ' row' + (rows.length === 1 ? '' : 's'));
+    }
+
     function deleteLayer(meta) {
       if (!confirm('Delete layer "' + meta.name + '" and all its features? This cannot be undone.')) return;
       try { map.removeLayer(meta.group); } catch (_) {}
       if (meta.row) meta.row.remove();
       delete layers[meta.id];
       dbDelLayer(meta.id);
+      rebuildLegend();
       if (activeId === meta.id) {
         activeId = null;
         var first = Object.keys(layers)[0];
@@ -742,9 +1110,13 @@
       }
       // Remove from map's default placement, add to the active group + style it.
       try { map.removeLayer(lyr); } catch (_) {}
-      if (lyr.setStyle) { try { lyr.setStyle(styleFor(meta.color)); } catch (_) {} }
-      if (lyr instanceof L.CircleMarker) {
-        try { lyr.setStyle({ color: meta.color, fillColor: meta.color, fillOpacity: 0.9 }); } catch (_) {}
+      if (isIconMarker(lyr)) {
+        try { lyr.setIcon(makePointIcon(meta.category, meta.color)); } catch (_) {}
+      } else if (lyr.setStyle) {
+        try { lyr.setStyle(styleFor(meta.color)); } catch (_) {}
+        if (lyr instanceof L.CircleMarker) {
+          try { lyr.setStyle({ color: meta.color, fillColor: meta.color, fillOpacity: 0.9 }); } catch (_) {}
+        }
       }
       lyr.feature = lyr.feature || { type: 'Feature', properties: {}, geometry: null };
       meta.group.addLayer(lyr);
@@ -783,6 +1155,9 @@
     host.querySelector('[data-act="attr-save"]').addEventListener('click', saveAttrFromEditor);
     host.querySelector('[data-act="attr-del"]').addEventListener('click', deleteFeatureFromEditor);
     host.querySelector('[data-act="attr-zoom"]').addEventListener('click', zoomFeatureFromEditor);
+    host.querySelector('[data-act="table-close"]').addEventListener('click', function () { tablePanel.hidden = true; });
+    host.querySelector('[data-act="table-csv"]').addEventListener('click', function () { exportTableSpreadsheet(currentTableMeta, 'csv'); });
+    host.querySelector('[data-act="table-xlsx"]').addEventListener('click', function () { exportTableSpreadsheet(currentTableMeta, 'xlsx'); });
 
     // ---- DMA reference overlay ----
     $('dma-toggle').addEventListener('change', function (e) {
@@ -866,9 +1241,7 @@
       if (!meta) { meta = createLayer({ category: catSelectValue() }); setActive(meta.id); }
       var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
       if (schema.geom === 'line') { toast('Active layer is a line layer — pick a point layer to drop a GNSS point'); return; }
-      var lyr = L.circleMarker([gnssLastFix.lat, gnssLastFix.lng], {
-        radius: 6, color: meta.color, weight: 2, fillColor: meta.color, fillOpacity: 0.9,
-      });
+      var lyr = makePointMarker(meta, [gnssLastFix.lat, gnssLastFix.lng]);
       lyr.feature = { type: 'Feature', properties: {}, geometry: null };
       meta.group.addLayer(lyr);
       attachFeatureBehavior(meta, lyr, true);
@@ -955,6 +1328,68 @@
       zoomTo(meta);
       setActive(meta.id);
     }
+
+    // ---- Excel / CSV import (rows with lat/lng columns → point features) ----
+    var LAT_KEYS = ['lat', 'latitude', 'y', 'latdd', 'ycoord', 'northing'];
+    var LNG_KEYS = ['lng', 'lon', 'long', 'longitude', 'x', 'lngdd', 'xcoord', 'easting'];
+
+    function pickKey(row, candidates) {
+      var keys = Object.keys(row);
+      for (var i = 0; i < keys.length; i++) {
+        var norm = keys[i].toLowerCase().replace(/[^a-z]/g, '');
+        if (candidates.indexOf(norm) !== -1) return keys[i];
+      }
+      return null;
+    }
+
+    function rowsToGeoJSON(rows) {
+      if (!rows || !rows.length) return null;
+      var latK = pickKey(rows[0], LAT_KEYS);
+      var lngK = pickKey(rows[0], LNG_KEYS);
+      if (!latK || !lngK) return { error: 'no-coords' };
+      var features = [];
+      rows.forEach(function (row) {
+        var lat = parseFloat(row[latK]);
+        var lng = parseFloat(row[lngK]);
+        if (!isFinite(lat) || !isFinite(lng)) return;
+        var props = {};
+        Object.keys(row).forEach(function (k) {
+          if (k === latK || k === lngK) return;
+          props[k] = row[k];
+        });
+        features.push({
+          type: 'Feature',
+          properties: props,
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+        });
+      });
+      return { type: 'FeatureCollection', features: features };
+    }
+
+    $('imp-excel').addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      if (!window.XLSX) { toast('Excel library not loaded'); return; }
+      toast('Reading spreadsheet\u2026');
+      file.arrayBuffer().then(function (buf) {
+        var wb = window.XLSX.read(buf, { type: 'array' });
+        var firstSheet = wb.SheetNames[0];
+        var rows = window.XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { defval: '' });
+        var fc = rowsToGeoJSON(rows);
+        if (!fc) { toast('Spreadsheet is empty'); return; }
+        if (fc.error === 'no-coords') {
+          toast('No latitude/longitude columns found (need e.g. "lat" & "lng")');
+          return;
+        }
+        if (!fc.features.length) { toast('No valid coordinate rows found'); return; }
+        importCollection(fc, file.name.replace(/\.(xlsx|xls|csv)$/i, ''));
+        toast('Imported ' + fc.features.length + ' point' + (fc.features.length === 1 ? '' : 's') + ' from spreadsheet');
+      }).catch(function (err) {
+        console.error('[GIS] excel import failed', err);
+        toast('Could not read spreadsheet');
+      });
+    });
 
     // ---- Restore persisted layers ----
     dbAllLayers().then(function (recs) {

@@ -634,6 +634,99 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-attr-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #ddd;background:var(--softer);}
 .gis-attr-foot .btn{flex:1;}
 .gis-attr-foot .btn-primary{flex:1.4;}
+/* Permanent survey-point labels (Building ID · Block, Valve ID, …) */
+.leaflet-tooltip.gis-feat-label{
+  background:rgba(255,255,255,.92);border:1px solid #333;border-radius:4px;
+  padding:1px 5px;font-size:11px;font-weight:700;color:#111;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);white-space:nowrap;
+}
+.leaflet-tooltip.gis-feat-label::before{display:none;}
+/* Custom point symbols (divIcon) */
+.gis-sym{background:none!important;border:none!important;}
+.gis-sym svg{display:block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4));}
+/* Declutter permanent labels at low zoom */
+.gis-hide-labels .leaflet-tooltip.gis-feat-label{display:none!important;}
+/* Legend control */
+.gis-legend{
+  background:#fff;border:2px solid #000;border-radius:7px;overflow:hidden;
+  box-shadow:0 2px 10px rgba(0,0,0,.28);font-size:12px;min-width:130px;max-width:200px;
+}
+.gis-legend-head{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#000;color:#fff;padding:4px 8px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;font-size:11px;
+}
+.gis-legend-toggle{background:none;border:none;color:#fff;font-size:15px;line-height:1;cursor:pointer;padding:0 2px;}
+.gis-legend-body{padding:5px 7px;max-height:200px;overflow:auto;}
+.gis-legend.collapsed .gis-legend-body{display:none;}
+.gis-leg-row{display:flex;align-items:center;gap:6px;padding:2px 0;}
+.gis-leg-row.off{opacity:.45;}
+.gis-leg-sym{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;}
+.gis-leg-sym svg{width:16px;height:16px;}
+.gis-leg-line{display:inline-block;width:18px;height:4px;border-radius:2px;}
+.gis-leg-name{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gis-leg-cat{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.3px;}
+.gis-leg-empty{color:#999;font-style:italic;}
+/* Table export buttons */
+.gis-table-actions{display:flex;gap:5px;margin-left:auto;margin-right:8px;}
+.gis-table-exp{
+  background:#fff;color:#000;border:1px solid #fff;border-radius:4px;cursor:pointer;
+  font-size:11px;font-weight:800;letter-spacing:.5px;padding:3px 9px;
+}
+.gis-table-exp:hover{background:#1a73e8;color:#fff;border-color:#1a73e8;}
+/* Field photos in attribute editor */
+.gis-photo-sec{margin-top:10px;border-top:1px solid #ddd;padding-top:8px;}
+.gis-photo-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#333;margin-bottom:6px;}
+.gis-photo-add{
+  background:#1a73e8;color:#fff;border-radius:5px;cursor:pointer;
+  font-size:11px;font-weight:700;letter-spacing:.4px;padding:4px 10px;
+}
+.gis-photo-strip{display:flex;flex-wrap:wrap;gap:6px;}
+.gis-photo-empty{font-size:12px;color:#999;font-style:italic;}
+.gis-photo-thumb{position:relative;width:64px;height:48px;border:1px solid #000;border-radius:4px;overflow:hidden;}
+.gis-photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;display:block;}
+.gis-photo-rm{
+  position:absolute;top:1px;right:1px;width:18px;height:18px;line-height:16px;text-align:center;
+  background:rgba(193,0,31,.92);color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:13px;padding:0;
+}
+.gis-photo-lightbox{
+  position:absolute;inset:0;z-index:2000;background:rgba(0,0,0,.85);
+  display:flex;align-items:center;justify-content:center;cursor:zoom-out;
+}
+.gis-photo-lightbox img{max-width:92%;max-height:92%;border:3px solid #fff;border-radius:4px;}
+/* Attribute table overlay (QGIS-style) */
+.gis-table{position:absolute;inset:8px;z-index:1500;display:flex;}
+.gis-table[hidden]{display:none!important;}
+.gis-table-card{
+  display:flex;flex-direction:column;width:100%;height:100%;
+  background:#fff;border:2px solid #000;border-radius:8px;overflow:hidden;
+  box-shadow:0 8px 30px rgba(0,0,0,.35);
+}
+.gis-table-head{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#000;color:#fff;padding:7px 10px;
+}
+.gis-table-head strong{font-size:12px;letter-spacing:.5px;text-transform:uppercase;}
+.gis-table-wrap{flex:1;overflow:auto;}
+.gis-table-empty{padding:16px;font-size:13px;color:var(--muted,#555);}
+.gis-attr-table{border-collapse:collapse;width:100%;font-size:12px;}
+.gis-attr-table th,.gis-attr-table td{
+  border:1px solid #ddd;padding:5px 8px;text-align:left;white-space:nowrap;
+}
+.gis-attr-table thead th{
+  position:sticky;top:0;background:var(--softer,#f3f3f3);z-index:1;
+  font-size:11px;text-transform:uppercase;letter-spacing:.4px;
+}
+.gis-attr-table tbody tr:nth-child(even){background:#fafafa;}
+.gis-attr-table tbody tr:hover{background:#eef5ff;}
+.gis-tcell-n{color:#888;font-variant-numeric:tabular-nums;}
+.gis-tcell-act{white-space:nowrap;text-align:center;}
+.gis-trow-btn{
+  background:#fff;border:1px solid #bbb;border-radius:4px;cursor:pointer;
+  font-size:13px;line-height:1;padding:3px 6px;margin:0 1px;
+}
+.gis-trow-btn:hover{background:#eef;}
+.gis-trow-del{color:#c1001f;border-color:#e0a;}
+.gis-trow-del:hover{background:#c1001f;color:#fff;}
 .gis-ref-toggle{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;}
 .gis-tip{font-size:11px;line-height:1.45;color:var(--muted,#555);margin:6px 0 0;}
 /* Live-location control + dot */
@@ -675,6 +768,8 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   .leaflet-pm-toolbar .button-container a,.gis-locate-ctl a.gis-locate-btn{width:40px;height:40px;line-height:40px;}
   .gis-attr{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;}
   .gis-attr-body{max-height:40vh;}
+  .gis-attr-table th,.gis-attr-table td{padding:8px 10px;font-size:13px;}
+  .gis-trow-btn{padding:6px 9px;font-size:15px;}
 }
 
 .leaflet-popup-content{font-family:inherit;font-size:13px;line-height:1.5;}
