@@ -85,7 +85,7 @@
   // ---------------------------------------------------------------
   var KTM_DEFAULT = [27.6915, 85.3420];
   var PALETTE = ['#c1001f', '#1b6fd6', '#1a7f1a', '#e07a00', '#7d3cb5', '#0a8f8f', '#d4007a', '#444'];
-  var CATEGORY_COLOR = { building: '#1b6fd6', valve: '#c1001f', pipe: '#1a7f1a', generic: '#7d3cb5' };
+  var CATEGORY_COLOR = { building: '#1b6fd6', building_poly: '#d98300', valve: '#c1001f', pipe: '#1a7f1a', generic: '#7d3cb5' };
 
   // ---- Feature schemas (QField-style typed layers) ----
   var SCHEMAS = {
@@ -97,6 +97,19 @@
         { key: 'building_id', label: 'Building ID', type: 'text' },
         { key: 'block', label: 'Block', type: 'text' },
         { key: 'building_name', label: 'Building Name', type: 'text' },
+      ],
+    },
+    building_poly: {
+      label: 'Building Polygon', geom: 'polygon', titleKey: 'building_name', fallbackKey: 'building_id',
+      fields: [
+        { key: 'surveyor', label: 'Surveyor', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'building_id', label: 'Building ID', type: 'text' },
+        { key: 'block', label: 'Block', type: 'text' },
+        { key: 'building_name', label: 'Building Name', type: 'text' },
+        { key: 'floors', label: 'Floors', type: 'number' },
+        { key: 'area_m2', label: 'Area (m\u00b2) \u2014 auto', type: 'number', readonly: true },
+        { key: 'remarks', label: 'Remarks', type: 'textarea' },
       ],
     },
     valve: {
@@ -213,6 +226,7 @@
       '  <div class="gis-new-row">' +
       '    <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
       '      <option value="building">Buildings (point)</option>' +
+      '      <option value="building_poly">Building Polygon (area)</option>' +
       '      <option value="valve">Valves (point)</option>' +
       '      <option value="pipe">Pipes (line)</option>' +
       '      <option value="generic">Generic</option>' +
@@ -323,15 +337,16 @@
     function applyToolsForCategory(category) {
       if (!map.pm || !map.pm.Toolbar || !map.pm.Toolbar.getButtons) return;
       var schema = SCHEMAS[category] || SCHEMAS.generic;
-      var geom = schema.geom; // 'point' | 'line' | 'any'
+      var geom = schema.geom; // 'point' | 'line' | 'polygon' | 'any'
       var isPoint = geom === 'point';
       var isLine = geom === 'line';
-      var anyGeom = !isPoint && !isLine;
+      var isPolygon = geom === 'polygon';
+      var anyGeom = !isPoint && !isLine && !isPolygon;
       var vis = {
         drawMarker: isPoint || anyGeom,
         drawPolyline: isLine || anyGeom,
-        drawRectangle: anyGeom,
-        drawPolygon: anyGeom,
+        drawRectangle: isPolygon || anyGeom,
+        drawPolygon: isPolygon || anyGeom,
         drawCircle: anyGeom,
         drawText: anyGeom,
       };
@@ -488,6 +503,9 @@
       if (schema.geom === 'line') {
         return '<span class="gis-leg-line" style="background:' + esc(color) + '"></span>';
       }
+      if (schema.geom === 'polygon') {
+        return '<span class="gis-leg-poly" style="border-color:' + esc(color) + ';background:' + esc(color) + '33"></span>';
+      }
       return '<span class="gis-leg-sym">' + pointSymbolSVG(category, color) + '</span>';
     }
     function rebuildLegend() {
@@ -592,6 +610,10 @@
         var len = lineLength(lyr);
         if (len != null && (isNew || !p.length_m)) p.length_m = len;
       }
+      if (schema.geom === 'polygon') {
+        var a = polygonArea(lyr);
+        if (a != null && (isNew || !p.area_m2)) p.area_m2 = a;
+      }
     }
 
     function lineLength(lyr) {
@@ -603,6 +625,39 @@
         for (var i = 1; i < lls.length; i++) total += map.distance(lls[i - 1], lls[i]);
         return Math.round(total * 100) / 100;
       } catch (_) { return null; }
+    }
+
+    // Spherical polygon area (m²) via L.GeometryUtil-style shoelace on the sphere.
+    function polygonArea(lyr) {
+      try {
+        var lls = lyr.getLatLngs ? lyr.getLatLngs() : null;
+        if (!lls) return null;
+        while (lls.length && Array.isArray(lls[0]) && Array.isArray(lls[0][0])) lls = lls[0];
+        var ring = Array.isArray(lls[0]) ? lls[0] : lls;
+        if (!ring || ring.length < 3) return null;
+        var R = 6378137, area = 0;
+        var d2r = Math.PI / 180;
+        for (var i = 0; i < ring.length; i++) {
+          var p1 = ring[i], p2 = ring[(i + 1) % ring.length];
+          area += (p2.lng - p1.lng) * d2r * (2 + Math.sin(p1.lat * d2r) + Math.sin(p2.lat * d2r));
+        }
+        area = Math.abs(area * R * R / 2.0);
+        return Math.round(area * 100) / 100;
+      } catch (_) { return null; }
+    }
+
+    // Representative lat/lng for ANY feature: points use their own position,
+    // lines/polygons use the centre of their bounds (centroid-ish) so every
+    // feature gets coordinates in the table and exports.
+    function featureLatLng(lyr) {
+      try {
+        if (lyr.getLatLng) return lyr.getLatLng();
+        if (lyr.getBounds) {
+          var b = lyr.getBounds();
+          if (b && b.isValid && b.isValid()) return b.getCenter();
+        }
+      } catch (_) {}
+      return null;
     }
 
     function featureTitle(meta, p) {
@@ -623,6 +678,12 @@
         var s = [id, blk].filter(Boolean).join(' \u00b7 ');
         return s || '';
       }
+      if (meta.category === 'building_poly') {
+        var pid = p.building_id || p.building_name || '';
+        var pblk = p.block || '';
+        var ps = [pid, pblk].filter(Boolean).join(' \u00b7 ');
+        return ps || '';
+      }
       if (meta.category === 'valve') return p.valve_id || '';
       if (meta.category === 'pipe') return p.pipe_id || '';
       return featureTitle(meta, p) === (SCHEMAS[meta.category] || SCHEMAS.generic).label ? '' : featureTitle(meta, p);
@@ -635,17 +696,17 @@
     function updateTooltip(meta, lyr) {
       var props = lyr.feature && lyr.feature.properties;
       var point = isPointLayer(lyr);
-      // Buildings/valves/points → permanent label on the map (survey markers).
-      // Lines/polygons → sticky hover tooltip showing the title.
-      var label = point ? featureLabel(meta, props) : '';
+      // Building polygons also get a permanent label (centered), like building points.
+      var permLabel = point || meta.category === 'building_poly';
+      var label = permLabel ? featureLabel(meta, props) : '';
       try {
-        if (point) {
+        if (permLabel) {
           if (label) {
             if (lyr.getTooltip && lyr.getTooltip()) {
               lyr.setTooltipContent(label);
             } else {
               lyr.bindTooltip(label, {
-                permanent: true, direction: 'top', offset: [0, -6],
+                permanent: true, direction: point ? 'top' : 'center', offset: [0, point ? -6 : 0],
                 className: 'gis-feat-label', opacity: 1,
               });
             }
@@ -681,6 +742,10 @@
         if (schema.geom === 'line' && lyr.feature && lyr.feature.properties) {
           var len = lineLength(lyr);
           if (len != null) lyr.feature.properties.length_m = len;
+        }
+        if (schema.geom === 'polygon' && lyr.feature && lyr.feature.properties) {
+          var ar = polygonArea(lyr);
+          if (ar != null) lyr.feature.properties.area_m2 = ar;
         }
         persist(meta.id);
       });
@@ -886,6 +951,9 @@
           if (!seen[k]) { seen[k] = true; cols.push({ key: k, label: k }); }
         });
       });
+      // Lat/Lng shown for every layer (lines/polygons use their centre point).
+      cols.push({ key: '__lat', label: 'Latitude' });
+      cols.push({ key: '__lng', label: 'Longitude' });
 
       var table = document.createElement('table');
       table.className = 'gis-attr-table';
@@ -901,10 +969,15 @@
       feats.forEach(function (lyr, i) {
         ensureFeatureProps(meta, lyr, false);
         var p = lyr.feature.properties || {};
+        var ll = featureLatLng(lyr);
         var tr = document.createElement('tr');
         var cells = '<td class="gis-tcell-n">' + (i + 1) + '</td>';
         cols.forEach(function (c) {
-          cells += '<td>' + esc(p[c.key] != null ? p[c.key] : '') + '</td>';
+          var v;
+          if (c.key === '__lat') v = ll ? ll.lat.toFixed(6) : '';
+          else if (c.key === '__lng') v = ll ? ll.lng.toFixed(6) : '';
+          else v = p[c.key] != null ? p[c.key] : '';
+          cells += '<td>' + esc(v) + '</td>';
         });
         cells += '<td class="gis-tcell-act">' +
           '<button type="button" class="gis-trow-btn" data-tact="edit" title="Edit / view">\u270e</button>' +
@@ -987,6 +1060,12 @@
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActive(meta.id); }
       });
 
+      // Clicking anywhere on the row (except its controls/buttons) selects the layer.
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('button, input, .gis-name')) return;
+        setActive(meta.id);
+      });
+
       row.querySelector('[data-act="zoom"]').addEventListener('click', function () { zoomTo(meta); });
       row.querySelector('[data-act="export"]').addEventListener('click', function () { exportLayer(meta); });
       row.querySelector('[data-act="table"]').addEventListener('click', function () { openAttributeTable(meta); });
@@ -1053,16 +1132,14 @@
           if (!seen[k]) { seen[k] = true; cols.push(k); }
         });
       });
-      var isPoint = schema.geom !== 'line';
       return feats.map(function (lyr) {
         ensureFeatureProps(meta, lyr, false);
         var p = lyr.feature.properties || {};
         var row = {};
         cols.forEach(function (k) { row[k] = p[k] != null ? p[k] : ''; });
-        if (isPoint && lyr.getLatLng) {
-          var ll = lyr.getLatLng();
-          row.lat = ll.lat; row.lng = ll.lng;
-        }
+        var ll = featureLatLng(lyr);
+        row.lat = ll ? ll.lat : '';
+        row.lng = ll ? ll.lng : '';
         return row;
       });
     }
@@ -1240,7 +1317,7 @@
       var meta = layers[activeId];
       if (!meta) { meta = createLayer({ category: catSelectValue() }); setActive(meta.id); }
       var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
-      if (schema.geom === 'line') { toast('Active layer is a line layer — pick a point layer to drop a GNSS point'); return; }
+      if (schema.geom !== 'point' && schema.geom !== 'any') { toast('Active layer is not a point layer — pick a point layer to drop a GNSS point'); return; }
       var lyr = makePointMarker(meta, [gnssLastFix.lat, gnssLastFix.lng]);
       lyr.feature = { type: 'Feature', properties: {}, geometry: null };
       meta.group.addLayer(lyr);
@@ -1404,8 +1481,9 @@
       });
       if (!recs.length) {
         // Seed with the standard KUKL field-survey layers.
-        ['building', 'pipe', 'valve'].forEach(function (cat) {
-          var m = createLayer({ category: cat, name: SCHEMAS[cat].label + 's' });
+        ['building', 'building_poly', 'pipe', 'valve'].forEach(function (cat) {
+          var nm = cat === 'building_poly' ? 'Building Polygons' : SCHEMAS[cat].label + 's';
+          var m = createLayer({ category: cat, name: nm });
           persist(m.id);
         });
         setActive(Object.keys(layers)[0]);
