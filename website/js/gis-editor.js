@@ -1527,10 +1527,28 @@
     }
 
     function exportLayer(meta) {
-      var fc = groupToGeoJSON(meta.group);
-      if (!fc.features.length) { toast('Nothing to export'); return; }
+      var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+      var features = [];
+      meta.group.eachLayer(function (lyr) {
+        if (typeof lyr.toGeoJSON !== 'function') return;
+        // Fill in schema defaults + auto-computed fields (area, length, demand…)
+        // so even never-opened / imported features export their full attributes.
+        ensureFeatureProps(meta, lyr, false);
+        var gj = lyr.toGeoJSON();
+        gj.properties = gj.properties || {};
+        // Drop only heavy/internal keys (e.g. _photos); keep every real attribute.
+        Object.keys(gj.properties).forEach(function (key) {
+          if (key.charAt(0) === '_') delete gj.properties[key];
+        });
+        gj.properties._layer = meta.name;
+        gj.properties._category = schema.label;
+        features.push(gj);
+      });
+      if (!features.length) { toast('Nothing to export'); return; }
+      var fc = { type: 'FeatureCollection', features: features };
       var base = (meta.name || 'layer').replace(/[^\w.-]+/g, '_');
       download(base + '.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
+      toast('Exported ' + features.length + ' feature' + (features.length === 1 ? '' : 's'));
     }
 
     // Build tabular rows (schema fields + extra props + lat/lng) for a layer.
@@ -2004,14 +2022,113 @@
       });
     });
 
+    // Map a schema label (e.g. "Pipe") back to its category key (e.g. "pipe").
+    function categoryFromLabel(label) {
+      if (!label) return null;
+      var want = String(label).trim().toLowerCase();
+      var found = null;
+      Object.keys(SCHEMAS).forEach(function (cat) {
+        if (SCHEMAS[cat].label.toLowerCase() === want) found = cat;
+      });
+      return found;
+    }
+
+    // Best-effort category for a feature: explicit tag first, then geometry.
+    function categoryForFeature(f) {
+      var p = (f && f.properties) || {};
+      var byLabel = categoryFromLabel(p._category);
+      if (byLabel) return byLabel;
+      var g = f && f.geometry;
+      var t = g && g.type;
+      if (t === 'LineString' || t === 'MultiLineString') return 'pipe';
+      if (t === 'Polygon' || t === 'MultiPolygon') return 'building_poly';
+      return null; // point / unknown → ambiguous, handled by caller
+    }
+
+    function findLayerByName(name) {
+      if (!name) return null;
+      var hit = null;
+      Object.keys(layers).forEach(function (k) {
+        if (!hit && layers[k].name === name) hit = layers[k];
+      });
+      return hit;
+    }
+
+    function findLayerByCategory(cat) {
+      if (!cat) return null;
+      var hit = null;
+      Object.keys(layers).forEach(function (k) {
+        if (!hit && layers[k].category === cat) hit = layers[k];
+      });
+      return hit;
+    }
+
+    function defaultLayerName(cat) {
+      if (cat === 'building_poly') return 'Building Polygons';
+      var s = SCHEMAS[cat];
+      return s ? s.label + 's' : 'Imported';
+    }
+
+    // Route imported features into matching EXISTING layers (by source layer
+    // name, then by category). Only creates a layer when no match exists, so
+    // e.g. all pipe features land inside the current "Pipes" layer.
     function importCollection(fc, name) {
       if (!fc || !fc.type) { toast('Empty / unsupported file'); return; }
-      var meta = createLayer({ name: name || 'Imported' });
-      loadGeoJSONInto(meta, fc);
-      updateCount(meta);
-      persist(meta.id);
-      zoomTo(meta);
-      setActive(meta.id);
+      var feats = fc.type === 'FeatureCollection' ? (fc.features || [])
+                : (fc.type === 'Feature' ? [fc] : []);
+      if (!feats.length) { toast('No features in file'); return; }
+
+      // Bucket features by their target layer.
+      var buckets = {}; // key -> { meta?, cat, name, features:[] }
+      var order = [];
+      function bucketKey(cat, layerName) { return (cat || 'generic') + '::' + (layerName || ''); }
+
+      feats.forEach(function (f) {
+        if (!f || f.type !== 'Feature') return;
+        var p = f.properties || {};
+        var srcName = p._layer;
+        var cat = categoryForFeature(f);
+        // Resolve the destination layer.
+        var dest = findLayerByName(srcName);
+        if (!dest && cat) dest = findLayerByCategory(cat);
+        if (dest && !cat) cat = dest.category;
+        // Strip our internal tags so they don't pollute the attribute table.
+        delete p._layer; delete p._category;
+        f.properties = p;
+
+        var key = dest ? ('meta:' + dest.id) : bucketKey(cat, srcName || name);
+        if (!buckets[key]) {
+          buckets[key] = {
+            meta: dest || null,
+            cat: cat || 'generic',
+            name: srcName || name || defaultLayerName(cat),
+            features: [],
+          };
+          order.push(key);
+        }
+        buckets[key].features.push(f);
+      });
+
+      if (!order.length) { toast('No importable features'); return; }
+
+      var lastMeta = null, totalAdded = 0;
+      order.forEach(function (key) {
+        var b = buckets[key];
+        var meta = b.meta;
+        if (!meta) {
+          // No existing layer matched → create one (named after its source).
+          meta = createLayer({ category: b.cat, name: b.name });
+        }
+        loadGeoJSONInto(meta, { type: 'FeatureCollection', features: b.features });
+        updateCount(meta);
+        persist(meta.id);
+        lastMeta = meta;
+        totalAdded += b.features.length;
+      });
+
+      if (lastMeta) { zoomTo(lastMeta); setActive(lastMeta.id); }
+      toast('Imported ' + totalAdded + ' feature' + (totalAdded === 1 ? '' : 's')
+        + ' into ' + order.length + ' layer' + (order.length === 1 ? '' : 's'));
     }
 
     // ---- Excel / CSV import (rows with lat/lng columns → point features) ----

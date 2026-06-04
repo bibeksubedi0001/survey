@@ -5,7 +5,7 @@
      - OSM tiles (*.tile.openstreetmap.org)   → stale-while-revalidate (capped LRU)
      - Everything else → network-first, fall back to cache
 */
-const VERSION = 'v62-2026-06-04-gis-lock-points';
+const VERSION = 'v63-2026-06-04-gis-import-merge';
 const SHELL_CACHE = `kukl-shell-${VERSION}`;
 const LIB_CACHE   = `kukl-libs-${VERSION}`;
 const TILE_CACHE  = `kukl-tiles-${VERSION}`;
@@ -24,7 +24,7 @@ const SHELL_ASSETS = [
   './js/geo-utils.js?v=1',
   './js/dma-overlay.js?v=8',
   './js/gnss-connector.js?v=1',
-  './js/gis-editor.js?v=18',
+  './js/gis-editor.js?v=19',
   './js/theme-boot.js?v=1',
   './js/nav-wiring.js?v=3',
   './assets/vendor/leaflet-geoman.min.js',
