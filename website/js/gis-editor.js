@@ -85,7 +85,7 @@
   // ---------------------------------------------------------------
   var KTM_DEFAULT = [27.6915, 85.3420];
   var PALETTE = ['#c1001f', '#1b6fd6', '#1a7f1a', '#e07a00', '#7d3cb5', '#0a8f8f', '#d4007a', '#444'];
-  var CATEGORY_COLOR = { building: '#1b6fd6', building_poly: '#d98300', valve: '#c1001f', pipe: '#1a7f1a', generic: '#7d3cb5' };
+  var CATEGORY_COLOR = { building: '#1b6fd6', building_poly: '#d98300', connection: '#0a8f8f', valve: '#c1001f', pipe: '#1a7f1a', generic: '#7d3cb5' };
 
   // ---- Feature schemas (QField-style typed layers) ----
   var SCHEMAS = {
@@ -97,6 +97,8 @@
         { key: 'building_id', label: 'Building ID', type: 'text' },
         { key: 'block', label: 'Block', type: 'text' },
         { key: 'building_name', label: 'Building Name', type: 'text' },
+        { key: 'office_name', label: 'Office / Occupant', type: 'text' },
+        { key: 'ministry', label: 'Ministry / Department', type: 'text' },
       ],
     },
     building_poly: {
@@ -107,8 +109,30 @@
         { key: 'building_id', label: 'Building ID', type: 'text' },
         { key: 'block', label: 'Block', type: 'text' },
         { key: 'building_name', label: 'Building Name', type: 'text' },
+        { key: 'office_name', label: 'Office / Occupant', type: 'text' },
+        { key: 'ministry', label: 'Ministry / Department', type: 'text' },
         { key: 'floors', label: 'Floors', type: 'number' },
         { key: 'area_m2', label: 'Area (m\u00b2) \u2014 auto', type: 'number', readonly: true },
+        { key: 'builtup_m2', label: 'Built-up Area (m\u00b2) \u2014 auto', type: 'number', readonly: true },
+        { key: 'remarks', label: 'Remarks', type: 'textarea' },
+      ],
+    },
+    connection: {
+      label: 'Connection', geom: 'point', titleKey: 'connection_id', fallbackKey: 'building_id',
+      fields: [
+        { key: 'surveyor', label: 'Surveyor', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'connection_id', label: 'Connection ID', type: 'text' },
+        { key: 'building_id', label: 'Linked Building ID', type: 'text', list: 'buildings' },
+        { key: 'account_no', label: 'Account / Customer No.', type: 'text' },
+        { key: 'conn_type', label: 'Connection Type', type: 'select', options: ['Domestic', 'Commercial', 'Institutional', 'Standpost'] },
+        { key: 'tariff', label: 'Tariff Category', type: 'select', options: ['Domestic', 'Commercial', 'Institutional', 'Industrial'] },
+        { key: 'meter_no', label: 'Meter No.', type: 'text' },
+        { key: 'meter_brand', label: 'Meter Brand', type: 'text' },
+        { key: 'meter_size', label: 'Meter Size', type: 'select', options: ['\u00bd\u2033 (15mm)', '\u00be\u2033 (20mm)', '1\u2033 (25mm)', '1\u00bd\u2033 (40mm)', '2\u2033 (50mm)'] },
+        { key: 'pipe_size', label: 'Service Pipe Size', type: 'select', options: ['\u00bd\u2033', '\u00be\u2033', '1\u2033', '1\u00bd\u2033', '2\u2033'] },
+        { key: 'status', label: 'Status', type: 'select', options: ['Active', 'Disconnected', 'Illegal'] },
+        { key: 'supply_hours', label: 'Supply Hours / Day', type: 'number' },
         { key: 'remarks', label: 'Remarks', type: 'textarea' },
       ],
     },
@@ -227,6 +251,7 @@
       '    <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
       '      <option value="building">Buildings (point)</option>' +
       '      <option value="building_poly">Building Polygon (area)</option>' +
+      '      <option value="connection">Connections (point)</option>' +
       '      <option value="valve">Valves (point)</option>' +
       '      <option value="pipe">Pipes (line)</option>' +
       '      <option value="generic">Generic</option>' +
@@ -234,6 +259,12 @@
       '    <button type="button" class="btn btn-mini btn-primary" data-act="new-layer">+ NEW</button>' +
       '  </div>' +
       '  <div class="gis-layer-list" data-role="layers"></div>' +
+      '  <div class="gis-side-head"><strong>Project</strong></div>' +
+      '  <div class="gis-project">' +
+      '    <button type="button" class="btn btn-mini btn-outline" data-act="dashboard">\u2637 SUMMARY</button>' +
+      '    <button type="button" class="btn btn-mini btn-outline" data-act="proj-geojson">ALL \u2192 GEOJSON</button>' +
+      '    <button type="button" class="btn btn-mini btn-outline" data-act="proj-xlsx">ALL \u2192 EXCEL</button>' +
+      '  </div>' +
       '  <div class="gis-side-head"><strong>Import</strong></div>' +
       '  <div class="gis-import">' +
       '    <label class="btn btn-outline btn-mini gis-file">' +
@@ -295,6 +326,13 @@
       '      <div class="gis-table-wrap" data-role="table-wrap"></div>' +
       '    </div>' +
       '  </div>' +
+      '  <div class="gis-table" data-role="dash" hidden>' +
+      '    <div class="gis-table-card">' +
+      '      <div class="gis-table-head"><strong>Project Summary</strong>' +
+      '        <button type="button" class="gis-attr-x" data-act="dash-close" title="Close">\u00d7</button></div>' +
+      '      <div class="gis-table-wrap gis-dash-body" data-role="dash-body"></div>' +
+      '    </div>' +
+      '  </div>' +
       '</div>';
 
     var $ = function (r) { return host.querySelector('[data-role="' + r + '"]'); };
@@ -305,6 +343,8 @@
     var tablePanel = $('table');
     var tableTitle = $('table-title');
     var tableWrap = $('table-wrap');
+    var dashPanel = $('dash');
+    var dashBody = $('dash-body');
     var editorTarget = null;
     var currentTableMeta = null;
 
@@ -447,6 +487,12 @@
           '<polygon points="11,2 20,11 11,20 2,11" fill="' + c + '" stroke="#fff" stroke-width="1.8"/>' +
           '<rect x="9.6" y="6" width="2.8" height="10" fill="#fff" opacity="0.9"/>' +
           '<rect x="6" y="9.6" width="10" height="2.8" fill="#fff" opacity="0.9"/></svg>';
+      }
+      if (category === 'connection') {
+        return '<svg viewBox="0 0 22 22" width="22" height="22">' +
+          '<path d="M11 2 C 6 8, 4 12, 6.5 16 C 9 20, 13 20, 15.5 16 C 18 12, 16 8, 11 2 Z" ' +
+          'fill="' + c + '" stroke="#fff" stroke-width="1.6"/>' +
+          '<circle cx="11" cy="13.5" r="2.6" fill="#fff" opacity="0.9"/></svg>';
       }
       // generic / other → circle dot
       return '<svg viewBox="0 0 22 22" width="22" height="22">' +
@@ -613,6 +659,11 @@
       if (schema.geom === 'polygon') {
         var a = polygonArea(lyr);
         if (a != null && (isNew || !p.area_m2)) p.area_m2 = a;
+        if (meta.category === 'building_poly') {
+          var fl = parseFloat(p.floors) || 0;
+          var ar2 = parseFloat(p.area_m2) || 0;
+          if (ar2) p.builtup_m2 = Math.round(ar2 * (fl > 0 ? fl : 1) * 100) / 100;
+        }
       }
     }
 
@@ -686,11 +737,32 @@
       }
       if (meta.category === 'valve') return p.valve_id || '';
       if (meta.category === 'pipe') return p.pipe_id || '';
+      if (meta.category === 'connection') {
+        var cid = p.connection_id || p.account_no || '';
+        var cb = p.building_id || '';
+        return [cid, cb].filter(Boolean).join(' \u00b7 ');
+      }
       return featureTitle(meta, p) === (SCHEMAS[meta.category] || SCHEMAS.generic).label ? '' : featureTitle(meta, p);
     }
 
     function isPointLayer(lyr) {
       return (lyr instanceof L.CircleMarker) || (lyr instanceof L.Marker);
+    }
+
+    // Collect all known Building IDs across building/building_poly layers so a
+    // Connection can be linked to an existing building (datalist autocomplete).
+    function allBuildingIds() {
+      var ids = {};
+      Object.keys(layers).forEach(function (k) {
+        var m = layers[k];
+        if (m.category !== 'building' && m.category !== 'building_poly') return;
+        m.group.eachLayer(function (lyr) {
+          var p = lyr.feature && lyr.feature.properties;
+          var bid = p && p.building_id;
+          if (bid != null && String(bid).trim()) ids[String(bid).trim()] = true;
+        });
+      });
+      return Object.keys(ids).sort();
     }
 
     function updateTooltip(meta, lyr) {
@@ -793,25 +865,39 @@
           input = document.createElement('input');
           input.type = fld.type === 'number' ? 'number' : (fld.type === 'date' ? 'date' : 'text');
           input.value = val;
+          if (fld.list === 'buildings') {
+            var dlId = 'gis-dl-buildings';
+            var dl = document.getElementById(dlId);
+            if (!dl) { dl = document.createElement('datalist'); dl.id = dlId; document.body.appendChild(dl); }
+            dl.innerHTML = allBuildingIds().map(function (b) {
+              return '<option value="' + esc(b) + '"></option>';
+            }).join('');
+            input.setAttribute('list', dlId);
+            input.placeholder = 'Type or pick a Building ID';
+          }
         }
         if (fld.readonly) input.readOnly = true;
         input.dataset.key = fld.key;
         wrap.appendChild(input);
         attrBody.appendChild(wrap);
       });
-      buildPhotoSection(lyr);
+      buildPhotoSection(meta, lyr);
       attrPanel.hidden = false;
     }
 
     // ---- Field photos per feature (stored as dataURLs in props._photos) ----
-    function buildPhotoSection(lyr) {
+    function buildPhotoSection(meta, lyr) {
       var props = lyr.feature.properties;
       if (!Array.isArray(props._photos)) props._photos = [];
+      var isConn = meta && meta.category === 'connection';
       var sec = document.createElement('div');
       sec.className = 'gis-photo-sec';
       var head = document.createElement('div');
       head.className = 'gis-photo-head';
       head.innerHTML = '<span>Photos</span>';
+      var btns = document.createElement('span');
+      btns.className = 'gis-photo-btns';
+      // General photo capture.
       var addLbl = document.createElement('label');
       addLbl.className = 'gis-photo-add';
       addLbl.textContent = '\uff0b Add';
@@ -820,7 +906,21 @@
       fileIn.setAttribute('capture', 'environment');
       fileIn.multiple = true; fileIn.hidden = true;
       addLbl.appendChild(fileIn);
-      head.appendChild(addLbl);
+      btns.appendChild(addLbl);
+      // Connections also get a dedicated, auditable Meter photo button.
+      var meterIn = null;
+      if (isConn) {
+        var meterLbl = document.createElement('label');
+        meterLbl.className = 'gis-photo-add gis-photo-meter';
+        meterLbl.textContent = '\uff0b Meter photo';
+        meterIn = document.createElement('input');
+        meterIn.type = 'file'; meterIn.accept = 'image/*';
+        meterIn.setAttribute('capture', 'environment');
+        meterIn.hidden = true;
+        meterLbl.appendChild(meterIn);
+        btns.appendChild(meterLbl);
+      }
+      head.appendChild(btns);
       sec.appendChild(head);
       var strip = document.createElement('div');
       strip.className = 'gis-photo-strip';
@@ -835,10 +935,16 @@
         }
         props._photos.forEach(function (ph, idx) {
           var t = document.createElement('div');
-          t.className = 'gis-photo-thumb';
+          t.className = 'gis-photo-thumb' + (ph.kind === 'meter' ? ' is-meter' : '');
           var img = document.createElement('img');
           img.src = ph.dataUrl; img.alt = ph.name || ('photo ' + (idx + 1));
           img.addEventListener('click', function () { openPhotoLightbox(ph.dataUrl); });
+          if (ph.kind === 'meter') {
+            var badge = document.createElement('span');
+            badge.className = 'gis-photo-badge';
+            badge.textContent = 'METER';
+            t.appendChild(badge);
+          }
           var rm = document.createElement('button');
           rm.type = 'button'; rm.className = 'gis-photo-rm'; rm.textContent = '\u00d7';
           rm.title = 'Remove photo';
@@ -852,9 +958,9 @@
       }
       renderStrip();
 
-      fileIn.addEventListener('change', function () {
-        var files = Array.prototype.slice.call(fileIn.files || []);
-        fileIn.value = '';
+      function readFiles(input, kind) {
+        var files = Array.prototype.slice.call(input.files || []);
+        input.value = '';
         if (!files.length) return;
         var pending = files.length;
         files.forEach(function (file) {
@@ -864,6 +970,7 @@
               dataUrl: reader.result,
               name: file.name,
               time: Date.now(),
+              kind: kind || undefined,
             });
             pending -= 1;
             if (pending === 0) renderStrip();
@@ -871,7 +978,10 @@
           reader.onerror = function () { pending -= 1; if (pending === 0) renderStrip(); };
           reader.readAsDataURL(file);
         });
-      });
+      }
+
+      fileIn.addEventListener('change', function () { readFiles(fileIn, null); });
+      if (meterIn) meterIn.addEventListener('change', function () { readFiles(meterIn, 'meter'); });
     }
 
     function openPhotoLightbox(src) {
@@ -892,6 +1002,12 @@
         props[inp.dataset.key] = inp.value;
       });
       lyr.feature.properties = props;
+      // Built-up area = footprint × floors (recompute after floors edit).
+      if (meta.category === 'building_poly') {
+        var fl = parseFloat(props.floors) || 0;
+        var ar = parseFloat(props.area_m2) || 0;
+        if (ar) props.builtup_m2 = Math.round(ar * (fl > 0 ? fl : 1) * 100) / 100;
+      }
       if (props.surveyor) { try { localStorage.setItem('kukl_gis_surveyor', props.surveyor); } catch (_) {} }
       updateTooltip(meta, lyr);
       persist(meta.id);
@@ -1016,12 +1132,47 @@
       if (meta) applyToolsForCategory(meta.category);
     }
 
+    // ---- Auto building numbering (sequential IDs, restarting per block) ----
+    function autoNumberBuildings(meta) {
+      if (meta.category !== 'building' && meta.category !== 'building_poly') return;
+      var feats = meta.group.getLayers();
+      if (!feats.length) { toast('No features to number yet'); return; }
+      var prefix = prompt('Building number prefix?', 'SD');
+      if (prefix == null) return;
+      prefix = prefix.trim() || 'SD';
+      if (!confirm('Assign sequential IDs to all ' + feats.length + ' feature' +
+        (feats.length === 1 ? '' : 's') + '? Existing Building IDs will be overwritten.')) return;
+      // Stable order: north→south, then west→east, so numbering follows the map.
+      feats.sort(function (a, b) {
+        var la = featureLatLng(a), lb = featureLatLng(b);
+        if (!la || !lb) return 0;
+        return (lb.lat - la.lat) || (la.lng - lb.lng);
+      });
+      var counters = {};
+      feats.forEach(function (lyr) {
+        ensureFeatureProps(meta, lyr, false);
+        var p = lyr.feature.properties;
+        var block = (p.block || '').toString().trim();
+        counters[block] = (counters[block] || 0) + 1;
+        var pad = ('000' + counters[block]).slice(-3);
+        p.building_id = block ? (prefix + '-' + block + '-' + pad) : (prefix + '-' + pad);
+        updateTooltip(meta, lyr);
+      });
+      persist(meta.id);
+      rebuildLegend();
+      if (currentTableMeta && currentTableMeta.id === meta.id && !tablePanel.hidden) {
+        openAttributeTable(meta);
+      }
+      toast('Numbered ' + feats.length + ' building' + (feats.length === 1 ? '' : 's'));
+    }
+
     // ---- Sidebar row ----
     function buildRow(meta) {
       var list = $('layers');
       var row = document.createElement('div');
       row.className = 'gis-layer-row';
       row.dataset.id = meta.id;
+      var isBuilding = meta.category === 'building' || meta.category === 'building_poly';
       row.innerHTML =
         '<input type="checkbox" class="gis-vis" ' + (meta.visible ? 'checked' : '') + ' title="Toggle visibility">' +
         '<span class="gis-swatch" style="background:' + meta.color + '"></span>' +
@@ -1029,6 +1180,7 @@
         '<span class="gis-name" tabindex="0" title="Click to make active; double-click to rename">' + esc(meta.name) + '</span>' +
         '<span class="gis-cat" title="Feature type">' + esc((SCHEMAS[meta.category] || SCHEMAS.generic).label) + '</span>' +
         '<span class="gis-count" data-role="count">0</span>' +
+        (isBuilding ? '<button type="button" class="gis-ic" data-act="autonum" title="Auto-number buildings">\u0023</button>' : '') +
         '<button type="button" class="gis-ic" data-act="table" title="Open attribute table">\u2637</button>' +
         '<button type="button" class="gis-ic" data-act="zoom" title="Zoom to layer">⤢</button>' +
         '<button type="button" class="gis-ic" data-act="export" title="Export GeoJSON">⤓</button>' +
@@ -1070,6 +1222,8 @@
       row.querySelector('[data-act="export"]').addEventListener('click', function () { exportLayer(meta); });
       row.querySelector('[data-act="table"]').addEventListener('click', function () { openAttributeTable(meta); });
       row.querySelector('[data-act="del"]').addEventListener('click', function () { deleteLayer(meta); });
+      var autonumBtn = row.querySelector('[data-act="autonum"]');
+      if (autonumBtn) autonumBtn.addEventListener('click', function () { autoNumberBuildings(meta); });
 
       updateCount(meta);
     }
@@ -1163,6 +1317,134 @@
       toast('Exported ' + rows.length + ' row' + (rows.length === 1 ? '' : 's'));
     }
 
+    // ---- Project summary (counts for buildings / connections) ----
+    function computeSummary() {
+      var s = {
+        buildings: 0, buildingPolys: 0, connections: 0,
+        metered: 0, unmetered: 0,
+        byType: {}, byStatus: {}, byBlock: {}, linked: 0, unlinked: 0,
+        layers: 0, features: 0,
+      };
+      Object.keys(layers).forEach(function (k) {
+        var m = layers[k];
+        s.layers += 1;
+        var feats = m.group.getLayers();
+        s.features += feats.length;
+        feats.forEach(function (lyr) {
+          var p = (lyr.feature && lyr.feature.properties) || {};
+          if (m.category === 'building') s.buildings += 1;
+          if (m.category === 'building_poly') s.buildingPolys += 1;
+          if (m.category === 'building' || m.category === 'building_poly') {
+            var blk = (p.block || '').toString().trim() || '(no block)';
+            s.byBlock[blk] = (s.byBlock[blk] || 0) + 1;
+          }
+          if (m.category === 'connection') {
+            s.connections += 1;
+            if ((p.meter_no || '').toString().trim()) s.metered += 1; else s.unmetered += 1;
+            if ((p.building_id || '').toString().trim()) s.linked += 1; else s.unlinked += 1;
+            var ty = (p.conn_type || '').toString().trim() || '(unspecified)';
+            s.byType[ty] = (s.byType[ty] || 0) + 1;
+            var st = (p.status || '').toString().trim() || '(unspecified)';
+            s.byStatus[st] = (s.byStatus[st] || 0) + 1;
+          }
+        });
+      });
+      return s;
+    }
+
+    function openDashboard() {
+      var s = computeSummary();
+      function kvRows(obj) {
+        var keys = Object.keys(obj);
+        if (!keys.length) return '<tr><td colspan="2" class="gis-dash-none">\u2014</td></tr>';
+        return keys.sort().map(function (k) {
+          return '<tr><td>' + esc(k) + '</td><td class="gis-dash-num">' + obj[k] + '</td></tr>';
+        }).join('');
+      }
+      var totalBuildings = s.buildings + s.buildingPolys;
+      dashBody.innerHTML =
+        '<div class="gis-dash-cards">' +
+          '<div class="gis-dash-kpi"><b>' + totalBuildings + '</b><span>Buildings</span></div>' +
+          '<div class="gis-dash-kpi"><b>' + s.connections + '</b><span>Connections</span></div>' +
+          '<div class="gis-dash-kpi"><b>' + s.metered + '</b><span>Metered</span></div>' +
+          '<div class="gis-dash-kpi gis-dash-warn"><b>' + s.unmetered + '</b><span>Unmetered</span></div>' +
+          '<div class="gis-dash-kpi"><b>' + s.linked + '</b><span>Linked to bldg</span></div>' +
+          '<div class="gis-dash-kpi gis-dash-warn"><b>' + s.unlinked + '</b><span>Unlinked</span></div>' +
+        '</div>' +
+        '<div class="gis-dash-grid">' +
+          '<div class="gis-dash-tbl"><h4>Connections by type</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byType) + '</tbody></table></div>' +
+          '<div class="gis-dash-tbl"><h4>Connections by status</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byStatus) + '</tbody></table></div>' +
+          '<div class="gis-dash-tbl"><h4>Buildings by block</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byBlock) + '</tbody></table></div>' +
+        '</div>' +
+        '<p class="gis-dash-foot">' + s.layers + ' layers \u00b7 ' + s.features + ' features total</p>';
+      attrPanel.hidden = true;
+      tablePanel.hidden = true;
+      dashPanel.hidden = false;
+    }
+
+    // ---- Whole-project export (all layers in one file) ----
+    function exportProjectGeoJSON() {
+      var fc = { type: 'FeatureCollection', features: [] };
+      Object.keys(layers).forEach(function (k) {
+        var m = layers[k];
+        var schema = SCHEMAS[m.category] || SCHEMAS.generic;
+        m.group.eachLayer(function (lyr) {
+          ensureFeatureProps(m, lyr, false);
+          var gj = lyr.toGeoJSON();
+          gj.properties = gj.properties || {};
+          // Strip heavy/private keys (photos) and tag with its source layer.
+          Object.keys(gj.properties).forEach(function (key) {
+            if (key.charAt(0) === '_') delete gj.properties[key];
+          });
+          gj.properties._layer = m.name;
+          gj.properties._category = schema.label;
+          fc.features.push(gj);
+        });
+      });
+      if (!fc.features.length) { toast('Nothing to export'); return; }
+      download('singhadurbar_gis_project.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
+      toast('Exported ' + fc.features.length + ' features');
+    }
+
+    function exportProjectXLSX() {
+      if (!window.XLSX) { toast('Excel library not loaded'); return; }
+      var ids = Object.keys(layers);
+      if (!ids.length) { toast('No layers to export'); return; }
+      var wb = window.XLSX.utils.book_new();
+      var used = {};
+      // Summary sheet first.
+      var s = computeSummary();
+      var sumRows = [
+        { Metric: 'Buildings (point)', Value: s.buildings },
+        { Metric: 'Buildings (polygon)', Value: s.buildingPolys },
+        { Metric: 'Connections', Value: s.connections },
+        { Metric: 'Metered connections', Value: s.metered },
+        { Metric: 'Unmetered connections', Value: s.unmetered },
+        { Metric: 'Connections linked to a building', Value: s.linked },
+        { Metric: 'Connections not linked', Value: s.unlinked },
+      ];
+      Object.keys(s.byType).sort().forEach(function (t) { sumRows.push({ Metric: 'Type: ' + t, Value: s.byType[t] }); });
+      Object.keys(s.byStatus).sort().forEach(function (t) { sumRows.push({ Metric: 'Status: ' + t, Value: s.byStatus[t] }); });
+      Object.keys(s.byBlock).sort().forEach(function (t) { sumRows.push({ Metric: 'Block: ' + t, Value: s.byBlock[t] }); });
+      window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.json_to_sheet(sumRows), 'Summary');
+      // One sheet per layer.
+      var total = 0;
+      ids.forEach(function (k) {
+        var m = layers[k];
+        var rows = layerToRows(m);
+        total += rows.length;
+        var nm = (m.name || 'Layer').replace(/[^\w ]+/g, '').slice(0, 28) || 'Layer';
+        var base = nm, n = 2;
+        while (used[nm.toLowerCase()]) { nm = (base.slice(0, 25) + ' ' + n); n += 1; }
+        used[nm.toLowerCase()] = true;
+        var ws = window.XLSX.utils.json_to_sheet(rows.length ? rows : [{ note: 'no features' }]);
+        window.XLSX.utils.book_append_sheet(wb, ws, nm);
+      });
+      var buf = window.XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+      download('singhadurbar_gis_project.xlsx', buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      toast('Exported ' + ids.length + ' layers / ' + total + ' rows');
+    }
+
     function deleteLayer(meta) {
       if (!confirm('Delete layer "' + meta.name + '" and all its features? This cannot be undone.')) return;
       try { map.removeLayer(meta.group); } catch (_) {}
@@ -1235,6 +1517,12 @@
     host.querySelector('[data-act="table-close"]').addEventListener('click', function () { tablePanel.hidden = true; });
     host.querySelector('[data-act="table-csv"]').addEventListener('click', function () { exportTableSpreadsheet(currentTableMeta, 'csv'); });
     host.querySelector('[data-act="table-xlsx"]').addEventListener('click', function () { exportTableSpreadsheet(currentTableMeta, 'xlsx'); });
+
+    // ---- Project: dashboard + whole-project export ----
+    host.querySelector('[data-act="dashboard"]').addEventListener('click', openDashboard);
+    host.querySelector('[data-act="dash-close"]').addEventListener('click', function () { dashPanel.hidden = true; });
+    host.querySelector('[data-act="proj-geojson"]').addEventListener('click', exportProjectGeoJSON);
+    host.querySelector('[data-act="proj-xlsx"]').addEventListener('click', exportProjectXLSX);
 
     // ---- DMA reference overlay ----
     $('dma-toggle').addEventListener('change', function (e) {
@@ -1481,7 +1769,7 @@
       });
       if (!recs.length) {
         // Seed with the standard KUKL field-survey layers.
-        ['building', 'building_poly', 'pipe', 'valve'].forEach(function (cat) {
+        ['building', 'building_poly', 'connection', 'pipe', 'valve'].forEach(function (cat) {
           var nm = cat === 'building_poly' ? 'Building Polygons' : SCHEMAS[cat].label + 's';
           var m = createLayer({ category: cat, name: nm });
           persist(m.id);

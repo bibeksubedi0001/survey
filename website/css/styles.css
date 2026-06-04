@@ -594,6 +594,8 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-layer-row .gis-ic-del:hover{background:#ffe5e5;border-color:#e53935;color:#b71c1c;}
 .gis-import{display:flex;flex-direction:column;gap:5px;}
 .gis-import .gis-file{text-align:center;cursor:pointer;}
+.gis-project{display:flex;flex-direction:column;gap:5px;}
+.gis-project .btn{text-align:center;}
 /* GNSS receiver panel */
 .gis-gnss{display:flex;flex-direction:column;gap:6px;}
 .gis-gnss-status{font-size:11px;font-weight:700;color:#36507e;background:#eef3fb;
@@ -687,7 +689,14 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 }
 .gis-photo-strip{display:flex;flex-wrap:wrap;gap:6px;}
 .gis-photo-empty{font-size:12px;color:#999;font-style:italic;}
+.gis-photo-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.gis-photo-meter{background:#0a8f8f;}
 .gis-photo-thumb{position:relative;width:64px;height:48px;border:1px solid #000;border-radius:4px;overflow:hidden;}
+.gis-photo-thumb.is-meter{border-color:#0a8f8f;border-width:2px;}
+.gis-photo-badge{
+  position:absolute;left:1px;bottom:1px;z-index:2;background:rgba(10,143,143,.92);color:#fff;
+  font-size:8px;font-weight:800;letter-spacing:.4px;padding:1px 4px;border-radius:3px;
+}
 .gis-photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;display:block;}
 .gis-photo-rm{
   position:absolute;top:1px;right:1px;width:18px;height:18px;line-height:16px;text-align:center;
@@ -725,6 +734,23 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-attr-table tbody tr:hover{background:#eef5ff;}
 .gis-tcell-n{color:#888;font-variant-numeric:tabular-nums;}
 .gis-tcell-act{white-space:nowrap;text-align:center;}
+/* Project summary dashboard */
+.gis-dash-body{padding:12px;background:#fff;color:#111;}
+.gis-dash-cards{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.gis-dash-kpi{
+  flex:1 1 90px;min-width:90px;background:#eaeef5;border:1px solid #cdd6e6;border-radius:8px;
+  padding:8px 10px;text-align:center;
+}
+.gis-dash-kpi b{display:block;font-size:22px;color:#13294b;line-height:1.1;}
+.gis-dash-kpi span{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#445;}
+.gis-dash-kpi.gis-dash-warn{background:#fdeaea;border-color:#e7b3b3;}
+.gis-dash-kpi.gis-dash-warn b{color:#c1001f;}
+.gis-dash-grid{display:flex;flex-wrap:wrap;gap:14px;}
+.gis-dash-tbl{flex:1 1 200px;min-width:200px;}
+.gis-dash-tbl h4{margin:0 0 5px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:#333;}
+.gis-dash-num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;}
+.gis-dash-none{color:#999;font-style:italic;text-align:center;}
+.gis-dash-foot{margin-top:12px;font-size:11px;color:#666;}
 .gis-trow-btn{
   background:#fff;border:1px solid #bbb;border-radius:4px;cursor:pointer;
   font-size:13px;line-height:1;padding:3px 6px;margin:0 1px;
