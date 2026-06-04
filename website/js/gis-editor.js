@@ -94,7 +94,7 @@
       fields: [
         { key: 'surveyor', label: 'Surveyor', type: 'text' },
         { key: 'date', label: 'Date', type: 'date' },
-        { key: 'building_id', label: 'Building ID — auto', type: 'text', readonly: true },
+        { key: 'building_id', label: 'Building ID', type: 'text' },
         { key: 'block', label: 'Block', type: 'text' },
         { key: 'building_name', label: 'Building Name', type: 'text' },
         { key: 'office_name', label: 'Office / Occupant', type: 'text' },
@@ -106,7 +106,7 @@
       fields: [
         { key: 'surveyor', label: 'Surveyor', type: 'text' },
         { key: 'date', label: 'Date', type: 'date' },
-        { key: 'building_id', label: 'Building ID — auto', type: 'text', readonly: true },
+        { key: 'building_id', label: 'Building ID', type: 'text' },
         { key: 'block', label: 'Block', type: 'text' },
         { key: 'building_name', label: 'Building Name', type: 'text' },
         { key: 'office_name', label: 'Office / Occupant', type: 'text' },
@@ -654,10 +654,6 @@
       if (isNew) {
         if (!p.surveyor) p.surveyor = defaultSurveyor();
         if (!p.date) p.date = today();
-        // Buildings get a self-generated, sequential ID on creation.
-        if ((meta.category === 'building' || meta.category === 'building_poly') && !p.building_id) {
-          p.building_id = nextBuildingId();
-        }
       }
       if (schema.geom === 'line') {
         var len = lineLength(lyr);
