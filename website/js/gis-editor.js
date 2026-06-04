@@ -559,12 +559,14 @@
     }
     function rebuildLegend() {
       if (!legendBody) return;
-      var ids = Object.keys(layers);
-      if (!ids.length) { legendBody.innerHTML = '<div class="gis-leg-empty">No layers</div>'; return; }
+      // Only list layers that are currently shown on the map — hiding ("cutting")
+      // a layer removes both its features and its legend entry.
+      var ids = Object.keys(layers).filter(function (k) { return layers[k].visible; });
+      if (!ids.length) { legendBody.innerHTML = '<div class="gis-leg-empty">No visible layers</div>'; return; }
       legendBody.innerHTML = ids.map(function (k) {
         var m = layers[k];
         var schema = SCHEMAS[m.category] || SCHEMAS.generic;
-        return '<div class="gis-leg-row' + (m.visible ? '' : ' off') + '">' +
+        return '<div class="gis-leg-row">' +
           legendSwatch(m.category, m.color) +
           '<span class="gis-leg-name">' + esc(m.name) + '</span>' +
           '<span class="gis-leg-cat">' + esc(schema.label) + '</span></div>';
