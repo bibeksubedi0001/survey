@@ -94,7 +94,7 @@
       fields: [
         { key: 'surveyor', label: 'Surveyor', type: 'text' },
         { key: 'date', label: 'Date', type: 'date' },
-        { key: 'building_id', label: 'Building ID', type: 'text' },
+        { key: 'building_id', label: 'Building ID — auto', type: 'text', readonly: true },
         { key: 'block', label: 'Block', type: 'text' },
         { key: 'building_name', label: 'Building Name', type: 'text' },
         { key: 'office_name', label: 'Office / Occupant', type: 'text' },
@@ -106,7 +106,7 @@
       fields: [
         { key: 'surveyor', label: 'Surveyor', type: 'text' },
         { key: 'date', label: 'Date', type: 'date' },
-        { key: 'building_id', label: 'Building ID', type: 'text' },
+        { key: 'building_id', label: 'Building ID — auto', type: 'text', readonly: true },
         { key: 'block', label: 'Block', type: 'text' },
         { key: 'building_name', label: 'Building Name', type: 'text' },
         { key: 'office_name', label: 'Office / Occupant', type: 'text' },
@@ -310,6 +310,7 @@
       '      <div class="gis-attr-body" data-role="attr-body"></div>' +
       '      <div class="gis-attr-foot">' +
       '        <button type="button" class="btn btn-mini btn-outline" data-act="attr-zoom">ZOOM</button>' +
+      '        <button type="button" class="btn btn-mini btn-outline" data-act="attr-report" hidden>\u29c9 REPORT</button>' +
       '        <button type="button" class="btn btn-mini btn-danger" data-act="attr-del">DELETE</button>' +
       '        <button type="button" class="btn btn-mini btn-primary" data-act="attr-save">SAVE</button>' +
       '      </div>' +
@@ -345,6 +346,7 @@
     var tableWrap = $('table-wrap');
     var dashPanel = $('dash');
     var dashBody = $('dash-body');
+    var reportBtn = host.querySelector('[data-act="attr-report"]');
     var editorTarget = null;
     var currentTableMeta = null;
 
@@ -651,6 +653,10 @@
       if (isNew) {
         if (!p.surveyor) p.surveyor = defaultSurveyor();
         if (!p.date) p.date = today();
+        // Buildings get a self-generated, sequential ID on creation.
+        if ((meta.category === 'building' || meta.category === 'building_poly') && !p.building_id) {
+          p.building_id = nextBuildingId();
+        }
       }
       if (schema.geom === 'line') {
         var len = lineLength(lyr);
@@ -765,6 +771,31 @@
       return Object.keys(ids).sort();
     }
 
+    // Prefix used for self-generated Building IDs (editable via auto-number).
+    function buildingPrefix() {
+      try { return (localStorage.getItem('kukl_gis_bprefix') || 'SD').trim() || 'SD'; }
+      catch (_) { return 'SD'; }
+    }
+
+    // Self-generated, collision-free Building ID. Scans every existing building
+    // ID across both building layers, finds the highest trailing number and
+    // returns PREFIX-### (zero-padded). Called automatically on feature create.
+    function nextBuildingId() {
+      var prefix = buildingPrefix();
+      var max = 0;
+      Object.keys(layers).forEach(function (k) {
+        var m = layers[k];
+        if (m.category !== 'building' && m.category !== 'building_poly') return;
+        m.group.eachLayer(function (lyr) {
+          var p = lyr.feature && lyr.feature.properties;
+          var bid = p && p.building_id ? String(p.building_id) : '';
+          var match = bid.match(/(\d+)\s*$/);
+          if (match) { var n = parseInt(match[1], 10); if (n > max) max = n; }
+        });
+      });
+      return prefix + '-' + ('000' + (max + 1)).slice(-3);
+    }
+
     function updateTooltip(meta, lyr) {
       var props = lyr.feature && lyr.feature.properties;
       var point = isPointLayer(lyr);
@@ -830,6 +861,8 @@
       var props = lyr.feature.properties;
       editorTarget = { meta: meta, lyr: lyr };
       if (attrTitle) attrTitle.textContent = schema.label + ' attributes';
+      // Per-building printable report (attributes + photos + map snippet).
+      if (reportBtn) reportBtn.hidden = !(meta.category === 'building' || meta.category === 'building_poly');
       attrBody.innerHTML = '';
       // Schema fields first, then any extra imported properties as text inputs.
       var fields = schema.fields.slice();
@@ -885,6 +918,44 @@
       attrPanel.hidden = false;
     }
 
+    // Capture a GPS fix for a photo: try the device, fall back to the
+    // feature's own location so every photo still gets coordinates offline.
+    function photoGeo(lyr, cb) {
+      var fb = featureLatLng(lyr);
+      var fallback = fb ? { lat: fb.lat, lng: fb.lng, acc: null, src: 'feature' } : null;
+      if (!navigator.geolocation) { cb(fallback); return; }
+      var done = false;
+      try {
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          if (done) return; done = true;
+          cb({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy || null, src: 'gps' });
+        }, function () {
+          if (done) return; done = true; cb(fallback);
+        }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 });
+      } catch (_) { cb(fallback); }
+    }
+
+    // Human-readable photo metadata. full=true -> date + time + coords + accuracy.
+    function photoMetaText(ph, full) {
+      var parts = [];
+      if (ph.time) {
+        var d = new Date(ph.time);
+        var hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
+        if (full) {
+          var y = d.getFullYear(), mo = ('0' + (d.getMonth() + 1)).slice(-2), da = ('0' + d.getDate()).slice(-2);
+          parts.push(y + '-' + mo + '-' + da + ' ' + hh + ':' + mm);
+        } else {
+          parts.push(hh + ':' + mm);
+        }
+      }
+      if (ph.lat != null && ph.lng != null) {
+        parts.push(ph.lat.toFixed(full ? 6 : 4) + ', ' + ph.lng.toFixed(full ? 6 : 4));
+        if (full && ph.acc != null) parts.push('\u00b1' + Math.round(ph.acc) + 'm');
+        if (full && ph.geoSrc === 'feature') parts.push('(feature loc.)');
+      }
+      return parts.join(full ? ' \u00b7 ' : ' \u00b7 ');
+    }
+
     // ---- Field photos per feature (stored as dataURLs in props._photos) ----
     function buildPhotoSection(meta, lyr) {
       var props = lyr.feature.properties;
@@ -934,16 +1005,26 @@
           return;
         }
         props._photos.forEach(function (ph, idx) {
+          var cell = document.createElement('figure');
+          cell.className = 'gis-photo-cell';
           var t = document.createElement('div');
           t.className = 'gis-photo-thumb' + (ph.kind === 'meter' ? ' is-meter' : '');
           var img = document.createElement('img');
           img.src = ph.dataUrl; img.alt = ph.name || ('photo ' + (idx + 1));
-          img.addEventListener('click', function () { openPhotoLightbox(ph.dataUrl); });
+          img.title = photoMetaText(ph, true);
+          img.addEventListener('click', function () { openPhotoLightbox(ph.dataUrl, photoMetaText(ph, true)); });
           if (ph.kind === 'meter') {
             var badge = document.createElement('span');
             badge.className = 'gis-photo-badge';
             badge.textContent = 'METER';
             t.appendChild(badge);
+          }
+          if (ph.lat != null && ph.lng != null) {
+            var geo = document.createElement('span');
+            geo.className = 'gis-photo-geo';
+            geo.textContent = '\ud83d\udccd';
+            geo.title = 'Geotagged';
+            t.appendChild(geo);
           }
           var rm = document.createElement('button');
           rm.type = 'button'; rm.className = 'gis-photo-rm'; rm.textContent = '\u00d7';
@@ -953,7 +1034,12 @@
             renderStrip();
           });
           t.appendChild(img); t.appendChild(rm);
-          strip.appendChild(t);
+          cell.appendChild(t);
+          var cap = document.createElement('figcaption');
+          cap.className = 'gis-photo-cap';
+          cap.textContent = photoMetaText(ph, false);
+          cell.appendChild(cap);
+          strip.appendChild(cell);
         });
       }
       renderStrip();
@@ -962,21 +1048,27 @@
         var files = Array.prototype.slice.call(input.files || []);
         input.value = '';
         if (!files.length) return;
-        var pending = files.length;
-        files.forEach(function (file) {
-          var reader = new FileReader();
-          reader.onload = function () {
-            props._photos.push({
-              dataUrl: reader.result,
-              name: file.name,
-              time: Date.now(),
-              kind: kind || undefined,
-            });
-            pending -= 1;
-            if (pending === 0) renderStrip();
-          };
-          reader.onerror = function () { pending -= 1; if (pending === 0) renderStrip(); };
-          reader.readAsDataURL(file);
+        // Capture one GPS fix for this batch, then attach to each photo so
+        // meter readings are geo-stamped and auditable.
+        photoGeo(lyr, function (geo) {
+          var pending = files.length;
+          files.forEach(function (file) {
+            var reader = new FileReader();
+            reader.onload = function () {
+              var ph = {
+                dataUrl: reader.result,
+                name: file.name,
+                time: Date.now(),
+                kind: kind || undefined,
+              };
+              if (geo) { ph.lat = geo.lat; ph.lng = geo.lng; ph.acc = geo.acc; ph.geoSrc = geo.src; }
+              props._photos.push(ph);
+              pending -= 1;
+              if (pending === 0) renderStrip();
+            };
+            reader.onerror = function () { pending -= 1; if (pending === 0) renderStrip(); };
+            reader.readAsDataURL(file);
+          });
         });
       }
 
@@ -984,12 +1076,18 @@
       if (meterIn) meterIn.addEventListener('change', function () { readFiles(meterIn, 'meter'); });
     }
 
-    function openPhotoLightbox(src) {
+    function openPhotoLightbox(src, caption) {
       var ov = document.createElement('div');
       ov.className = 'gis-photo-lightbox';
       var img = document.createElement('img');
       img.src = src;
       ov.appendChild(img);
+      if (caption) {
+        var cap = document.createElement('div');
+        cap.className = 'gis-photo-lightcap';
+        cap.textContent = caption;
+        ov.appendChild(cap);
+      }
       ov.addEventListener('click', function () { ov.remove(); });
       host.appendChild(ov);
     }
@@ -1032,6 +1130,137 @@
         if (lyr.getBounds) map.fitBounds(lyr.getBounds().pad(0.4), { maxZoom: 19 });
         else if (lyr.getLatLng) map.setView(lyr.getLatLng(), 19);
       } catch (_) {}
+    }
+
+    // ---- Per-building printable report (attributes + photos + map snippet) ----
+    // Build a 3x3 OSM tile mosaic centred on the feature with a marker overlay.
+    function mapSnippetHTML(lat, lng, zoom) {
+      zoom = zoom || 18;
+      var n = Math.pow(2, zoom);
+      var xf = (lng + 180) / 360 * n;
+      var latRad = lat * Math.PI / 180;
+      var yf = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+      var xt = Math.floor(xf), yt = Math.floor(yf);
+      var px = Math.round((xf - xt) * 256), py = Math.round((yf - yt) * 256);
+      var sub = ['a', 'b', 'c'];
+      var imgs = '';
+      for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+          var tx = xt + dx, ty = yt + dy;
+          var s = sub[Math.abs(tx + ty) % 3];
+          var left = (dx + 1) * 256, top = (dy + 1) * 256;
+          imgs += '<img class="snip-tile" style="left:' + left + 'px;top:' + top + 'px" ' +
+            'src="https://' + s + '.tile.openstreetmap.org/' + zoom + '/' + tx + '/' + ty + '.png" ' +
+            'crossorigin="anonymous" alt="">';
+        }
+      }
+      var mx = 256 + px, my = 256 + py;
+      var dot = '<div class="snip-dot" style="left:' + mx + 'px;top:' + my + 'px"></div>';
+      return '<div class="snip-frame"><div class="snip-mosaic">' + imgs + dot + '</div></div>';
+    }
+
+    function printFeatureReport(meta, lyr) {
+      if (!meta || !lyr) return;
+      var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
+      var props = (lyr.feature && lyr.feature.properties) || {};
+      var ll = featureLatLng(lyr);
+      var title = featureTitle(meta, props) || schema.label;
+      var bid = props.building_id || '';
+
+      // Attribute rows (skip empty + internal keys).
+      var rows = '';
+      schema.fields.forEach(function (f) {
+        var v = props[f.key];
+        if (v == null || v === '') return;
+        rows += '<tr><th>' + esc(f.label) + '</th><td>' + esc(String(v)) + '</td></tr>';
+      });
+      Object.keys(props).forEach(function (k) {
+        if (k.charAt(0) === '_') return;
+        if (schema.fields.some(function (f) { return f.key === k; })) return;
+        var v = props[k];
+        if (v == null || v === '') return;
+        rows += '<tr><th>' + esc(k) + '</th><td>' + esc(String(v)) + '</td></tr>';
+      });
+      if (ll) {
+        rows += '<tr><th>Latitude</th><td>' + ll.lat.toFixed(6) + '</td></tr>';
+        rows += '<tr><th>Longitude</th><td>' + ll.lng.toFixed(6) + '</td></tr>';
+      }
+
+      // Photos with geo-stamp captions.
+      var photos = Array.isArray(props._photos) ? props._photos : [];
+      var photoHTML = '';
+      photos.forEach(function (ph) {
+        var cap = photoMetaText(ph, true);
+        var tag = ph.kind === 'meter' ? '<span class="rep-meter">METER</span> ' : '';
+        photoHTML += '<figure class="rep-photo"><img src="' + ph.dataUrl + '" alt="">' +
+          '<figcaption>' + tag + esc(cap || '') + '</figcaption></figure>';
+      });
+      if (!photoHTML) photoHTML = '<p class="rep-none">No photos captured.</p>';
+
+      var snippet = ll ? mapSnippetHTML(ll.lat, ll.lng, 18) : '<p class="rep-none">No location.</p>';
+      var now = new Date();
+      var stamp = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
+        ('0' + now.getDate()).slice(-2) + ' ' + ('0' + now.getHours()).slice(-2) + ':' +
+        ('0' + now.getMinutes()).slice(-2);
+
+      var doc =
+        '<!doctype html><html><head><meta charset="utf-8">' +
+        '<title>Building Report ' + esc(bid || title) + '</title>' +
+        '<style>' +
+        '*{box-sizing:border-box}' +
+        'body{font-family:Segoe UI,Arial,sans-serif;color:#111;margin:0;padding:24px;}' +
+        '.rep-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #13294b;padding-bottom:10px;margin-bottom:14px;}' +
+        '.rep-head h1{font-size:18px;margin:0 0 3px;color:#13294b;}' +
+        '.rep-head .sub{font-size:12px;color:#555;}' +
+        '.rep-head .org{text-align:right;font-size:11px;color:#555;}' +
+        '.rep-head .org b{display:block;font-size:13px;color:#13294b;}' +
+        '.rep-id{display:inline-block;background:#13294b;color:#fff;font-weight:700;font-size:13px;padding:3px 10px;border-radius:5px;margin-bottom:12px;}' +
+        '.rep-grid{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;}' +
+        '.rep-col{flex:1;min-width:280px;}' +
+        'table.rep-attr{border-collapse:collapse;width:100%;font-size:12px;}' +
+        'table.rep-attr th,table.rep-attr td{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top;}' +
+        'table.rep-attr th{background:#eef3fb;width:42%;color:#222;font-weight:700;}' +
+        'h2{font-size:13px;color:#13294b;margin:16px 0 7px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #ccc;padding-bottom:3px;}' +
+        '.snip-frame{width:288px;height:216px;overflow:hidden;border:2px solid #13294b;border-radius:6px;position:relative;}' +
+        '.snip-mosaic{position:absolute;left:-120px;top:-156px;width:768px;height:768px;}' +
+        '.snip-tile{position:absolute;width:256px;height:256px;}' +
+        '.snip-dot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#e8002a;border:3px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.5);}' +
+        '.rep-photos{display:flex;flex-wrap:wrap;gap:10px;}' +
+        '.rep-photo{margin:0;width:200px;border:1px solid #ccc;border-radius:5px;overflow:hidden;}' +
+        '.rep-photo img{width:100%;height:150px;object-fit:cover;display:block;}' +
+        '.rep-photo figcaption{font-size:10px;padding:4px 6px;color:#444;background:#f7f7f7;}' +
+        '.rep-meter{background:#0a8f8f;color:#fff;font-weight:700;font-size:9px;padding:1px 4px;border-radius:3px;}' +
+        '.rep-none{font-size:12px;color:#888;font-style:italic;}' +
+        '.rep-foot{margin-top:22px;border-top:1px solid #ccc;padding-top:8px;font-size:10px;color:#777;display:flex;justify-content:space-between;}' +
+        '@media print{body{padding:0;}.rep-photo{break-inside:avoid;}}' +
+        '</style></head><body>' +
+        '<div class="rep-head"><div><h1>Building Survey Report</h1>' +
+        '<div class="sub">Integration of Water Supply Connections &amp; Building Numbering &mdash; Singhadurbar</div></div>' +
+        '<div class="org"><b>KUKL</b>Kathmandu Upatyaka Khanepani Limited<br>Site Survey System</div></div>' +
+        (bid ? '<span class="rep-id">' + esc(bid) + '</span>' : '') +
+        '<div class="rep-grid">' +
+        '<div class="rep-col"><h2>Attributes</h2><table class="rep-attr"><tbody>' +
+        (rows || '<tr><td colspan="2" class="rep-none">No attributes.</td></tr>') +
+        '</tbody></table></div>' +
+        '<div class="rep-col" style="flex:0 0 auto"><h2>Location</h2>' + snippet +
+        (ll ? '<div style="font-size:11px;color:#555;margin-top:5px;">' + ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6) + '</div>' : '') +
+        '</div></div>' +
+        '<h2>Photos (' + photos.length + ')</h2><div class="rep-photos">' + photoHTML + '</div>' +
+        '<div class="rep-foot"><span>Generated ' + stamp + '</span><span>KUKL Field GIS</span></div>' +
+        '</body></html>';
+
+      var w = window.open('', '_blank');
+      if (!w) { toast('Allow pop-ups to print the report'); return; }
+      w.document.open();
+      w.document.write(doc);
+      w.document.close();
+      // Give tiles/photos a moment to load, then open the print dialog.
+      setTimeout(function () { try { w.focus(); w.print(); } catch (_) {} }, 800);
+    }
+
+    function reportFromEditor() {
+      if (!editorTarget) return;
+      printFeatureReport(editorTarget.meta, editorTarget.lyr);
     }
 
     // ---- QGIS-style attribute table (all features of a layer) ----
@@ -1137,9 +1366,10 @@
       if (meta.category !== 'building' && meta.category !== 'building_poly') return;
       var feats = meta.group.getLayers();
       if (!feats.length) { toast('No features to number yet'); return; }
-      var prefix = prompt('Building number prefix?', 'SD');
+      var prefix = prompt('Building number prefix?', buildingPrefix());
       if (prefix == null) return;
       prefix = prefix.trim() || 'SD';
+      try { localStorage.setItem('kukl_gis_bprefix', prefix); } catch (_) {}
       if (!confirm('Assign sequential IDs to all ' + feats.length + ' feature' +
         (feats.length === 1 ? '' : 's') + '? Existing Building IDs will be overwritten.')) return;
       // Stable order: north→south, then west→east, so numbering follows the map.
@@ -1520,6 +1750,7 @@
     host.querySelector('[data-act="attr-save"]').addEventListener('click', saveAttrFromEditor);
     host.querySelector('[data-act="attr-del"]').addEventListener('click', deleteFeatureFromEditor);
     host.querySelector('[data-act="attr-zoom"]').addEventListener('click', zoomFeatureFromEditor);
+    if (reportBtn) reportBtn.addEventListener('click', reportFromEditor);
     host.querySelector('[data-act="table-close"]').addEventListener('click', function () { tablePanel.hidden = true; });
     host.querySelector('[data-act="table-csv"]').addEventListener('click', function () { exportTableSpreadsheet(currentTableMeta, 'csv'); });
     host.querySelector('[data-act="table-xlsx"]').addEventListener('click', function () { exportTableSpreadsheet(currentTableMeta, 'xlsx'); });
