@@ -851,6 +851,15 @@
     function attachFeatureBehavior(meta, lyr, isNew) {
       ensureFeatureProps(meta, lyr, isNew);
       updateTooltip(meta, lyr);
+      // Building & connection markers are fixed survey points — lock them in
+      // place so they can't be accidentally dragged once placed.
+      if (meta.category === 'building' || meta.category === 'connection') {
+        try {
+          lyr.options.pmIgnore = true;
+          if (window.L && L.PM && typeof L.PM.reInitLayer === 'function') L.PM.reInitLayer(lyr);
+          else if (lyr.pm && lyr.pm.disable) lyr.pm.disable();
+        } catch (_) {}
+      }
       lyr.on('click', function () {
         if (inEditMode()) return;
         openAttributeEditor(meta, lyr);
