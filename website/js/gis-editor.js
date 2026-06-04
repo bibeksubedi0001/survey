@@ -114,6 +114,7 @@
         { key: 'floors', label: 'Floors', type: 'number' },
         { key: 'area_m2', label: 'Area (m\u00b2) \u2014 auto', type: 'number', readonly: true },
         { key: 'builtup_m2', label: 'Built-up Area (m\u00b2) \u2014 auto', type: 'number', readonly: true },
+        { key: 'demand_lpd', label: 'Est. Water Demand (L/day) \u2014 auto', type: 'number', readonly: true },
         { key: 'remarks', label: 'Remarks', type: 'textarea' },
       ],
     },
@@ -669,6 +670,7 @@
           var fl = parseFloat(p.floors) || 0;
           var ar2 = parseFloat(p.area_m2) || 0;
           if (ar2) p.builtup_m2 = Math.round(ar2 * (fl > 0 ? fl : 1) * 100) / 100;
+          p.demand_lpd = estimateDemand(p.builtup_m2);
         }
       }
     }
@@ -775,6 +777,23 @@
     function buildingPrefix() {
       try { return (localStorage.getItem('kukl_gis_bprefix') || 'SD').trim() || 'SD'; }
       catch (_) { return 'SD'; }
+    }
+
+    // Water-demand factor: litres per day per m² of built-up floor area.
+    // Default 4.5 L/m²/day \u2248 occupancy 0.1 person/m² \u00d7 45 LPCD (institutional).
+    // Editable via the dashboard so it can be tuned per survey.
+    function demandFactor() {
+      try {
+        var v = parseFloat(localStorage.getItem('kukl_gis_demandfactor'));
+        return v > 0 ? v : 4.5;
+      } catch (_) { return 4.5; }
+    }
+
+    // Estimated per-building demand (L/day) = built-up area \u00d7 demand factor.
+    function estimateDemand(builtup) {
+      var b = parseFloat(builtup) || 0;
+      if (!b) return 0;
+      return Math.round(b * demandFactor());
     }
 
     // Self-generated, collision-free Building ID. Scans every existing building
@@ -1105,6 +1124,7 @@
         var fl = parseFloat(props.floors) || 0;
         var ar = parseFloat(props.area_m2) || 0;
         if (ar) props.builtup_m2 = Math.round(ar * (fl > 0 ? fl : 1) * 100) / 100;
+        props.demand_lpd = estimateDemand(props.builtup_m2);
       }
       if (props.surveyor) { try { localStorage.setItem('kukl_gis_surveyor', props.surveyor); } catch (_) {} }
       updateTooltip(meta, lyr);
@@ -1559,6 +1579,7 @@
         buildings: 0, buildingPolys: 0, connections: 0,
         metered: 0, unmetered: 0,
         byType: {}, byStatus: {}, byBlock: {}, linked: 0, unlinked: 0,
+        demandByBlock: {}, totalDemand: 0, builtupTotal: 0,
         layers: 0, features: 0,
       };
       Object.keys(layers).forEach(function (k) {
@@ -1573,6 +1594,13 @@
           if (m.category === 'building' || m.category === 'building_poly') {
             var blk = (p.block || '').toString().trim() || '(no block)';
             s.byBlock[blk] = (s.byBlock[blk] || 0) + 1;
+          }
+          if (m.category === 'building_poly') {
+            var blk2 = (p.block || '').toString().trim() || '(no block)';
+            var dem = parseFloat(p.demand_lpd) || 0;
+            s.demandByBlock[blk2] = (s.demandByBlock[blk2] || 0) + dem;
+            s.totalDemand += dem;
+            s.builtupTotal += parseFloat(p.builtup_m2) || 0;
           }
           if (m.category === 'connection') {
             s.connections += 1;
@@ -1597,7 +1625,17 @@
           return '<tr><td>' + esc(k) + '</td><td class="gis-dash-num">' + obj[k] + '</td></tr>';
         }).join('');
       }
+      function numFmt(n) { return Math.round(n).toLocaleString('en-US'); }
+      function demandRows(obj) {
+        var keys = Object.keys(obj);
+        if (!keys.length) return '<tr><td colspan="2" class="gis-dash-none">\u2014</td></tr>';
+        return keys.sort().map(function (k) {
+          return '<tr><td>' + esc(k) + '</td><td class="gis-dash-num">' + numFmt(obj[k]) + '</td></tr>';
+        }).join('');
+      }
       var totalBuildings = s.buildings + s.buildingPolys;
+      var totalM3 = s.totalDemand / 1000;
+      var factor = demandFactor();
       dashBody.innerHTML =
         '<div class="gis-dash-cards">' +
           '<div class="gis-dash-kpi"><b>' + totalBuildings + '</b><span>Buildings</span></div>' +
@@ -1606,16 +1644,51 @@
           '<div class="gis-dash-kpi gis-dash-warn"><b>' + s.unmetered + '</b><span>Unmetered</span></div>' +
           '<div class="gis-dash-kpi"><b>' + s.linked + '</b><span>Linked to bldg</span></div>' +
           '<div class="gis-dash-kpi gis-dash-warn"><b>' + s.unlinked + '</b><span>Unlinked</span></div>' +
+          '<div class="gis-dash-kpi gis-dash-accent"><b>' + numFmt(totalM3) + '</b><span>Est. demand m\u00b3/day</span></div>' +
+        '</div>' +
+        '<div class="gis-dash-demand">' +
+          '<label>Demand factor (L/m\u00b2/day): ' +
+            '<input type="number" min="0" step="0.1" data-role="demand-factor" value="' + factor + '"></label>' +
+          '<span class="gis-dash-demand-note">Built-up ' + numFmt(s.builtupTotal) + ' m\u00b2 \u00d7 ' + factor +
+            ' = ' + numFmt(s.totalDemand) + ' L/day total</span>' +
         '</div>' +
         '<div class="gis-dash-grid">' +
           '<div class="gis-dash-tbl"><h4>Connections by type</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byType) + '</tbody></table></div>' +
           '<div class="gis-dash-tbl"><h4>Connections by status</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byStatus) + '</tbody></table></div>' +
           '<div class="gis-dash-tbl"><h4>Buildings by block</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byBlock) + '</tbody></table></div>' +
+          '<div class="gis-dash-tbl"><h4>Est. water demand by block (L/day)</h4><table class="gis-attr-table"><tbody>' + demandRows(s.demandByBlock) + '</tbody></table></div>' +
         '</div>' +
         '<p class="gis-dash-foot">' + s.layers + ' layers \u00b7 ' + s.features + ' features total</p>';
+      var facInput = dashBody.querySelector('[data-role="demand-factor"]');
+      if (facInput) {
+        facInput.addEventListener('change', function () {
+          var v = parseFloat(facInput.value);
+          if (!(v > 0)) { facInput.value = demandFactor(); return; }
+          try { localStorage.setItem('kukl_gis_demandfactor', String(v)); } catch (_) {}
+          recomputeDemand();
+          openDashboard();
+        });
+      }
       attrPanel.hidden = true;
       tablePanel.hidden = true;
       dashPanel.hidden = false;
+    }
+
+    // Recompute demand on every building polygon (e.g. after the factor changes)
+    // and persist the affected layers so the new estimate is stored.
+    function recomputeDemand() {
+      Object.keys(layers).forEach(function (k) {
+        var m = layers[k];
+        if (m.category !== 'building_poly') return;
+        var changed = false;
+        m.group.eachLayer(function (lyr) {
+          var p = lyr.feature && lyr.feature.properties;
+          if (!p) return;
+          var d = estimateDemand(p.builtup_m2);
+          if (p.demand_lpd !== d) { p.demand_lpd = d; changed = true; }
+        });
+        if (changed) persist(m.id);
+      });
     }
 
     // ---- Whole-project export (all layers in one file) ----
@@ -1662,6 +1735,11 @@
       Object.keys(s.byType).sort().forEach(function (t) { sumRows.push({ Metric: 'Type: ' + t, Value: s.byType[t] }); });
       Object.keys(s.byStatus).sort().forEach(function (t) { sumRows.push({ Metric: 'Status: ' + t, Value: s.byStatus[t] }); });
       Object.keys(s.byBlock).sort().forEach(function (t) { sumRows.push({ Metric: 'Block: ' + t, Value: s.byBlock[t] }); });
+      sumRows.push({ Metric: 'Demand factor (L/m\u00b2/day)', Value: demandFactor() });
+      sumRows.push({ Metric: 'Total built-up area (m\u00b2)', Value: Math.round(s.builtupTotal) });
+      sumRows.push({ Metric: 'Total estimated demand (L/day)', Value: Math.round(s.totalDemand) });
+      sumRows.push({ Metric: 'Total estimated demand (m\u00b3/day)', Value: Math.round(s.totalDemand / 1000) });
+      Object.keys(s.demandByBlock).sort().forEach(function (t) { sumRows.push({ Metric: 'Demand L/day: ' + t, Value: Math.round(s.demandByBlock[t]) }); });
       window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.json_to_sheet(sumRows), 'Summary');
       // One sheet per layer.
       var total = 0;

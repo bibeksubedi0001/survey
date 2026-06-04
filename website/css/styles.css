@@ -759,6 +759,18 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-dash-kpi span{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#445;}
 .gis-dash-kpi.gis-dash-warn{background:#fdeaea;border-color:#e7b3b3;}
 .gis-dash-kpi.gis-dash-warn b{color:#c1001f;}
+.gis-dash-kpi.gis-dash-accent{background:#e6f3ec;border-color:#a9d5bd;}
+.gis-dash-kpi.gis-dash-accent b{color:#0a7a43;}
+.gis-dash-demand{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 14px;
+  padding:8px 10px;background:#f3f6fb;border:1px solid #cdd6e6;border-radius:8px;
+}
+.gis-dash-demand label{font-size:12px;color:#333;font-weight:600;display:flex;align-items:center;gap:6px;}
+.gis-dash-demand input{
+  width:70px;padding:3px 6px;border:1px solid #bbb;border-radius:5px;
+  font-size:13px;font-variant-numeric:tabular-nums;
+}
+.gis-dash-demand-note{font-size:11px;color:#555;}
 .gis-dash-grid{display:flex;flex-wrap:wrap;gap:14px;}
 .gis-dash-tbl{flex:1 1 200px;min-width:200px;}
 .gis-dash-tbl h4{margin:0 0 5px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:#333;}
