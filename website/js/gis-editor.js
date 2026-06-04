@@ -1174,17 +1174,23 @@
       row.dataset.id = meta.id;
       var isBuilding = meta.category === 'building' || meta.category === 'building_poly';
       row.innerHTML =
-        '<input type="checkbox" class="gis-vis" ' + (meta.visible ? 'checked' : '') + ' title="Toggle visibility">' +
-        '<span class="gis-swatch" style="background:' + meta.color + '"></span>' +
-        '<input type="color" class="gis-color" value="' + meta.color + '" title="Layer colour">' +
-        '<span class="gis-name" tabindex="0" title="Click to make active; double-click to rename">' + esc(meta.name) + '</span>' +
-        '<span class="gis-cat" title="Feature type">' + esc((SCHEMAS[meta.category] || SCHEMAS.generic).label) + '</span>' +
-        '<span class="gis-count" data-role="count">0</span>' +
-        (isBuilding ? '<button type="button" class="gis-ic" data-act="autonum" title="Auto-number buildings">\u0023</button>' : '') +
-        '<button type="button" class="gis-ic" data-act="table" title="Open attribute table">\u2637</button>' +
-        '<button type="button" class="gis-ic" data-act="zoom" title="Zoom to layer">⤢</button>' +
-        '<button type="button" class="gis-ic" data-act="export" title="Export GeoJSON">⤓</button>' +
-        '<button type="button" class="gis-ic gis-ic-del" data-act="del" title="Delete layer">✕</button>';
+        '<div class="gis-row-main">' +
+          '<input type="checkbox" class="gis-vis" ' + (meta.visible ? 'checked' : '') + ' title="Toggle visibility">' +
+          '<span class="gis-swatch" style="background:' + meta.color + '"></span>' +
+          '<input type="color" class="gis-color" value="' + meta.color + '" title="Layer colour">' +
+          '<span class="gis-name" tabindex="0" title="Click to make active; double-click to rename">' + esc(meta.name) + '</span>' +
+          '<span class="gis-count" data-role="count" title="Feature count">0</span>' +
+        '</div>' +
+        '<div class="gis-row-actions">' +
+          '<span class="gis-cat" title="Feature type">' + esc((SCHEMAS[meta.category] || SCHEMAS.generic).label) + '</span>' +
+          '<span class="gis-row-tools">' +
+            (isBuilding ? '<button type="button" class="gis-ic" data-act="autonum" title="Auto-number buildings">\u0023</button>' : '') +
+            '<button type="button" class="gis-ic" data-act="table" title="Open attribute table">\u2637</button>' +
+            '<button type="button" class="gis-ic" data-act="zoom" title="Zoom to layer">⤢</button>' +
+            '<button type="button" class="gis-ic" data-act="export" title="Export GeoJSON">⤓</button>' +
+            '<button type="button" class="gis-ic gis-ic-del" data-act="del" title="Delete layer">✕</button>' +
+          '</span>' +
+        '</div>';
       list.appendChild(row);
       meta.row = row;
 
