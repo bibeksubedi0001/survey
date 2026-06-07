@@ -85,36 +85,22 @@
   // ---------------------------------------------------------------
   var KTM_DEFAULT = [27.6915, 85.3420];
   var PALETTE = ['#c1001f', '#1b6fd6', '#1a7f1a', '#e07a00', '#7d3cb5', '#0a8f8f', '#d4007a', '#444'];
-  var CATEGORY_COLOR = { building: '#1b6fd6', building_poly: '#d98300', connection: '#0a8f8f', valve: '#c1001f', pipe: '#1a7f1a', generic: '#7d3cb5' };
+  var CATEGORY_COLOR = { building: '#1b6fd6', connection: '#0a8f8f', valve: '#c1001f', pipe: '#1a7f1a', generic: '#7d3cb5' };
 
   // ---- Feature schemas (QField-style typed layers) ----
   var SCHEMAS = {
     building: {
-      label: 'Building', geom: 'point', titleKey: 'building_name', fallbackKey: 'building_id',
+      label: 'Building', geom: 'point', geoms: ['point', 'polygon'],
+      titleKey: 'building_id', fallbackKey: 'office_name',
       fields: [
         { key: 'surveyor', label: 'Surveyor', type: 'text' },
         { key: 'date', label: 'Date', type: 'date' },
         { key: 'building_id', label: 'Building ID', type: 'text' },
         { key: 'block', label: 'Block', type: 'text' },
-        { key: 'building_name', label: 'Building Name', type: 'text' },
         { key: 'office_name', label: 'Office / Occupant', type: 'text' },
-        { key: 'ministry', label: 'Ministry / Department', type: 'text' },
-      ],
-    },
-    building_poly: {
-      label: 'Building Polygon', geom: 'polygon', titleKey: 'building_name', fallbackKey: 'building_id',
-      fields: [
-        { key: 'surveyor', label: 'Surveyor', type: 'text' },
-        { key: 'date', label: 'Date', type: 'date' },
-        { key: 'building_id', label: 'Building ID', type: 'text' },
-        { key: 'block', label: 'Block', type: 'text' },
-        { key: 'building_name', label: 'Building Name', type: 'text' },
-        { key: 'office_name', label: 'Office / Occupant', type: 'text' },
-        { key: 'ministry', label: 'Ministry / Department', type: 'text' },
         { key: 'floors', label: 'Floors', type: 'number' },
-        { key: 'area_m2', label: 'Area (m\u00b2) \u2014 auto', type: 'number', readonly: true },
+        { key: 'area_m2', label: 'Area (m\u00b2) \u2014 auto (area shape only)', type: 'number', readonly: true },
         { key: 'builtup_m2', label: 'Built-up Area (m\u00b2) \u2014 auto', type: 'number', readonly: true },
-        { key: 'demand_lpd', label: 'Est. Water Demand (L/day) \u2014 auto', type: 'number', readonly: true },
         { key: 'remarks', label: 'Remarks', type: 'textarea' },
       ],
     },
@@ -127,12 +113,10 @@
         { key: 'building_id', label: 'Linked Building ID', type: 'text', list: 'buildings' },
         { key: 'account_no', label: 'Account / Customer No.', type: 'text' },
         { key: 'conn_type', label: 'Connection Type', type: 'select', options: ['Domestic', 'Commercial', 'Institutional', 'Standpost'] },
-        { key: 'tariff', label: 'Tariff Category', type: 'select', options: ['Domestic', 'Commercial', 'Institutional', 'Industrial'] },
         { key: 'meter_no', label: 'Meter No.', type: 'text' },
-        { key: 'meter_brand', label: 'Meter Brand', type: 'text' },
         { key: 'meter_size', label: 'Meter Size', type: 'select', options: ['\u00bd\u2033 (15mm)', '\u00be\u2033 (20mm)', '1\u2033 (25mm)', '1\u00bd\u2033 (40mm)', '2\u2033 (50mm)'] },
         { key: 'pipe_size', label: 'Service Pipe Size', type: 'select', options: ['\u00bd\u2033', '\u00be\u2033', '1\u2033', '1\u00bd\u2033', '2\u2033'] },
-        { key: 'status', label: 'Status', type: 'select', options: ['Active', 'Disconnected', 'Illegal'] },
+        { key: 'status', label: 'Status', type: 'select', options: ['Active', 'Inactive', 'Disconnected', 'Illegal'] },
         { key: 'supply_hours', label: 'Supply Hours / Day', type: 'number' },
         { key: 'remarks', label: 'Remarks', type: 'textarea' },
       ],
@@ -157,7 +141,7 @@
         { key: 'surveyor', label: 'Surveyor', type: 'text' },
         { key: 'date', label: 'Date', type: 'date' },
         { key: 'pipe_id', label: 'Pipe ID', type: 'text' },
-        { key: 'material', label: 'Material', type: 'select', options: ['HDPE', 'PVC', 'DI', 'GI', 'MS', 'PE', 'AC', 'Concrete'] },
+        { key: 'material', label: 'Material', type: 'select', options: ['HDPE', 'DI', 'GI', 'CI', 'AC'] },
         { key: 'diameter_mm', label: 'Diameter (mm)', type: 'number' },
         { key: 'length_m', label: 'Length (m) \u2014 auto', type: 'number', readonly: true },
         { key: 'status', label: 'Status', type: 'select', options: ['In Service', 'Abandoned', 'Proposed', 'Under Construction'] },
@@ -250,14 +234,20 @@
       '    <button type="button" class="gis-panel-close" data-act="panel-close" title="Hide panel">\u00d7</button></div>' +
       '  <div class="gis-new-row">' +
       '    <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
-      '      <option value="building">Buildings (point)</option>' +
-      '      <option value="building_poly">Building Polygon (area)</option>' +
+      '      <option value="building">Buildings (point or area)</option>' +
       '      <option value="connection">Connections (point)</option>' +
       '      <option value="valve">Valves (point)</option>' +
       '      <option value="pipe">Pipes (line)</option>' +
       '      <option value="generic">Generic</option>' +
       '    </select>' +
       '    <button type="button" class="btn btn-mini btn-primary" data-act="new-layer">+ NEW</button>' +
+      '  </div>' +
+      '  <div class="gis-geom-row" data-role="geom-row" hidden>' +
+      '    <span class="gis-geom-label">Building shape</span>' +
+      '    <div class="gis-geom-toggle" role="group" aria-label="Choose building geometry">' +
+      '      <button type="button" class="gis-geom-btn active" data-geom="point" aria-pressed="true">\u25cf Point</button>' +
+      '      <button type="button" class="gis-geom-btn" data-geom="polygon" aria-pressed="false">\u25b0 Area</button>' +
+      '    </div>' +
       '  </div>' +
       '  <div class="gis-layer-list" data-role="layers"></div>' +
       '  <div class="gis-side-head"><strong>Project</strong></div>' +
@@ -376,6 +366,10 @@
       toast('Drawing tools failed to load');
     }
 
+    // Active building geometry choice (Point or Area). Buildings are a single
+    // dual-geometry layer; this toggle decides which draw tool is offered.
+    var buildingGeom = 'point';
+
     // Show only the draw tools that match the active layer's geometry.
     function applyToolsForCategory(category) {
       if (!map.pm || !map.pm.Toolbar || !map.pm.Toolbar.getButtons) return;
@@ -385,6 +379,14 @@
       var isLine = geom === 'line';
       var isPolygon = geom === 'polygon';
       var anyGeom = !isPoint && !isLine && !isPolygon;
+      // Buildings can be a point OR an area — the sidebar toggle picks one so the
+      // surveyor consciously chooses geometry before drawing.
+      if (category === 'building') {
+        isPoint = buildingGeom === 'point';
+        isPolygon = buildingGeom === 'polygon';
+        isLine = false;
+        anyGeom = false;
+      }
       var vis = {
         drawMarker: isPoint || anyGeom,
         drawPolyline: isLine || anyGeom,
@@ -399,6 +401,22 @@
         var node = b && (b.buttonsDomNode || (b._button && b._button.buttonsDomNode));
         if (node) node.style.display = vis[name] ? '' : 'none';
       });
+    }
+
+    // Show the Point/Area toggle only when a Building layer is active.
+    function updateGeomRow() {
+      var row = $('geom-row');
+      if (!row) return;
+      var meta = layers[activeId];
+      var show = !!(meta && meta.category === 'building');
+      row.hidden = !show;
+      if (show) {
+        row.querySelectorAll('.gis-geom-btn').forEach(function (b) {
+          var on = b.dataset.geom === buildingGeom;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      }
     }
 
     // ---- Live user location (device GPS blue-dot, like Google Maps) ----
@@ -476,6 +494,35 @@
       return { color: color, weight: 3, fillColor: color, fillOpacity: 0.25 };
     }
 
+    // Distinct line styling per pipe material so the network reads at a glance.
+    var PIPE_MATERIAL_STYLE = {
+      HDPE: { color: '#1a7f1a', dash: null },          // solid green
+      DI:   { color: '#0a3d91', dash: null },          // solid dark blue
+      GI:   { color: '#b07000', dash: '9,6' },         // dashed amber
+      CI:   { color: '#7d3cb5', dash: '2,7' },         // dotted purple
+      AC:   { color: '#b23a00', dash: '14,5,3,5' },    // dash-dot rust
+    };
+    function pipeStyle(material, baseColor) {
+      var st = PIPE_MATERIAL_STYLE[String(material || '').toUpperCase()];
+      return {
+        color: st ? st.color : (baseColor || CATEGORY_COLOR.pipe),
+        weight: 4, opacity: 1, dashArray: st ? st.dash : null, fill: false,
+      };
+    }
+    function applyPipeStyle(meta, lyr) {
+      if (!lyr || !lyr.setStyle) return;
+      var p = (lyr.feature && lyr.feature.properties) || {};
+      try { lyr.setStyle(pipeStyle(p.material, meta.color)); } catch (_) {}
+    }
+    // Tiny inline SVG line preview for a pipe material (used in the legend key).
+    function pipeLineSVG(material) {
+      var st = pipeStyle(material);
+      var dash = st.dashArray ? ' stroke-dasharray="' + st.dashArray + '"' : '';
+      return '<svg width="34" height="10" viewBox="0 0 34 10" aria-hidden="true">' +
+        '<line x1="1" y1="5" x2="33" y2="5" stroke="' + esc(st.color) +
+        '" stroke-width="3" stroke-linecap="round"' + dash + '/></svg>';
+    }
+
     // ---- Custom point symbols (category-shaped divIcons, like SW Maps) ----
     function pointSymbolSVG(category, color) {
       var c = esc(color);
@@ -515,10 +562,26 @@
       return (lyr instanceof L.Marker) && !(lyr instanceof L.CircleMarker);
     }
 
+    // Actual rendered geometry of a Leaflet layer (independent of schema) so
+    // dual-geometry building layers compute the right derived fields and lock
+    // only their point features. Note: L.Polygon extends L.Polyline, so test
+    // Polygon first.
+    function layerGeomType(lyr) {
+      if (!lyr) return null;
+      if ((lyr instanceof L.CircleMarker) || (lyr instanceof L.Marker)) return 'point';
+      if (lyr instanceof L.Polygon) return 'polygon';
+      if (lyr instanceof L.Polyline) return 'line';
+      return null;
+    }
+
     function applyStyleToGroup(meta, color) {
       meta.group.eachLayer(function (lyr) {
         if (isIconMarker(lyr)) {
           try { lyr.setIcon(makePointIcon(meta.category, color)); } catch (_) {}
+        } else if (meta.category === 'pipe' && lyr.setStyle) {
+          // Pipes keep their per-material colour/dash; the layer colour is only
+          // a fallback for features whose material isn't in the style table.
+          applyPipeStyle(meta, lyr);
         } else if (lyr.setStyle) {
           try { lyr.setStyle(styleFor(color)); } catch (_) {}
           if (lyr instanceof L.CircleMarker) {
@@ -563,7 +626,7 @@
       // a layer removes both its features and its legend entry.
       var ids = Object.keys(layers).filter(function (k) { return layers[k].visible; });
       if (!ids.length) { legendBody.innerHTML = '<div class="gis-leg-empty">No visible layers</div>'; return; }
-      legendBody.innerHTML = ids.map(function (k) {
+      var html = ids.map(function (k) {
         var m = layers[k];
         var schema = SCHEMAS[m.category] || SCHEMAS.generic;
         return '<div class="gis-leg-row">' +
@@ -571,6 +634,17 @@
           '<span class="gis-leg-name">' + esc(m.name) + '</span>' +
           '<span class="gis-leg-cat">' + esc(schema.label) + '</span></div>';
       }).join('');
+      // Pipe-material key (colour + dash pattern) so the network reads at a glance.
+      var hasPipe = ids.some(function (k) { return layers[k].category === 'pipe'; });
+      if (hasPipe) {
+        html += '<div class="gis-leg-sub">Pipe material</div>';
+        html += Object.keys(PIPE_MATERIAL_STYLE).map(function (mat) {
+          return '<div class="gis-leg-row gis-leg-mat">' +
+            '<span class="gis-leg-line-svg">' + pipeLineSVG(mat) + '</span>' +
+            '<span class="gis-leg-name">' + mat + '</span></div>';
+        }).join('');
+      }
+      legendBody.innerHTML = html;
     }
     legendCtl = new LegendControl();
     map.addControl(legendCtl);
@@ -657,18 +731,21 @@
         if (!p.surveyor) p.surveyor = defaultSurveyor();
         if (!p.date) p.date = today();
       }
-      if (schema.geom === 'line') {
+      // Derive area/length from the feature's ACTUAL geometry, not the schema,
+      // so a Building drawn as a point stays blank while one drawn as an area
+      // gets its footprint + built-up figures.
+      var gt = layerGeomType(lyr);
+      if (gt === 'line') {
         var len = lineLength(lyr);
         if (len != null && (isNew || !p.length_m)) p.length_m = len;
       }
-      if (schema.geom === 'polygon') {
+      if (gt === 'polygon') {
         var a = polygonArea(lyr);
         if (a != null && (isNew || !p.area_m2)) p.area_m2 = a;
-        if (meta.category === 'building_poly') {
+        if (meta.category === 'building') {
           var fl = parseFloat(p.floors) || 0;
           var ar2 = parseFloat(p.area_m2) || 0;
           if (ar2) p.builtup_m2 = Math.round(ar2 * (fl > 0 ? fl : 1) * 100) / 100;
-          p.demand_lpd = estimateDemand(p.builtup_m2);
         }
       }
     }
@@ -730,16 +807,10 @@
     function featureLabel(meta, p) {
       p = p || {};
       if (meta.category === 'building') {
-        var id = p.building_id || p.building_name || '';
+        var id = p.building_id || '';
         var blk = p.block || '';
         var s = [id, blk].filter(Boolean).join(' \u00b7 ');
         return s || '';
-      }
-      if (meta.category === 'building_poly') {
-        var pid = p.building_id || p.building_name || '';
-        var pblk = p.block || '';
-        var ps = [pid, pblk].filter(Boolean).join(' \u00b7 ');
-        return ps || '';
       }
       if (meta.category === 'valve') return p.valve_id || '';
       if (meta.category === 'pipe') return p.pipe_id || '';
@@ -755,13 +826,13 @@
       return (lyr instanceof L.CircleMarker) || (lyr instanceof L.Marker);
     }
 
-    // Collect all known Building IDs across building/building_poly layers so a
-    // Connection can be linked to an existing building (datalist autocomplete).
+    // Collect all known Building IDs across building layers so a Connection can
+    // be linked to an existing building (datalist autocomplete).
     function allBuildingIds() {
       var ids = {};
       Object.keys(layers).forEach(function (k) {
         var m = layers[k];
-        if (m.category !== 'building' && m.category !== 'building_poly') return;
+        if (m.category !== 'building') return;
         m.group.eachLayer(function (lyr) {
           var p = lyr.feature && lyr.feature.properties;
           var bid = p && p.building_id;
@@ -777,32 +848,14 @@
       catch (_) { return 'SD'; }
     }
 
-    // Water-demand factor: litres per day per m² of built-up floor area.
-    // Default 4.5 L/m²/day \u2248 occupancy 0.1 person/m² \u00d7 45 LPCD (institutional).
-    // Editable via the dashboard so it can be tuned per survey.
-    function demandFactor() {
-      try {
-        var v = parseFloat(localStorage.getItem('kukl_gis_demandfactor'));
-        return v > 0 ? v : 4.5;
-      } catch (_) { return 4.5; }
-    }
-
-    // Estimated per-building demand (L/day) = built-up area \u00d7 demand factor.
-    function estimateDemand(builtup) {
-      var b = parseFloat(builtup) || 0;
-      if (!b) return 0;
-      return Math.round(b * demandFactor());
-    }
-
     // Self-generated, collision-free Building ID. Scans every existing building
-    // ID across both building layers, finds the highest trailing number and
-    // returns PREFIX-### (zero-padded). Called automatically on feature create.
+    // ID, finds the highest trailing number and returns PREFIX-### (zero-padded).
     function nextBuildingId() {
       var prefix = buildingPrefix();
       var max = 0;
       Object.keys(layers).forEach(function (k) {
         var m = layers[k];
-        if (m.category !== 'building' && m.category !== 'building_poly') return;
+        if (m.category !== 'building') return;
         m.group.eachLayer(function (lyr) {
           var p = lyr.feature && lyr.feature.properties;
           var bid = p && p.building_id ? String(p.building_id) : '';
@@ -816,8 +869,8 @@
     function updateTooltip(meta, lyr) {
       var props = lyr.feature && lyr.feature.properties;
       var point = isPointLayer(lyr);
-      // Building polygons also get a permanent label (centered), like building points.
-      var permLabel = point || meta.category === 'building_poly';
+      // Building areas (polygons) also get a permanent centered label, like points.
+      var permLabel = point || (meta.category === 'building' && layerGeomType(lyr) === 'polygon');
       var label = permLabel ? featureLabel(meta, props) : '';
       try {
         if (permLabel) {
@@ -853,11 +906,16 @@
     function attachFeatureBehavior(meta, lyr, isNew) {
       ensureFeatureProps(meta, lyr, isNew);
       updateTooltip(meta, lyr);
-      // Building & connection markers are fixed survey points — lock them in
-      // place so they can't be accidentally dragged once placed.
-      if (meta.category === 'building' || meta.category === 'connection') {
+      // Colour pipes by material so the network reads at a glance.
+      if (meta.category === 'pipe') applyPipeStyle(meta, lyr);
+      // Building & connection POINT markers are fixed survey points — lock them
+      // so they can't be accidentally dragged once placed, but keep them as snap
+      // targets (snapIgnore:false) so pipes can still snap onto them. Building
+      // AREAS (polygons) stay editable so their footprint can be reshaped.
+      if ((meta.category === 'building' || meta.category === 'connection') && layerGeomType(lyr) === 'point') {
         try {
           lyr.options.pmIgnore = true;
+          lyr.options.snapIgnore = false;
           if (window.L && L.PM && typeof L.PM.reInitLayer === 'function') L.PM.reInitLayer(lyr);
           else if (lyr.pm && lyr.pm.disable) lyr.pm.disable();
         } catch (_) {}
@@ -867,14 +925,20 @@
         openAttributeEditor(meta, lyr);
       });
       lyr.on('pm:edit pm:update pm:dragend', function () {
-        var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
-        if (schema.geom === 'line' && lyr.feature && lyr.feature.properties) {
+        var pp = lyr.feature && lyr.feature.properties;
+        var gt = layerGeomType(lyr);
+        if (gt === 'line' && pp) {
           var len = lineLength(lyr);
-          if (len != null) lyr.feature.properties.length_m = len;
+          if (len != null) pp.length_m = len;
         }
-        if (schema.geom === 'polygon' && lyr.feature && lyr.feature.properties) {
+        if (gt === 'polygon' && pp) {
           var ar = polygonArea(lyr);
-          if (ar != null) lyr.feature.properties.area_m2 = ar;
+          if (ar != null) pp.area_m2 = ar;
+          if (meta.category === 'building') {
+            var fl = parseFloat(pp.floors) || 0;
+            var a2 = parseFloat(pp.area_m2) || 0;
+            if (a2) pp.builtup_m2 = Math.round(a2 * (fl > 0 ? fl : 1) * 100) / 100;
+          }
         }
         persist(meta.id);
       });
@@ -888,7 +952,7 @@
       editorTarget = { meta: meta, lyr: lyr };
       if (attrTitle) attrTitle.textContent = schema.label + ' attributes';
       // Per-building printable report (attributes + photos + map snippet).
-      if (reportBtn) reportBtn.hidden = !(meta.category === 'building' || meta.category === 'building_poly');
+      if (reportBtn) reportBtn.hidden = !(meta.category === 'building');
       attrBody.innerHTML = '';
       // Schema fields first, then any extra imported properties as text inputs.
       var fields = schema.fields.slice();
@@ -924,6 +988,8 @@
           input = document.createElement('input');
           input.type = fld.type === 'number' ? 'number' : (fld.type === 'date' ? 'date' : 'text');
           input.value = val;
+          // Touch keyboard hints for field use: numeric pad for numbers.
+          if (fld.type === 'number') { input.setAttribute('inputmode', 'decimal'); input.step = 'any'; }
           if (fld.list === 'buildings') {
             var dlId = 'gis-dl-buildings';
             var dl = document.getElementById(dlId);
@@ -1126,13 +1192,14 @@
         props[inp.dataset.key] = inp.value;
       });
       lyr.feature.properties = props;
-      // Built-up area = footprint × floors (recompute after floors edit).
-      if (meta.category === 'building_poly') {
+      // Built-up area = footprint × floors (recompute after a floors edit).
+      if (meta.category === 'building' && layerGeomType(lyr) === 'polygon') {
         var fl = parseFloat(props.floors) || 0;
         var ar = parseFloat(props.area_m2) || 0;
         if (ar) props.builtup_m2 = Math.round(ar * (fl > 0 ? fl : 1) * 100) / 100;
-        props.demand_lpd = estimateDemand(props.builtup_m2);
       }
+      // Re-colour a pipe if its material changed.
+      if (meta.category === 'pipe') applyPipeStyle(meta, lyr);
       if (props.surveyor) { try { localStorage.setItem('kukl_gis_surveyor', props.surveyor); } catch (_) {} }
       updateTooltip(meta, lyr);
       persist(meta.id);
@@ -1386,11 +1453,12 @@
       });
       var meta = layers[id];
       if (meta) applyToolsForCategory(meta.category);
+      updateGeomRow();
     }
 
     // ---- Auto building numbering (sequential IDs, restarting per block) ----
     function autoNumberBuildings(meta) {
-      if (meta.category !== 'building' && meta.category !== 'building_poly') return;
+      if (meta.category !== 'building') return;
       var feats = meta.group.getLayers();
       if (!feats.length) { toast('No features to number yet'); return; }
       var prefix = prompt('Building number prefix?', buildingPrefix());
@@ -1429,7 +1497,7 @@
       var row = document.createElement('div');
       row.className = 'gis-layer-row';
       row.dataset.id = meta.id;
-      var isBuilding = meta.category === 'building' || meta.category === 'building_poly';
+      var isBuilding = meta.category === 'building';
       row.innerHTML =
         '<div class="gis-row-main">' +
           '<input type="checkbox" class="gis-vis" ' + (meta.visible ? 'checked' : '') + ' title="Toggle visibility">' +
@@ -1528,13 +1596,36 @@
       else toast('Layer is empty');
     }
 
+    // Validate a FeatureCollection before download so a malformed geometry or
+    // a non-serialisable property can't silently corrupt the export. Returns
+    // { ok, count, message } and never throws.
+    function validateExportFC(fc) {
+      try {
+        if (!fc || fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
+          return { ok: false, count: 0, message: 'No feature collection to export' };
+        }
+        var bad = 0;
+        fc.features.forEach(function (f) {
+          var g = f && f.geometry;
+          if (!f || f.type !== 'Feature' || !g || !g.type || g.coordinates == null) bad += 1;
+          if (!f.properties || typeof f.properties !== 'object') { if (f) f.properties = {}; }
+        });
+        // Round-trip through JSON to catch circular refs / non-finite numbers.
+        JSON.stringify(fc);
+        if (bad) return { ok: false, count: fc.features.length, message: bad + ' feature(s) have invalid geometry' };
+        return { ok: true, count: fc.features.length, message: '' };
+      } catch (err) {
+        return { ok: false, count: 0, message: (err && err.message) || 'Serialization error' };
+      }
+    }
+
     function exportLayer(meta) {
       var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
       var features = [];
       meta.group.eachLayer(function (lyr) {
         if (typeof lyr.toGeoJSON !== 'function') return;
-        // Fill in schema defaults + auto-computed fields (area, length, demand…)
-        // so even never-opened / imported features export their full attributes.
+        // Fill in schema defaults + auto-computed fields (area, length…) so even
+        // never-opened / imported features export their full attributes.
         ensureFeatureProps(meta, lyr, false);
         var gj = lyr.toGeoJSON();
         gj.properties = gj.properties || {};
@@ -1548,9 +1639,16 @@
       });
       if (!features.length) { toast('Nothing to export'); return; }
       var fc = { type: 'FeatureCollection', features: features };
-      var base = (meta.name || 'layer').replace(/[^\w.-]+/g, '_');
-      download(base + '.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
-      toast('Exported ' + features.length + ' feature' + (features.length === 1 ? '' : 's'));
+      var check = validateExportFC(fc);
+      if (!check.ok) { toast('Export blocked: ' + check.message); return; }
+      try {
+        var base = (meta.name || 'layer').replace(/[^\w.-]+/g, '_');
+        download(base + '.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
+        toast('Exported ' + features.length + ' feature' + (features.length === 1 ? '' : 's'));
+      } catch (err) {
+        console.error('[GIS] export failed', err);
+        toast('Export failed: ' + ((err && err.message) || 'unknown error'));
+      }
     }
 
     // Build tabular rows (schema fields + extra props + lat/lng) for a layer.
@@ -1601,10 +1699,10 @@
     // ---- Project summary (counts for buildings / connections) ----
     function computeSummary() {
       var s = {
-        buildings: 0, buildingPolys: 0, connections: 0,
+        buildings: 0, connections: 0,
         metered: 0, unmetered: 0,
         byType: {}, byStatus: {}, byBlock: {}, linked: 0, unlinked: 0,
-        demandByBlock: {}, totalDemand: 0, builtupTotal: 0,
+        builtupTotal: 0,
         layers: 0, features: 0,
       };
       Object.keys(layers).forEach(function (k) {
@@ -1614,17 +1712,10 @@
         s.features += feats.length;
         feats.forEach(function (lyr) {
           var p = (lyr.feature && lyr.feature.properties) || {};
-          if (m.category === 'building') s.buildings += 1;
-          if (m.category === 'building_poly') s.buildingPolys += 1;
-          if (m.category === 'building' || m.category === 'building_poly') {
+          if (m.category === 'building') {
+            s.buildings += 1;
             var blk = (p.block || '').toString().trim() || '(no block)';
             s.byBlock[blk] = (s.byBlock[blk] || 0) + 1;
-          }
-          if (m.category === 'building_poly') {
-            var blk2 = (p.block || '').toString().trim() || '(no block)';
-            var dem = parseFloat(p.demand_lpd) || 0;
-            s.demandByBlock[blk2] = (s.demandByBlock[blk2] || 0) + dem;
-            s.totalDemand += dem;
             s.builtupTotal += parseFloat(p.builtup_m2) || 0;
           }
           if (m.category === 'connection') {
@@ -1651,69 +1742,25 @@
         }).join('');
       }
       function numFmt(n) { return Math.round(n).toLocaleString('en-US'); }
-      function demandRows(obj) {
-        var keys = Object.keys(obj);
-        if (!keys.length) return '<tr><td colspan="2" class="gis-dash-none">\u2014</td></tr>';
-        return keys.sort().map(function (k) {
-          return '<tr><td>' + esc(k) + '</td><td class="gis-dash-num">' + numFmt(obj[k]) + '</td></tr>';
-        }).join('');
-      }
-      var totalBuildings = s.buildings + s.buildingPolys;
-      var totalM3 = s.totalDemand / 1000;
-      var factor = demandFactor();
       dashBody.innerHTML =
         '<div class="gis-dash-cards">' +
-          '<div class="gis-dash-kpi"><b>' + totalBuildings + '</b><span>Buildings</span></div>' +
+          '<div class="gis-dash-kpi"><b>' + s.buildings + '</b><span>Buildings</span></div>' +
           '<div class="gis-dash-kpi"><b>' + s.connections + '</b><span>Connections</span></div>' +
           '<div class="gis-dash-kpi"><b>' + s.metered + '</b><span>Metered</span></div>' +
           '<div class="gis-dash-kpi gis-dash-warn"><b>' + s.unmetered + '</b><span>Unmetered</span></div>' +
           '<div class="gis-dash-kpi"><b>' + s.linked + '</b><span>Linked to bldg</span></div>' +
           '<div class="gis-dash-kpi gis-dash-warn"><b>' + s.unlinked + '</b><span>Unlinked</span></div>' +
-          '<div class="gis-dash-kpi gis-dash-accent"><b>' + numFmt(totalM3) + '</b><span>Est. demand m\u00b3/day</span></div>' +
-        '</div>' +
-        '<div class="gis-dash-demand">' +
-          '<label>Demand factor (L/m\u00b2/day): ' +
-            '<input type="number" min="0" step="0.1" data-role="demand-factor" value="' + factor + '"></label>' +
-          '<span class="gis-dash-demand-note">Built-up ' + numFmt(s.builtupTotal) + ' m\u00b2 \u00d7 ' + factor +
-            ' = ' + numFmt(s.totalDemand) + ' L/day total</span>' +
+          '<div class="gis-dash-kpi gis-dash-accent"><b>' + numFmt(s.builtupTotal) + '</b><span>Built-up m\u00b2</span></div>' +
         '</div>' +
         '<div class="gis-dash-grid">' +
           '<div class="gis-dash-tbl"><h4>Connections by type</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byType) + '</tbody></table></div>' +
           '<div class="gis-dash-tbl"><h4>Connections by status</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byStatus) + '</tbody></table></div>' +
           '<div class="gis-dash-tbl"><h4>Buildings by block</h4><table class="gis-attr-table"><tbody>' + kvRows(s.byBlock) + '</tbody></table></div>' +
-          '<div class="gis-dash-tbl"><h4>Est. water demand by block (L/day)</h4><table class="gis-attr-table"><tbody>' + demandRows(s.demandByBlock) + '</tbody></table></div>' +
         '</div>' +
         '<p class="gis-dash-foot">' + s.layers + ' layers \u00b7 ' + s.features + ' features total</p>';
-      var facInput = dashBody.querySelector('[data-role="demand-factor"]');
-      if (facInput) {
-        facInput.addEventListener('change', function () {
-          var v = parseFloat(facInput.value);
-          if (!(v > 0)) { facInput.value = demandFactor(); return; }
-          try { localStorage.setItem('kukl_gis_demandfactor', String(v)); } catch (_) {}
-          recomputeDemand();
-          openDashboard();
-        });
-      }
       attrPanel.hidden = true;
       tablePanel.hidden = true;
       dashPanel.hidden = false;
-    }
-
-    // Recompute demand on every building polygon (e.g. after the factor changes)
-    // and persist the affected layers so the new estimate is stored.
-    function recomputeDemand() {
-      Object.keys(layers).forEach(function (k) {
-        var m = layers[k];
-        if (m.category !== 'building_poly') return;
-        var changed = false;
-        m.group.eachLayer(function (lyr) {
-          var p = lyr.feature && lyr.feature.properties;
-          if (!p) return;
-          var d = estimateDemand(p.builtup_m2);
-          if (p.demand_lpd !== d) { p.demand_lpd = d; changed = true; }
-        });
-        if (changed) persist(m.id);
-      });
     }
 
     // ---- Whole-project export (all layers in one file) ----
@@ -1736,8 +1783,15 @@
         });
       });
       if (!fc.features.length) { toast('Nothing to export'); return; }
-      download('singhadurbar_gis_project.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
-      toast('Exported ' + fc.features.length + ' features');
+      var check = validateExportFC(fc);
+      if (!check.ok) { toast('Export blocked: ' + check.message); return; }
+      try {
+        download('singhadurbar_gis_project.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
+        toast('Exported ' + fc.features.length + ' features');
+      } catch (err) {
+        console.error('[GIS] project export failed', err);
+        toast('Export failed: ' + ((err && err.message) || 'unknown error'));
+      }
     }
 
     function exportProjectXLSX() {
@@ -1749,22 +1803,17 @@
       // Summary sheet first.
       var s = computeSummary();
       var sumRows = [
-        { Metric: 'Buildings (point)', Value: s.buildings },
-        { Metric: 'Buildings (polygon)', Value: s.buildingPolys },
+        { Metric: 'Buildings', Value: s.buildings },
         { Metric: 'Connections', Value: s.connections },
         { Metric: 'Metered connections', Value: s.metered },
         { Metric: 'Unmetered connections', Value: s.unmetered },
         { Metric: 'Connections linked to a building', Value: s.linked },
         { Metric: 'Connections not linked', Value: s.unlinked },
+        { Metric: 'Total built-up area (m\u00b2)', Value: Math.round(s.builtupTotal) },
       ];
       Object.keys(s.byType).sort().forEach(function (t) { sumRows.push({ Metric: 'Type: ' + t, Value: s.byType[t] }); });
       Object.keys(s.byStatus).sort().forEach(function (t) { sumRows.push({ Metric: 'Status: ' + t, Value: s.byStatus[t] }); });
       Object.keys(s.byBlock).sort().forEach(function (t) { sumRows.push({ Metric: 'Block: ' + t, Value: s.byBlock[t] }); });
-      sumRows.push({ Metric: 'Demand factor (L/m\u00b2/day)', Value: demandFactor() });
-      sumRows.push({ Metric: 'Total built-up area (m\u00b2)', Value: Math.round(s.builtupTotal) });
-      sumRows.push({ Metric: 'Total estimated demand (L/day)', Value: Math.round(s.totalDemand) });
-      sumRows.push({ Metric: 'Total estimated demand (m\u00b3/day)', Value: Math.round(s.totalDemand / 1000) });
-      Object.keys(s.demandByBlock).sort().forEach(function (t) { sumRows.push({ Metric: 'Demand L/day: ' + t, Value: Math.round(s.demandByBlock[t]) }); });
       window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.json_to_sheet(sumRows), 'Summary');
       // One sheet per layer.
       var total = 0;
@@ -1835,6 +1884,20 @@
       setActive(meta.id);
       persist(meta.id);
     });
+
+    // ---- Building geometry toggle (Point / Area) ----
+    var geomRow = $('geom-row');
+    if (geomRow) {
+      geomRow.querySelectorAll('.gis-geom-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          buildingGeom = btn.dataset.geom === 'polygon' ? 'polygon' : 'point';
+          updateGeomRow();
+          var meta = layers[activeId];
+          if (meta && meta.category === 'building') applyToolsForCategory('building');
+          toast('Building draw mode: ' + (buildingGeom === 'polygon' ? 'Area (polygon)' : 'Point'));
+        });
+      });
+    }
 
     // ---- Mobile panel drawer toggle ----
     var sidebarEl = $('sidebar');
@@ -2028,6 +2091,8 @@
     function categoryFromLabel(label) {
       if (!label) return null;
       var want = String(label).trim().toLowerCase();
+      // Legacy alias: the old split "Building Polygon" layer is now "Building".
+      if (want === 'building polygon') return 'building';
       var found = null;
       Object.keys(SCHEMAS).forEach(function (cat) {
         if (SCHEMAS[cat].label.toLowerCase() === want) found = cat;
@@ -2043,7 +2108,7 @@
       var g = f && f.geometry;
       var t = g && g.type;
       if (t === 'LineString' || t === 'MultiLineString') return 'pipe';
-      if (t === 'Polygon' || t === 'MultiPolygon') return 'building_poly';
+      if (t === 'Polygon' || t === 'MultiPolygon') return 'building';
       return null; // point / unknown → ambiguous, handled by caller
     }
 
@@ -2066,7 +2131,6 @@
     }
 
     function defaultLayerName(cat) {
-      if (cat === 'building_poly') return 'Building Polygons';
       var s = SCHEMAS[cat];
       return s ? s.label + 's' : 'Imported';
     }
@@ -2199,18 +2263,20 @@
     dbAllLayers().then(function (recs) {
       recs.sort(function (a, b) { return (a.updatedAt || 0) - (b.updatedAt || 0); });
       recs.forEach(function (rec) {
+        // Migrate legacy split building layers into the unified Building layer.
+        var cat = rec.category === 'building_poly' ? 'building' : rec.category;
         var meta = createLayer({
-          id: rec.id, name: rec.name, category: rec.category,
+          id: rec.id, name: rec.name, category: cat,
           color: rec.color, visible: rec.visible !== false,
         });
         if (rec.geojson) loadGeoJSONInto(meta, rec.geojson);
         updateCount(meta);
+        if (cat !== rec.category) persist(meta.id); // save the migrated category
       });
       if (!recs.length) {
         // Seed with the standard KUKL field-survey layers.
-        ['building', 'building_poly', 'connection', 'pipe', 'valve'].forEach(function (cat) {
-          var nm = cat === 'building_poly' ? 'Building Polygons' : SCHEMAS[cat].label + 's';
-          var m = createLayer({ category: cat, name: nm });
+        ['building', 'connection', 'pipe', 'valve'].forEach(function (cat) {
+          var m = createLayer({ category: cat, name: SCHEMAS[cat].label + 's' });
           persist(m.id);
         });
         setActive(Object.keys(layers)[0]);
