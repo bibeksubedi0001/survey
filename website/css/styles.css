@@ -618,16 +618,10 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-gnss [hidden]{display:none !important;}
 .gis-gnss-readout[hidden]{display:none !important;}
 .gis-new-row{display:flex;gap:5px;align-items:center;}
-.gis-geom-row{display:flex;align-items:center;gap:7px;margin-top:6px;flex-wrap:wrap;}
-.gis-geom-row[hidden]{display:none!important;}
-.gis-geom-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#36507e;}
-.gis-geom-toggle{display:inline-flex;border:1px solid #aac;border-radius:6px;overflow:hidden;}
-.gis-geom-btn{
-  border:none;background:#fff;color:#36507e;cursor:pointer;
-  font:inherit;font-size:11px;font-weight:700;padding:4px 10px;min-height:30px;
-}
-.gis-geom-btn + .gis-geom-btn{border-left:1px solid #aac;}
-.gis-geom-btn.active{background:#1b6fd6;color:#fff;}
+/* "Add Building" launcher (sidebar) */
+.gis-bwiz-row{margin-top:6px;}
+.gis-bwiz-row[hidden]{display:none!important;}
+.gis-bwiz-launch{width:100%;}
 .gis-cat-select{flex:1;min-width:0;font:inherit;font-size:11px;padding:3px 4px;border:1px solid #999;border-radius:3px;background:#fff;}
 .gis-layer-row .gis-cat{
   font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
@@ -654,6 +648,34 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-attr-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #ddd;background:var(--softer);}
 .gis-attr-foot .btn{flex:1;}
 .gis-attr-foot .btn-primary{flex:1.4;}
+/* Building wizard — dual-geometry capture overlay (coexists with the map) */
+.gis-bwiz{position:absolute;top:10px;right:10px;z-index:1001;width:300px;max-width:88%;}
+.gis-bwiz[hidden]{display:none!important;}
+.gis-bwiz-card{background:#fff;border:2px solid #000;border-radius:8px;
+  box-shadow:0 6px 24px rgba(0,0,0,.34);overflow:hidden;display:flex;flex-direction:column;max-height:78vh;}
+.gis-bwiz-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#1b6fd6;color:#fff;}
+.gis-bwiz-head strong{font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:#fff;}
+.gis-bwiz-head .gis-attr-x{color:#fff;}
+.gis-bwiz-body{padding:10px;overflow-y:auto;display:flex;flex-direction:column;gap:11px;}
+.gis-bwiz-sec{display:flex;flex-direction:column;gap:7px;}
+.gis-bwiz-step{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#1b6fd6;border-bottom:1px solid #e2e8f4;padding-bottom:3px;}
+.gis-bwiz-geoms{display:flex;gap:8px;}
+.gis-bwiz-geom{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:#f5f8fd;border:1.5px solid #b9c9e6;border-radius:8px;cursor:pointer;font:inherit;padding:9px 6px;color:#22364f;}
+.gis-bwiz-geom-ic{font-size:18px;line-height:1;}
+.gis-bwiz-geom-lbl{font-size:12px;font-weight:700;}
+.gis-bwiz-geom-stat{font-size:10px;font-weight:700;color:#8a6d00;background:#fff4cf;border-radius:10px;padding:1px 8px;}
+.gis-bwiz-geom.is-armed{border-color:#1b6fd6;box-shadow:0 0 0 3px rgba(27,111,214,.18);}
+.gis-bwiz-geom.is-armed .gis-bwiz-geom-stat{color:#0a3d91;background:#dbe8ff;}
+.gis-bwiz-geom.is-captured{border-color:#1a7f1a;background:#eefaef;}
+.gis-bwiz-geom.is-captured .gis-bwiz-geom-stat{color:#0e5c0e;background:#cdeccd;}
+.gis-bwiz-hint{font-size:11px;line-height:1.35;color:#555;}
+.gis-bwiz-locked{opacity:.45;pointer-events:none;filter:saturate(.4);}
+.gis-bwiz-photos{margin-top:2px;}
+.gis-bwiz-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #ddd;background:var(--softer);}
+.gis-bwiz-foot .btn{flex:1;}
+.gis-bwiz-foot .btn-primary{flex:1.5;}
+.gis-bwiz-foot .btn:disabled{opacity:.5;cursor:not-allowed;}
 /* Permanent survey-point labels (Building ID · Block, Valve ID, …) */
 .leaflet-tooltip.gis-feat-label{
   background:rgba(255,255,255,.92);border:1px solid #333;border-radius:4px;
@@ -834,13 +856,16 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   .gis-layer-row .gis-ic{width:28px;height:28px;font-size:15px;}
   .gis-layer-row .gis-name{font-size:13px;}
   .gis-cat-select,.gis-import .gis-file,.gis-gnss-btns .btn,.gis-gnss-drop{min-height:38px;}
-  .gis-geom-btn{min-height:38px;font-size:13px;padding:6px 14px;}
   .gis-attr-field input,.gis-attr-field select,.gis-attr-field textarea{padding:11px 10px;font-size:16px;min-height:44px;}
   .gis-attr-field textarea{min-height:60px;}
   .gis-attr-foot .btn{min-height:44px;font-size:13px;}
   .leaflet-pm-toolbar .button-container a,.gis-locate-ctl a.gis-locate-btn{width:40px;height:40px;line-height:40px;}
   .gis-attr{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;}
   .gis-attr-body{max-height:52vh;}
+  .gis-bwiz{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;}
+  .gis-bwiz-card{max-height:82vh;}
+  .gis-bwiz-geom{padding:12px 6px;}
+  .gis-bwiz-geom-lbl{font-size:13px;}
   .gis-attr-table th,.gis-attr-table td{padding:8px 10px;font-size:13px;}
   .gis-trow-btn{padding:6px 9px;font-size:15px;}
 }

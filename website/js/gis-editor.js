@@ -163,6 +163,12 @@
   function defaultSurveyor() { try { return localStorage.getItem('kukl_gis_surveyor') || ''; } catch (_) { return ''; } }
 
   function uid() { return 'L' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  // Stable shared key that links a building's point + polygon features so they
+  // can be re-joined in desktop GIS after export.
+  function genUUID() {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (_) {}
+    return 'bld-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -234,7 +240,7 @@
       '    <button type="button" class="gis-panel-close" data-act="panel-close" title="Hide panel">\u00d7</button></div>' +
       '  <div class="gis-new-row">' +
       '    <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
-      '      <option value="building">Buildings (point or area)</option>' +
+      '      <option value="building">Buildings (point + footprint)</option>' +
       '      <option value="connection">Connections (point)</option>' +
       '      <option value="valve">Valves (point)</option>' +
       '      <option value="pipe">Pipes (line)</option>' +
@@ -242,12 +248,8 @@
       '    </select>' +
       '    <button type="button" class="btn btn-mini btn-primary" data-act="new-layer">+ NEW</button>' +
       '  </div>' +
-      '  <div class="gis-geom-row" data-role="geom-row" hidden>' +
-      '    <span class="gis-geom-label">Building shape</span>' +
-      '    <div class="gis-geom-toggle" role="group" aria-label="Choose building geometry">' +
-      '      <button type="button" class="gis-geom-btn active" data-geom="point" aria-pressed="true">\u25cf Point</button>' +
-      '      <button type="button" class="gis-geom-btn" data-geom="polygon" aria-pressed="false">\u25b0 Area</button>' +
-      '    </div>' +
+      '  <div class="gis-bwiz-row" data-role="bwiz-row" hidden>' +
+      '    <button type="button" class="btn btn-mini btn-primary gis-bwiz-launch" data-act="add-building">\uff0b Add Building (point + footprint)</button>' +
       '  </div>' +
       '  <div class="gis-layer-list" data-role="layers"></div>' +
       '  <div class="gis-side-head"><strong>Project</strong></div>' +
@@ -290,7 +292,7 @@
       '  </div>' +
       '  <div class="gis-side-head"><strong>Reference</strong></div>' +
       '  <label class="gis-ref-toggle"><input type="checkbox" data-role="dma-toggle"> Show DMA network</label>' +
-      '  <p class="gis-tip">Pick a layer type, tap <strong>+ NEW</strong>, then use the map toolbar to draw. Each feature opens an attribute form (buildings, valves and pipes have ready-made fields). Tap any feature later to edit it. Pipe length is measured automatically. Everything saves offline.</p>' +
+      '  <p class="gis-tip">Pick a layer type, tap <strong>+ NEW</strong>, then draw with the map toolbar. For buildings, select the Building layer and tap <strong>+ Add Building</strong> to capture a point and a footprint under one shared record. Tap any feature later to edit it. Pipe length and footprint area are measured automatically. Everything saves offline.</p>' +
       '</div>' +
       '<div class="gis-map-wrap"><div class="gis-map" data-role="map"></div>' +
       '  <button type="button" class="gis-panel-toggle" data-act="panel-toggle" title="Show tools">\u2630 Tools</button>' +
@@ -304,6 +306,47 @@
       '        <button type="button" class="btn btn-mini btn-outline" data-act="attr-report" hidden>\u29c9 REPORT</button>' +
       '        <button type="button" class="btn btn-mini btn-danger" data-act="attr-del">DELETE</button>' +
       '        <button type="button" class="btn btn-mini btn-primary" data-act="attr-save">SAVE</button>' +
+      '      </div>' +
+      '    </div>' +
+      '  </div>' +
+      '  <div class="gis-bwiz" data-role="bwiz" hidden>' +
+      '    <div class="gis-bwiz-card">' +
+      '      <div class="gis-bwiz-head"><strong>Add Building</strong>' +
+      '        <button type="button" class="gis-attr-x" data-act="bwiz-close" title="Cancel">\u00d7</button></div>' +
+      '      <div class="gis-bwiz-body">' +
+      '        <div class="gis-bwiz-sec">' +
+      '          <div class="gis-bwiz-step">1 \u00b7 Building details</div>' +
+      '          <label class="gis-attr-field"><span>Surveyor</span><input type="text" data-bkey="surveyor"></label>' +
+      '          <label class="gis-attr-field"><span>Date</span><input type="date" data-bkey="date"></label>' +
+      '          <label class="gis-attr-field"><span>Block</span><input type="text" data-bkey="block"></label>' +
+      '          <label class="gis-attr-field"><span>Office / Occupant</span><input type="text" data-bkey="office_name"></label>' +
+      '        </div>' +
+      '        <div class="gis-bwiz-sec">' +
+      '          <div class="gis-bwiz-step">2 \u00b7 Capture geometry</div>' +
+      '          <div class="gis-bwiz-geoms">' +
+      '            <button type="button" class="gis-bwiz-geom" data-act="bwiz-draw-point">' +
+      '              <span class="gis-bwiz-geom-ic">\u25cf</span>' +
+      '              <span class="gis-bwiz-geom-lbl">Draw Point</span>' +
+      '              <span class="gis-bwiz-geom-stat" data-role="bwiz-pt-stat">Pending</span></button>' +
+      '            <button type="button" class="gis-bwiz-geom" data-act="bwiz-draw-polygon">' +
+      '              <span class="gis-bwiz-geom-ic">\u25b0</span>' +
+      '              <span class="gis-bwiz-geom-lbl">Draw Polygon</span>' +
+      '              <span class="gis-bwiz-geom-stat" data-role="bwiz-pg-stat">Pending</span></button>' +
+      '          </div>' +
+      '          <div class="gis-bwiz-hint" data-role="bwiz-hint">Capture a point and/or a footprint. Both share the same attributes.</div>' +
+      '        </div>' +
+      '        <div class="gis-bwiz-sec gis-bwiz-locked" data-role="bwiz-more">' +
+      '          <div class="gis-bwiz-step">3 \u00b7 More details</div>' +
+      '          <label class="gis-attr-field"><span>Floors</span><input type="number" inputmode="decimal" step="any" data-bkey="floors"></label>' +
+      '          <label class="gis-attr-field"><span>Area (m\u00b2) \u2014 auto (footprint)</span><input type="number" data-bkey="area_m2" readonly></label>' +
+      '          <label class="gis-attr-field"><span>Built-up Area (m\u00b2) \u2014 auto</span><input type="number" data-bkey="builtup_m2" readonly></label>' +
+      '          <label class="gis-attr-field"><span>Remarks</span><textarea rows="2" data-bkey="remarks"></textarea></label>' +
+      '          <div class="gis-bwiz-photos" data-role="bwiz-photos"></div>' +
+      '        </div>' +
+      '      </div>' +
+      '      <div class="gis-bwiz-foot">' +
+      '        <button type="button" class="btn btn-mini btn-outline" data-act="bwiz-cancel">CANCEL</button>' +
+      '        <button type="button" class="btn btn-mini btn-primary" data-act="bwiz-save" disabled>SAVE BUILDING</button>' +
       '      </div>' +
       '    </div>' +
       '  </div>' +
@@ -367,8 +410,9 @@
     }
 
     // Active building geometry choice (Point or Area). Buildings are a single
-    // dual-geometry layer; this toggle decides which draw tool is offered.
-    var buildingGeom = 'point';
+    // Buildings are created through the "Add Building" wizard (a single shared
+    // attribute set linked to BOTH a point and a polygon), so their direct draw
+    // tools are hidden — see openBuildingWizard().
 
     // Show only the draw tools that match the active layer's geometry.
     function applyToolsForCategory(category) {
@@ -379,13 +423,10 @@
       var isLine = geom === 'line';
       var isPolygon = geom === 'polygon';
       var anyGeom = !isPoint && !isLine && !isPolygon;
-      // Buildings can be a point OR an area — the sidebar toggle picks one so the
-      // surveyor consciously chooses geometry before drawing.
+      // Buildings capture geometry only through the wizard, so hide every direct
+      // draw tool while a Building layer is active (edit/drag/cut stay available).
       if (category === 'building') {
-        isPoint = buildingGeom === 'point';
-        isPolygon = buildingGeom === 'polygon';
-        isLine = false;
-        anyGeom = false;
+        isPoint = false; isLine = false; isPolygon = false; anyGeom = false;
       }
       var vis = {
         drawMarker: isPoint || anyGeom,
@@ -403,20 +444,12 @@
       });
     }
 
-    // Show the Point/Area toggle only when a Building layer is active.
-    function updateGeomRow() {
-      var row = $('geom-row');
+    // Show the "Add Building" launcher only when a Building layer is active.
+    function updateBwizRow() {
+      var row = $('bwiz-row');
       if (!row) return;
       var meta = layers[activeId];
-      var show = !!(meta && meta.category === 'building');
-      row.hidden = !show;
-      if (show) {
-        row.querySelectorAll('.gis-geom-btn').forEach(function (b) {
-          var on = b.dataset.geom === buildingGeom;
-          b.classList.toggle('active', on);
-          b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-      }
+      row.hidden = !(meta && meta.category === 'building');
     }
 
     // ---- Live user location (device GPS blue-dot, like Google Maps) ----
@@ -955,12 +988,19 @@
       if (reportBtn) reportBtn.hidden = !(meta.category === 'building');
       attrBody.innerHTML = '';
       // Schema fields first, then any extra imported properties as text inputs.
+      // building_uuid / geometry_role are auto-managed links — show them, but
+      // read-only, so they stay visible for verification yet can't be edited.
+      var EXTRA_READONLY = { building_uuid: true, geometry_role: true };
+      var EXTRA_LABELS = { building_uuid: 'Building UUID (link)', geometry_role: 'Geometry role' };
       var fields = schema.fields.slice();
       var known = {};
       fields.forEach(function (f) { known[f.key] = true; });
       Object.keys(props).forEach(function (k) {
         if (k.charAt(0) === '_') return;
-        if (!known[k]) { known[k] = true; fields.push({ key: k, label: k, type: 'text' }); }
+        if (!known[k]) {
+          known[k] = true;
+          fields.push({ key: k, label: EXTRA_LABELS[k] || k, type: 'text', readonly: !!EXTRA_READONLY[k] });
+        }
       });
       fields.forEach(function (fld) {
         var val = props[fld.key] != null ? props[fld.key] : '';
@@ -1182,6 +1222,262 @@
       }
       ov.addEventListener('click', function () { ov.remove(); });
       host.appendChild(ov);
+    }
+
+    // =====================================================================
+    // Building wizard — ONE shared attribute set linked to BOTH a point and a
+    // polygon. On save we emit two GeoJSON features that share a building_uuid
+    // and are tagged geometry_role: 'centroid' (point) / 'footprint' (polygon),
+    // so they can be relationally re-joined in desktop GIS after export.
+    // =====================================================================
+    var bwizPanel = $('bwiz');
+    var bwiz = {
+      open: false, metaId: null,
+      point: null, polygon: null,        // captured L.LatLng / [L.LatLng]
+      ptPreview: null, pgPreview: null,  // on-map previews while editing
+      photos: [], drawing: null,         // 'point' | 'polygon' while armed
+    };
+
+    function bwizField(key) { return bwizPanel.querySelector('[data-bkey="' + key + '"]'); }
+    function bwizSetVal(key, v) { var el = bwizField(key); if (el) el.value = (v == null ? '' : v); }
+    function bwizGetVal(key) { var el = bwizField(key); return el ? el.value : ''; }
+
+    // Building layer the wizard writes into: the active one, else the first
+    // building layer, else a freshly created one.
+    function activeBuildingMeta() {
+      var m = layers[activeId];
+      if (m && m.category === 'building') return m;
+      var found = null;
+      Object.keys(layers).forEach(function (k) { if (!found && layers[k].category === 'building') found = layers[k]; });
+      return found || createLayer({ category: 'building' });
+    }
+
+    function openBuildingWizard() {
+      var meta = activeBuildingMeta();
+      bwizClearGeometry();
+      bwiz.open = true;
+      bwiz.metaId = meta.id;
+      bwiz.photos = [];
+      bwizSetVal('surveyor', defaultSurveyor());
+      bwizSetVal('date', today());
+      bwizSetVal('block', '');
+      bwizSetVal('office_name', '');
+      bwizSetVal('floors', '');
+      bwizSetVal('area_m2', '');
+      bwizSetVal('builtup_m2', '');
+      bwizSetVal('remarks', '');
+      var more = $('bwiz-more'); if (more) more.classList.add('gis-bwiz-locked');
+      renderBwizPhotos();
+      updateBwizGeomStatus();
+      updateBwizSave();
+      // Clear other overlays so the map stays free for drawing.
+      if (attrPanel) attrPanel.hidden = true;
+      if (tablePanel) tablePanel.hidden = true;
+      if (dashPanel) dashPanel.hidden = true;
+      bwizPanel.hidden = false;
+    }
+
+    function bwizClearGeometry() {
+      try { if (map.pm) map.pm.disableDraw(); } catch (_) {}
+      bwiz.drawing = null;
+      if (bwiz.ptPreview) { try { map.removeLayer(bwiz.ptPreview); } catch (_) {} bwiz.ptPreview = null; }
+      if (bwiz.pgPreview) { try { map.removeLayer(bwiz.pgPreview); } catch (_) {} bwiz.pgPreview = null; }
+      bwiz.point = null; bwiz.polygon = null;
+    }
+
+    function closeBuildingWizard() {
+      bwizClearGeometry();
+      bwiz.open = false; bwiz.metaId = null; bwiz.photos = [];
+      bwizPanel.hidden = true;
+    }
+
+    // Arm a Geoman draw tool for the wizard; the shape is caught in pm:create.
+    function bwizDraw(shape) {
+      if (!map.pm) { toast('Drawing tools unavailable'); return; }
+      if (!bwiz.open) return;
+      try { map.pm.disableDraw(); } catch (_) {}
+      bwiz.drawing = shape;
+      var tool = shape === 'polygon' ? 'Polygon' : 'Marker';
+      try {
+        map.pm.enableDraw(tool, { continueDrawing: false, snappable: true, snapDistance: 20 });
+      } catch (_) { toast('Could not start drawing'); bwiz.drawing = null; }
+      updateBwizGeomStatus();
+      toast(shape === 'polygon'
+        ? 'Tap the map to trace the footprint, double-tap to finish'
+        : 'Tap the map to place the point');
+    }
+
+    // Captured from the global pm:create handler while a wizard tool is armed.
+    function bwizCapture(e) {
+      var lyr = e.layer;
+      try { map.removeLayer(lyr); } catch (_) {}
+      var meta = layers[bwiz.metaId];
+      if (bwiz.drawing === 'point') {
+        bwiz.point = lyr.getLatLng();
+        if (bwiz.ptPreview) { try { map.removeLayer(bwiz.ptPreview); } catch (_) {} }
+        bwiz.ptPreview = makePointMarker(meta, bwiz.point).addTo(map);
+      } else if (bwiz.drawing === 'polygon') {
+        var lls = lyr.getLatLngs ? lyr.getLatLngs() : null;
+        while (lls && lls.length && Array.isArray(lls[0])) lls = lls[0];
+        bwiz.polygon = lls;
+        if (bwiz.pgPreview) { try { map.removeLayer(bwiz.pgPreview); } catch (_) {} }
+        bwiz.pgPreview = L.polygon(bwiz.polygon, styleFor(meta.color)).addTo(map);
+        var a = polygonArea(bwiz.pgPreview);
+        if (a != null) { bwizSetVal('area_m2', a); recomputeBwizBuiltup(); }
+      }
+      try { map.pm.disableDraw(); } catch (_) {}
+      bwiz.drawing = null;
+      if (bwiz.point || bwiz.polygon) {
+        var more = $('bwiz-more'); if (more) more.classList.remove('gis-bwiz-locked');
+      }
+      updateBwizGeomStatus();
+      updateBwizSave();
+    }
+
+    function recomputeBwizBuiltup() {
+      var ar = parseFloat(bwizGetVal('area_m2')) || 0;
+      var fl = parseFloat(bwizGetVal('floors')) || 0;
+      if (ar) bwizSetVal('builtup_m2', Math.round(ar * (fl > 0 ? fl : 1) * 100) / 100);
+    }
+
+    function updateBwizGeomStatus() {
+      var ptBtn = bwizPanel.querySelector('[data-act="bwiz-draw-point"]');
+      var pgBtn = bwizPanel.querySelector('[data-act="bwiz-draw-polygon"]');
+      function set(statEl, btn, captured, armed) {
+        if (statEl) statEl.textContent = armed ? 'Drawing\u2026' : (captured ? '\u2713 Captured' : 'Pending');
+        if (btn) { btn.classList.toggle('is-captured', !!captured); btn.classList.toggle('is-armed', !!armed); }
+      }
+      set($('bwiz-pt-stat'), ptBtn, !!bwiz.point, bwiz.drawing === 'point');
+      set($('bwiz-pg-stat'), pgBtn, !!bwiz.polygon, bwiz.drawing === 'polygon');
+      var hint = $('bwiz-hint');
+      if (hint) {
+        if (bwiz.point && bwiz.polygon) hint.textContent = '\u2713 Both geometries captured \u2014 they will share one attribute record.';
+        else if (bwiz.point || bwiz.polygon) hint.textContent = 'One geometry captured. Add the other, or save now.';
+        else hint.textContent = 'Capture a point and/or a footprint. Both share the same attributes.';
+      }
+    }
+
+    function updateBwizSave() {
+      var btn = bwizPanel.querySelector('[data-act="bwiz-save"]');
+      if (btn) btn.disabled = !(bwiz.point || bwiz.polygon);
+    }
+
+    // Lightweight photo capture for the wizard (object shape == feature _photos).
+    function renderBwizPhotos() {
+      var box = $('bwiz-photos');
+      if (!box) return;
+      box.innerHTML =
+        '<div class="gis-photo-head"><span>Photos</span>' +
+        '<span class="gis-photo-btns"><label class="gis-photo-add">\uff0b Add' +
+        '<input type="file" accept="image/*" capture="environment" multiple hidden></label></span></div>' +
+        '<div class="gis-photo-strip" data-role="bwiz-strip"></div>';
+      var input = box.querySelector('input[type="file"]');
+      input.addEventListener('change', function () {
+        var files = Array.prototype.slice.call(input.files || []);
+        input.value = '';
+        if (!files.length) return;
+        var anchor = { getLatLng: function () { return bwiz.point || (bwiz.pgPreview && bwiz.pgPreview.getBounds().getCenter()) || null; } };
+        photoGeo(anchor, function (geo) {
+          var pending = files.length;
+          files.forEach(function (file) {
+            var reader = new FileReader();
+            reader.onload = function () {
+              var ph = { dataUrl: reader.result, name: file.name, time: Date.now() };
+              if (geo) { ph.lat = geo.lat; ph.lng = geo.lng; ph.acc = geo.acc; ph.geoSrc = geo.src; }
+              bwiz.photos.push(ph);
+              pending -= 1; if (pending === 0) renderBwizStrip();
+            };
+            reader.onerror = function () { pending -= 1; if (pending === 0) renderBwizStrip(); };
+            reader.readAsDataURL(file);
+          });
+        });
+      });
+      renderBwizStrip();
+    }
+
+    function renderBwizStrip() {
+      var strip = $('bwiz-strip');
+      if (!strip) return;
+      if (!bwiz.photos.length) { strip.innerHTML = '<span class="gis-photo-empty">No photos yet</span>'; return; }
+      strip.innerHTML = '';
+      bwiz.photos.forEach(function (ph, idx) {
+        var cell = document.createElement('figure');
+        cell.className = 'gis-photo-cell';
+        var t = document.createElement('div');
+        t.className = 'gis-photo-thumb';
+        var img = document.createElement('img');
+        img.src = ph.dataUrl; img.alt = ph.name || ('photo ' + (idx + 1));
+        img.addEventListener('click', function () { openPhotoLightbox(ph.dataUrl, photoMetaText(ph, true)); });
+        var rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'gis-photo-rm'; rm.textContent = '\u00d7';
+        rm.title = 'Remove photo';
+        rm.addEventListener('click', function () { bwiz.photos.splice(idx, 1); renderBwizStrip(); });
+        t.appendChild(img); t.appendChild(rm);
+        cell.appendChild(t);
+        var cap = document.createElement('figcaption');
+        cap.className = 'gis-photo-cap';
+        cap.textContent = photoMetaText(ph, false);
+        cell.appendChild(cap);
+        strip.appendChild(cell);
+      });
+    }
+
+    // Build the shared attribute object, then emit one feature per captured
+    // geometry. Both carry the same attrs + building_uuid, tagged by role.
+    function saveBuilding() {
+      if (!bwiz.open) return;
+      if (!bwiz.point && !bwiz.polygon) { toast('Capture a point or a polygon first'); return; }
+      var meta = layers[bwiz.metaId] || activeBuildingMeta();
+      if (!meta.visible) {
+        meta.visible = true; meta.group.addTo(map);
+        if (meta.row) { var cb = meta.row.querySelector('.gis-vis'); if (cb) cb.checked = true; }
+      }
+      var uuid = genUUID();
+      var bid = nextBuildingId();
+      var shared = {
+        surveyor: bwizGetVal('surveyor'), date: bwizGetVal('date'),
+        building_id: bid, block: bwizGetVal('block'),
+        office_name: bwizGetVal('office_name'),
+        floors: bwizGetVal('floors'),
+        area_m2: bwizGetVal('area_m2'), builtup_m2: bwizGetVal('builtup_m2'),
+        remarks: bwizGetVal('remarks'),
+        building_uuid: uuid,
+      };
+      if (shared.surveyor) { try { localStorage.setItem('kukl_gis_surveyor', shared.surveyor); } catch (_) {} }
+
+      function photosClone() { try { return JSON.parse(JSON.stringify(bwiz.photos)); } catch (_) { return []; } }
+      function makeProps(role) {
+        var p = {};
+        Object.keys(shared).forEach(function (k) { p[k] = shared[k]; });
+        p.geometry_role = role;     // 'centroid' (point) | 'footprint' (polygon)
+        p._photos = photosClone();
+        return p;
+      }
+
+      var made = 0;
+      if (bwiz.point) {
+        var marker = bwiz.ptPreview || makePointMarker(meta, bwiz.point);
+        bwiz.ptPreview = null;
+        try { map.removeLayer(marker); } catch (_) {}
+        marker.feature = { type: 'Feature', properties: makeProps('centroid'), geometry: null };
+        meta.group.addLayer(marker);
+        attachFeatureBehavior(meta, marker, false);
+        made += 1;
+      }
+      if (bwiz.polygon) {
+        var poly = bwiz.pgPreview || L.polygon(bwiz.polygon, styleFor(meta.color));
+        bwiz.pgPreview = null;
+        try { map.removeLayer(poly); } catch (_) {}
+        try { poly.setStyle(styleFor(meta.color)); } catch (_) {}
+        poly.feature = { type: 'Feature', properties: makeProps('footprint'), geometry: null };
+        meta.group.addLayer(poly);
+        attachFeatureBehavior(meta, poly, false);
+        made += 1;
+      }
+      updateCount(meta);
+      persist(meta.id);
+      closeBuildingWizard();
+      toast('Building ' + bid + ' saved (' + (made === 2 ? 'point + footprint' : '1 geometry') + ')');
     }
 
     function saveAttrFromEditor() {
@@ -1453,7 +1749,7 @@
       });
       var meta = layers[id];
       if (meta) applyToolsForCategory(meta.category);
-      updateGeomRow();
+      updateBwizRow();
     }
 
     // ---- Auto building numbering (sequential IDs, restarting per block) ----
@@ -1849,6 +2145,8 @@
 
     // ---- Draw handler: route new shapes into the active layer ----
     map.on('pm:create', function (e) {
+      // Building wizard owns the draw while it is capturing geometry.
+      if (bwiz.open && bwiz.drawing) { bwizCapture(e); return; }
       var lyr = e.layer;
       var meta = layers[activeId];
       if (!meta) {
@@ -1878,6 +2176,11 @@
       Object.keys(layers).forEach(function (k) { updateCount(layers[k]); persist(k); });
     });
 
+    // If a wizard draw is cancelled (Esc) with nothing captured, reset the chip.
+    map.on('pm:drawend', function () {
+      if (bwiz.open) { bwiz.drawing = null; updateBwizGeomStatus(); }
+    });
+
     // ---- New-layer button ----
     host.querySelector('[data-act="new-layer"]').addEventListener('click', function () {
       var meta = createLayer({ category: catSelectValue() });
@@ -1885,19 +2188,18 @@
       persist(meta.id);
     });
 
-    // ---- Building geometry toggle (Point / Area) ----
-    var geomRow = $('geom-row');
-    if (geomRow) {
-      geomRow.querySelectorAll('.gis-geom-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          buildingGeom = btn.dataset.geom === 'polygon' ? 'polygon' : 'point';
-          updateGeomRow();
-          var meta = layers[activeId];
-          if (meta && meta.category === 'building') applyToolsForCategory('building');
-          toast('Building draw mode: ' + (buildingGeom === 'polygon' ? 'Area (polygon)' : 'Point'));
-        });
-      });
-    }
+    // ---- Building wizard (point + footprint sharing one attribute record) ----
+    var addBuildingBtn = host.querySelector('[data-act="add-building"]');
+    if (addBuildingBtn) addBuildingBtn.addEventListener('click', openBuildingWizard);
+    var bwizDrawPt = bwizPanel.querySelector('[data-act="bwiz-draw-point"]');
+    var bwizDrawPg = bwizPanel.querySelector('[data-act="bwiz-draw-polygon"]');
+    if (bwizDrawPt) bwizDrawPt.addEventListener('click', function () { bwizDraw('point'); });
+    if (bwizDrawPg) bwizDrawPg.addEventListener('click', function () { bwizDraw('polygon'); });
+    var bwizFloors = bwizPanel.querySelector('[data-bkey="floors"]');
+    if (bwizFloors) bwizFloors.addEventListener('input', recomputeBwizBuiltup);
+    host.querySelector('[data-act="bwiz-close"]').addEventListener('click', closeBuildingWizard);
+    host.querySelector('[data-act="bwiz-cancel"]').addEventListener('click', closeBuildingWizard);
+    host.querySelector('[data-act="bwiz-save"]').addEventListener('click', saveBuilding);
 
     // ---- Mobile panel drawer toggle ----
     var sidebarEl = $('sidebar');
