@@ -676,6 +676,40 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-bwiz-foot .btn{flex:1;}
 .gis-bwiz-foot .btn-primary{flex:1.5;}
 .gis-bwiz-foot .btn:disabled{opacity:.5;cursor:not-allowed;}
+/* ── Drawing-mode: collapse wizard to a slim bottom bar so map is fully visible ── */
+.gis-bwiz.gis-bwiz-drawing{
+  top:auto;bottom:10px;right:10px;left:10px;width:auto;max-width:none;
+  transition:all .22s ease;
+}
+.gis-bwiz.gis-bwiz-drawing .gis-bwiz-body,
+.gis-bwiz.gis-bwiz-drawing .gis-bwiz-foot{
+  display:none!important;
+}
+.gis-bwiz.gis-bwiz-drawing .gis-bwiz-head{
+  border-radius:8px;
+  justify-content:center;
+  padding:10px 14px;
+  gap:10px;
+}
+.gis-bwiz.gis-bwiz-drawing .gis-bwiz-head strong::after{
+  content:' — tap the map to draw';
+  font-weight:400;font-size:11px;letter-spacing:.3px;opacity:.85;
+}
+/* Cancel button stays visible inside the collapsed bar */
+.gis-bwiz.gis-bwiz-drawing .gis-attr-x{
+  display:inline-flex!important;
+  border:1px solid rgba(255,255,255,.5);border-radius:5px;
+  padding:2px 8px;font-size:13px;
+}
+/* Pulsing border to signal drawing is active */
+@keyframes bwiz-draw-pulse{
+  0%,100%{box-shadow:0 0 0 3px rgba(27,111,214,.35);}
+  50%{box-shadow:0 0 0 6px rgba(27,111,214,.12);}
+}
+.gis-bwiz.gis-bwiz-drawing .gis-bwiz-card{
+  animation:bwiz-draw-pulse 1.6s ease-in-out infinite;
+  border-radius:8px;
+}
 /* Permanent survey-point labels (Building ID · Block, Valve ID, …) */
 .leaflet-tooltip.gis-feat-label{
   background:rgba(255,255,255,.92);border:1px solid #333;border-radius:4px;

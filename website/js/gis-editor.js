@@ -100,8 +100,7 @@
         { key: 'office_name', label: 'Office / Occupant (1)', type: 'text' },
         { key: 'office_name_2', label: 'Office / Occupant (2)', type: 'text' },
         { key: 'office_name_3', label: 'Office / Occupant (3)', type: 'text' },
-        { key: 'meter_present', label: 'Meter Present', type: 'select', options: ['', 'Yes', 'No'] },
-        { key: 'meter_condition', label: 'Meter Condition', type: 'select', options: ['', 'Working', 'Faulty', 'Stuck', 'Missing', 'Bypassed', 'Tampered'] },
+        { key: 'meter_status', label: 'Meter Status', type: 'select', options: ['', 'Present and Working', 'Present but not Working', 'Not Present'] },
         { key: 'floors', label: 'Floors', type: 'number' },
         { key: 'area_m2', label: 'Area (m\u00b2) \u2014 auto (area shape only)', type: 'number', readonly: true },
         { key: 'builtup_m2', label: 'Built-up Area (m\u00b2) \u2014 auto', type: 'number', readonly: true },
@@ -326,23 +325,12 @@
       '          <label class="gis-attr-field"><span>Office / Occupant (1)</span><input type="text" data-bkey="office_name"></label>' +
       '          <label class="gis-attr-field"><span>Office / Occupant (2)</span><input type="text" data-bkey="office_name_2"></label>' +
       '          <label class="gis-attr-field"><span>Office / Occupant (3)</span><input type="text" data-bkey="office_name_3"></label>' +
-      '          <label class="gis-attr-field"><span>Meter Present</span>' +
-      '            <select data-bkey="meter_present" data-role="bwiz-meter-present">' +
+      '          <label class="gis-attr-field"><span>Meter Status</span>' +
+      '            <select data-bkey="meter_status">' +
       '              <option value="">\u2014 Select \u2014</option>' +
-      '              <option value="Yes">Yes</option>' +
-      '              <option value="No">No</option>' +
-      '            </select>' +
-      '          </label>' +
-      '          <label class="gis-attr-field" data-role="bwiz-meter-cond-row" style="display:none">' +
-      '            <span>Meter Condition</span>' +
-      '            <select data-bkey="meter_condition">' +
-      '              <option value="">\u2014 Select \u2014</option>' +
-      '              <option value="Working">Working</option>' +
-      '              <option value="Faulty">Faulty</option>' +
-      '              <option value="Stuck">Stuck</option>' +
-      '              <option value="Missing">Missing</option>' +
-      '              <option value="Bypassed">Bypassed</option>' +
-      '              <option value="Tampered">Tampered</option>' +
+      '              <option value="Present and Working">Present and Working</option>' +
+      '              <option value="Present but not Working">Present but not Working</option>' +
+      '              <option value="Not Present">Not Present</option>' +
       '            </select>' +
       '          </label>' +
       '        </div>' +
@@ -1289,22 +1277,11 @@
       bwizSetVal('office_name', '');
       bwizSetVal('office_name_2', '');
       bwizSetVal('office_name_3', '');
-      bwizSetVal('meter_present', '');
-      bwizSetVal('meter_condition', '');
+      bwizSetVal('meter_status', '');
       bwizSetVal('floors', '');
       bwizSetVal('area_m2', '');
       bwizSetVal('builtup_m2', '');
       bwizSetVal('remarks', '');
-      // Show/hide meter_condition based on meter_present selection
-      var meterPresentEl = bwizPanel.querySelector('[data-role="bwiz-meter-present"]');
-      var meterCondRow  = bwizPanel.querySelector('[data-role="bwiz-meter-cond-row"]');
-      if (meterPresentEl && meterCondRow) {
-        meterCondRow.style.display = 'none';
-        meterPresentEl.onchange = function () {
-          meterCondRow.style.display = meterPresentEl.value === 'Yes' ? '' : 'none';
-          if (meterPresentEl.value !== 'Yes') bwizSetVal('meter_condition', '');
-        };
-      }
       var more = $('bwiz-more'); if (more) more.classList.add('gis-bwiz-locked');
       renderBwizPhotos();
       updateBwizGeomStatus();
@@ -1327,6 +1304,7 @@
     function closeBuildingWizard() {
       bwizClearGeometry();
       bwiz.open = false; bwiz.metaId = null; bwiz.photos = [];
+      bwizPanel.classList.remove('gis-bwiz-drawing');
       bwizPanel.hidden = true;
     }
 
@@ -1341,6 +1319,8 @@
         map.pm.enableDraw(tool, { continueDrawing: false, snappable: true, snapDistance: 20 });
       } catch (_) { toast('Could not start drawing'); bwiz.drawing = null; }
       updateBwizGeomStatus();
+      // On mobile: collapse the wizard card so the map is fully visible for drawing.
+      bwizPanel.classList.add('gis-bwiz-drawing');
       toast(shape === 'polygon'
         ? 'Tap the map to trace the footprint, double-tap to finish'
         : 'Tap the map to place the point');
@@ -1369,6 +1349,8 @@
       if (bwiz.point || bwiz.polygon) {
         var more = $('bwiz-more'); if (more) more.classList.remove('gis-bwiz-locked');
       }
+      // Geometry captured — restore the full wizard panel.
+      bwizPanel.classList.remove('gis-bwiz-drawing');
       updateBwizGeomStatus();
       updateBwizSave();
     }
@@ -1479,8 +1461,7 @@
         office_name: bwizGetVal('office_name'),
         office_name_2: bwizGetVal('office_name_2'),
         office_name_3: bwizGetVal('office_name_3'),
-        meter_present: bwizGetVal('meter_present'),
-        meter_condition: bwizGetVal('meter_present') === 'Yes' ? bwizGetVal('meter_condition') : '',
+        meter_status: bwizGetVal('meter_status'),
         floors: bwizGetVal('floors'),
         area_m2: bwizGetVal('area_m2'), builtup_m2: bwizGetVal('builtup_m2'),
         remarks: bwizGetVal('remarks'),
