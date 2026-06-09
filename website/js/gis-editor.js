@@ -193,7 +193,9 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
   }
 
-  // Minimal GeoJSON → KML (points, lines, polygons) for export.
+  // GeoJSON → KML with full ExtendedData (points, lines, polygons).
+  // All feature properties are emitted as <Data> elements so they survive
+  // the round-trip into Google Earth, QGIS, and other KML-aware tools.
   function geojsonToKml(fc, layerName) {
     var feats = (fc && fc.features) || [];
     var out = '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -201,12 +203,26 @@
       '<name>' + esc(layerName || 'layer') + '</name>';
     function coordStr(c) { return c[0] + ',' + c[1] + (c.length > 2 ? ',' + c[2] : ''); }
     function ring(r) { return r.map(coordStr).join(' '); }
+    // Internal / binary keys to skip when building ExtendedData.
+    var SKIP_KEYS = { name: 1, Name: 1 };
     feats.forEach(function (f) {
       var g = f.geometry; if (!g) return;
       var props = f.properties || {};
       var nm = props.name || props.Name || '';
       out += '<Placemark>';
       if (nm) out += '<name>' + esc(nm) + '</name>';
+      // ---- ExtendedData: emit every non-internal property ----
+      var dataKeys = Object.keys(props).filter(function (k) {
+        return k.charAt(0) !== '_' && !SKIP_KEYS[k] && props[k] != null && props[k] !== '';
+      });
+      if (dataKeys.length) {
+        out += '<ExtendedData>';
+        dataKeys.forEach(function (k) {
+          out += '<Data name="' + esc(k) + '"><value>' + esc(String(props[k])) + '</value></Data>';
+        });
+        out += '</ExtendedData>';
+      }
+      // ---- Geometry ----
       if (g.type === 'Point') {
         out += '<Point><coordinates>' + coordStr(g.coordinates) + '</coordinates></Point>';
       } else if (g.type === 'LineString') {
@@ -298,6 +314,7 @@
       '  <p class="gis-tip">Pick a layer type, tap <strong>+ NEW</strong>, then draw with the map toolbar. For buildings, select the Building layer and tap <strong>+ Add Building</strong> to capture a point and a footprint under one shared record. Tap any feature later to edit it. Pipe length and footprint area are measured automatically. Everything saves offline.</p>' +
       '</div>' +
       '<div class="gis-map-wrap"><div class="gis-map" data-role="map"></div>' +
+      '  <div class="gis-sidebar-backdrop" data-act="sidebar-backdrop"></div>' +
       '  <button type="button" class="gis-panel-toggle" data-act="panel-toggle" title="Show tools">\u2630 Tools</button>' +
       '  <div class="gis-attr" data-role="attr" hidden>' +
       '    <div class="gis-attr-card">' +
@@ -1290,6 +1307,7 @@
       if (attrPanel) attrPanel.hidden = true;
       if (tablePanel) tablePanel.hidden = true;
       if (dashPanel) dashPanel.hidden = true;
+      setPanelOpen(false); // close mobile sidebar so the map is fully visible
       bwizPanel.hidden = false;
     }
 
@@ -2234,8 +2252,10 @@
     }
     var pToggle = host.querySelector('[data-act="panel-toggle"]');
     var pClose = host.querySelector('[data-act="panel-close"]');
+    var pBackdrop = host.querySelector('[data-act="sidebar-backdrop"]');
     if (pToggle) pToggle.addEventListener('click', function () { setPanelOpen(true); });
     if (pClose) pClose.addEventListener('click', function () { setPanelOpen(false); });
+    if (pBackdrop) pBackdrop.addEventListener('click', function () { setPanelOpen(false); });
 
     // ---- Attribute editor wiring ----
     host.querySelector('[data-act="attr-close"]').addEventListener('click', function () { attrPanel.hidden = true; });

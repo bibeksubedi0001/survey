@@ -866,6 +866,8 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 /* Mobile panel drawer */
 .gis-panel-toggle{display:none;}
 .gis-panel-close{display:none;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:#333;padding:0 4px;}
+/* Sidebar backdrop overlay (mobile only — hidden on desktop) */
+.gis-sidebar-backdrop{display:none;}
 @media (max-width:780px){
   .gis-editor{height:80vh;min-height:520px;}
   .gis-host{flex-direction:column;}
@@ -883,6 +885,11 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
     font-size:12px;font-weight:800;letter-spacing:.5px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);
   }
   .gis-host.panel-open .gis-panel-toggle{display:none;}
+  /* Dim overlay behind the drawer; tap to close (handler wired in JS) */
+  .gis-host.panel-open .gis-sidebar-backdrop{
+    display:block;position:absolute;inset:0;z-index:1150;
+    background:rgba(0,0,0,.4);
+  }
   .gis-panel-close{display:block;}
   /* Bigger touch targets on phones */
   .gis-layer-row{padding:7px 6px;gap:7px;}
