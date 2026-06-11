@@ -193,53 +193,77 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
   }
 
-  // GeoJSON → KML with full ExtendedData (points, lines, polygons).
-  // All feature properties are emitted as <Data> elements so they survive
-  // the round-trip into Google Earth, QGIS, and other KML-aware tools.
+  // ---- GeoJSON → KML with full ExtendedData ------------------------------
+  // Every feature property is emitted as a <Data> element so rich attributes
+  // (Building ID, Meter Status, building_uuid, geometry_role …) survive the
+  // round-trip into Google Earth, QGIS and QField. building_uuid keeps a
+  // building's point + footprint joined as one record after import.
+  var KML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>';
+  function kmlCoord(c) { return c[0] + ',' + c[1] + (c.length > 2 ? ',' + c[2] : ''); }
+  function kmlRing(r) { return r.map(kmlCoord).join(' '); }
+  function kmlPolygon(rings) {
+    var out = '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
+      kmlRing(rings[0] || []) + '</coordinates></LinearRing></outerBoundaryIs>';
+    // Inner rings (holes) — preserved so footprints with courtyards survive.
+    for (var i = 1; i < rings.length; i++) {
+      out += '<innerBoundaryIs><LinearRing><coordinates>' +
+        kmlRing(rings[i]) + '</coordinates></LinearRing></innerBoundaryIs>';
+    }
+    return out + '</Polygon>';
+  }
+  function kmlGeometry(g) {
+    if (!g) return '';
+    if (g.type === 'Point') return '<Point><coordinates>' + kmlCoord(g.coordinates) + '</coordinates></Point>';
+    if (g.type === 'LineString') return '<LineString><coordinates>' + g.coordinates.map(kmlCoord).join(' ') + '</coordinates></LineString>';
+    if (g.type === 'MultiLineString') {
+      return '<MultiGeometry>' + (g.coordinates || []).map(function (line) {
+        return '<LineString><coordinates>' + line.map(kmlCoord).join(' ') + '</coordinates></LineString>';
+      }).join('') + '</MultiGeometry>';
+    }
+    if (g.type === 'Polygon') return kmlPolygon(g.coordinates || []);
+    if (g.type === 'MultiPolygon') {
+      return '<MultiGeometry>' + (g.coordinates || []).map(kmlPolygon).join('') + '</MultiGeometry>';
+    }
+    return '';
+  }
+  // Internal / binary keys to skip when building ExtendedData.
+  var KML_SKIP_KEYS = { name: 1, Name: 1 };
+  function featureToPlacemark(f) {
+    var g = f && f.geometry; if (!g) return '';
+    var props = f.properties || {};
+    var nm = props.name || props.Name || '';
+    var out = '<Placemark>';
+    if (nm) out += '<name>' + esc(nm) + '</name>';
+    var dataKeys = Object.keys(props).filter(function (k) {
+      return k.charAt(0) !== '_' && !KML_SKIP_KEYS[k] && props[k] != null && props[k] !== '';
+    });
+    if (dataKeys.length) {
+      out += '<ExtendedData>';
+      dataKeys.forEach(function (k) {
+        out += '<Data name="' + esc(k) + '"><value>' + esc(String(props[k])) + '</value></Data>';
+      });
+      out += '</ExtendedData>';
+    }
+    return out + kmlGeometry(g) + '</Placemark>';
+  }
+  // Single FeatureCollection → flat KML document.
   function geojsonToKml(fc, layerName) {
     var feats = (fc && fc.features) || [];
-    var out = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-      '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>' +
-      '<name>' + esc(layerName || 'layer') + '</name>';
-    function coordStr(c) { return c[0] + ',' + c[1] + (c.length > 2 ? ',' + c[2] : ''); }
-    function ring(r) { return r.map(coordStr).join(' '); }
-    // Internal / binary keys to skip when building ExtendedData.
-    var SKIP_KEYS = { name: 1, Name: 1 };
-    feats.forEach(function (f) {
-      var g = f.geometry; if (!g) return;
-      var props = f.properties || {};
-      var nm = props.name || props.Name || '';
-      out += '<Placemark>';
-      if (nm) out += '<name>' + esc(nm) + '</name>';
-      // ---- ExtendedData: emit every non-internal property ----
-      var dataKeys = Object.keys(props).filter(function (k) {
-        return k.charAt(0) !== '_' && !SKIP_KEYS[k] && props[k] != null && props[k] !== '';
-      });
-      if (dataKeys.length) {
-        out += '<ExtendedData>';
-        dataKeys.forEach(function (k) {
-          out += '<Data name="' + esc(k) + '"><value>' + esc(String(props[k])) + '</value></Data>';
-        });
-        out += '</ExtendedData>';
-      }
-      // ---- Geometry ----
-      if (g.type === 'Point') {
-        out += '<Point><coordinates>' + coordStr(g.coordinates) + '</coordinates></Point>';
-      } else if (g.type === 'LineString') {
-        out += '<LineString><coordinates>' + g.coordinates.map(coordStr).join(' ') + '</coordinates></LineString>';
-      } else if (g.type === 'Polygon') {
-        out += '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
-          ring(g.coordinates[0] || []) + '</coordinates></LinearRing></outerBoundaryIs></Polygon>';
-      } else if (g.type === 'MultiPolygon') {
-        (g.coordinates || []).forEach(function (poly) {
-          out += '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
-            ring(poly[0] || []) + '</coordinates></LinearRing></outerBoundaryIs></Polygon>';
-        });
-      }
-      out += '</Placemark>';
+    var out = KML_HEADER + '<name>' + esc(layerName || 'layer') + '</name>';
+    feats.forEach(function (f) { out += featureToPlacemark(f); });
+    return out + '</Document></kml>';
+  }
+  // Many layers → one KML document, one <Folder> per layer so the structure
+  // reads cleanly in Google Earth / QGIS / QField.
+  function layersToKml(layerFCs, docName) {
+    var out = KML_HEADER + '<name>' + esc(docName || 'project') + '</name>';
+    (layerFCs || []).forEach(function (entry) {
+      out += '<Folder><name>' + esc(entry.name || 'layer') + '</name>';
+      ((entry.fc && entry.fc.features) || []).forEach(function (f) { out += featureToPlacemark(f); });
+      out += '</Folder>';
     });
-    out += '</Document></kml>';
-    return out;
+    return out + '</Document></kml>';
   }
 
   // ---------------------------------------------------------------
@@ -275,6 +299,7 @@
       '  <div class="gis-project">' +
       '    <button type="button" class="btn btn-mini btn-outline" data-act="dashboard">\u2637 SUMMARY</button>' +
       '    <button type="button" class="btn btn-mini btn-outline" data-act="proj-geojson">ALL \u2192 GEOJSON</button>' +
+      '    <button type="button" class="btn btn-mini btn-outline" data-act="proj-kml">ALL \u2192 KML</button>' +
       '    <button type="button" class="btn btn-mini btn-outline" data-act="proj-xlsx">ALL \u2192 EXCEL</button>' +
       '  </div>' +
       '  <div class="gis-side-head"><strong>Import</strong></div>' +
@@ -905,11 +930,29 @@
       return Object.keys(ids).sort();
     }
 
-    // Prefix used for self-generated Building IDs (editable via auto-number).
-    function buildingPrefix() {
-      try { return (localStorage.getItem('kukl_gis_bprefix') || 'SD').trim() || 'SD'; }
-      catch (_) { return 'SD'; }
+    // Default ID prefix + the schema field that holds the ID, per category.
+    var ID_DEFAULTS = {
+      building: { prefix: 'SD', key: 'building_id', noun: 'building' },
+      connection: { prefix: 'C', key: 'connection_id', noun: 'connection' },
+      valve: { prefix: 'V', key: 'valve_id', noun: 'valve' },
+      pipe: { prefix: 'P', key: 'pipe_id', noun: 'pipe' },
+    };
+    // True for categories that carry a meaningful, auto-numberable ID field.
+    function canAutoNumber(category) { return !!ID_DEFAULTS[category]; }
+
+    // Prefix used for self-generated IDs (editable via auto-number), per
+    // category and remembered in localStorage.
+    function categoryPrefix(category) {
+      var def = (ID_DEFAULTS[category] || ID_DEFAULTS.building).prefix;
+      try {
+        var v = localStorage.getItem('kukl_gis_prefix_' + category);
+        // Migrate the old building-only key.
+        if (v == null && category === 'building') v = localStorage.getItem('kukl_gis_bprefix');
+        return (v || def).trim() || def;
+      } catch (_) { return def; }
     }
+    // Back-compat shim — older code/migrations referenced buildingPrefix().
+    function buildingPrefix() { return categoryPrefix('building'); }
 
     // Self-generated, collision-free Building ID. Scans every existing building
     // ID, finds the highest trailing number and returns PREFIX-### (zero-padded).
@@ -1564,31 +1607,91 @@
       } catch (_) {}
     }
 
-    // ---- Per-building printable report (attributes + photos + map snippet) ----
-    // Build a 3x3 OSM tile mosaic centred on the feature with a marker overlay.
-    function mapSnippetHTML(lat, lng, zoom) {
-      zoom = zoom || 18;
-      var n = Math.pow(2, zoom);
-      var xf = (lng + 180) / 360 * n;
-      var latRad = lat * Math.PI / 180;
-      var yf = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
-      var xt = Math.floor(xf), yt = Math.floor(yf);
-      var px = Math.round((xf - xt) * 256), py = Math.round((yf - yt) * 256);
+    // ---- Per-building printable report (attributes + photos + map figure) ----
+    // Web-Mercator pixel projection at a given zoom (256-px tiles).
+    function projectPx(lng, lat, zoom) {
+      var n = Math.pow(2, zoom) * 256;
+      var x = (lng + 180) / 360 * n;
+      var s = Math.max(-0.9999, Math.min(0.9999, Math.sin(lat * Math.PI / 180)));
+      var y = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n;
+      return { x: x, y: y };
+    }
+    // Visit every [lng,lat] coordinate in a GeoJSON geometry.
+    function eachCoord(geom, fn) {
+      if (!geom || !geom.coordinates) return;
+      var c = geom.coordinates;
+      if (geom.type === 'Point') fn(c);
+      else if (geom.type === 'LineString' || geom.type === 'MultiPoint') c.forEach(fn);
+      else if (geom.type === 'Polygon' || geom.type === 'MultiLineString') c.forEach(function (r) { r.forEach(fn); });
+      else if (geom.type === 'MultiPolygon') c.forEach(function (poly) { poly.forEach(function (r) { r.forEach(fn); }); });
+    }
+    // Static OSM figure centred on the feature, with the actual point /
+    // footprint polygon / line drawn on top (so the report shows the shape,
+    // not just a dot). geoms: GeoJSON geometries; color: layer colour.
+    function mapSnippetHTML(geoms, color) {
+      geoms = (geoms || []).filter(Boolean);
+      color = color || '#1b6fd6';
+      var W = 320, H = 240;
+      var minLng = 180, minLat = 90, maxLng = -180, maxLat = -90, has = false;
+      geoms.forEach(function (g) {
+        eachCoord(g, function (c) {
+          has = true;
+          if (c[0] < minLng) minLng = c[0]; if (c[0] > maxLng) maxLng = c[0];
+          if (c[1] < minLat) minLat = c[1]; if (c[1] > maxLat) maxLat = c[1];
+        });
+      });
+      if (!has) return '<p class="rep-none">No location.</p>';
+      var cLng = (minLng + maxLng) / 2, cLat = (minLat + maxLat) / 2;
+      // Largest zoom where the geometry's bbox fits comfortably in the frame.
+      var degenerate = (maxLng - minLng < 1e-7 && maxLat - minLat < 1e-7);
+      var zoom = 12;
+      for (var z = 20; z >= 12; z--) {
+        var a = projectPx(minLng, maxLat, z), b = projectPx(maxLng, minLat, z);
+        zoom = z;
+        if (Math.abs(b.x - a.x) <= W * 0.7 && Math.abs(b.y - a.y) <= H * 0.7) break;
+      }
+      if (degenerate) zoom = 18;
+      zoom = Math.min(zoom, 20);
+      var ctr = projectPx(cLng, cLat, zoom);
+      var originX = ctr.x - W / 2, originY = ctr.y - H / 2;
+      var nTiles = Math.pow(2, zoom);
       var sub = ['a', 'b', 'c'];
-      var imgs = '';
-      for (var dy = -1; dy <= 1; dy++) {
-        for (var dx = -1; dx <= 1; dx++) {
-          var tx = xt + dx, ty = yt + dy;
+      var tiles = '';
+      var tx0 = Math.floor(originX / 256), tx1 = Math.floor((originX + W) / 256);
+      var ty0 = Math.floor(originY / 256), ty1 = Math.floor((originY + H) / 256);
+      for (var ty = ty0; ty <= ty1; ty++) {
+        if (ty < 0 || ty >= nTiles) continue;
+        for (var tx = tx0; tx <= tx1; tx++) {
+          var wtx = ((tx % nTiles) + nTiles) % nTiles;
           var s = sub[Math.abs(tx + ty) % 3];
-          var left = (dx + 1) * 256, top = (dy + 1) * 256;
-          imgs += '<img class="snip-tile" style="left:' + left + 'px;top:' + top + 'px" ' +
-            'src="https://' + s + '.tile.openstreetmap.org/' + zoom + '/' + tx + '/' + ty + '.png" ' +
-            'crossorigin="anonymous" alt="">';
+          tiles += '<img class="snip-tile" style="left:' + (tx * 256 - originX) + 'px;top:' + (ty * 256 - originY) + 'px" ' +
+            'src="https://' + s + '.tile.openstreetmap.org/' + zoom + '/' + wtx + '/' + ty + '.png" alt="" referrerpolicy="no-referrer-when-downgrade">';
         }
       }
-      var mx = 256 + px, my = 256 + py;
-      var dot = '<div class="snip-dot" style="left:' + mx + 'px;top:' + my + 'px"></div>';
-      return '<div class="snip-frame"><div class="snip-mosaic">' + imgs + dot + '</div></div>';
+      // SVG overlay of the geometry, using the same projection.
+      function pxStr(c) { var p = projectPx(c[0], c[1], zoom); return (p.x - originX).toFixed(1) + ',' + (p.y - originY).toFixed(1); }
+      var svg = '';
+      geoms.forEach(function (g) {
+        if (!g) return;
+        if (g.type === 'Polygon' || g.type === 'MultiPolygon') {
+          var polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+          polys.forEach(function (poly) {
+            var d = poly.map(function (ring) { return 'M' + ring.map(pxStr).join('L') + 'Z'; }).join('');
+            svg += '<path d="' + d + '" fill="' + color + '" fill-opacity="0.28" stroke="' + color + '" stroke-width="2.5"/>';
+          });
+        } else if (g.type === 'LineString' || g.type === 'MultiLineString') {
+          var lines = g.type === 'LineString' ? [g.coordinates] : g.coordinates;
+          lines.forEach(function (line) {
+            svg += '<polyline points="' + line.map(pxStr).join(' ') + '" fill="none" stroke="' + color + '" stroke-width="3"/>';
+          });
+        } else if (g.type === 'Point') {
+          var p = pxStr(g.coordinates).split(',');
+          svg += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="6.5" fill="' + color + '" stroke="#fff" stroke-width="2.5"/>';
+        }
+      });
+      var overlay = '<svg class="snip-svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + svg + '</svg>';
+      return '<div class="snip-frame" style="width:' + W + 'px;height:' + H + 'px">' +
+        '<div class="snip-mosaic">' + tiles + '</div>' + overlay + '</div>';
     }
 
     function printFeatureReport(meta, lyr) {
@@ -1598,6 +1701,23 @@
       var ll = featureLatLng(lyr);
       var title = featureTitle(meta, props) || schema.label;
       var bid = props.building_id || '';
+
+      // Collect every geometry of THIS building so the figure shows both the
+      // point and the footprint together (they share a building_uuid).
+      var uuid = props.building_uuid;
+      var geoms = [], geomKinds = {};
+      meta.group.eachLayer(function (l) {
+        if (typeof l.toGeoJSON !== 'function') return;
+        var lp = (l.feature && l.feature.properties) || {};
+        var same = uuid ? lp.building_uuid === uuid : l === lyr;
+        if (!same) return;
+        var gj = l.toGeoJSON();
+        if (gj && gj.geometry) { geoms.push(gj.geometry); geomKinds[gj.geometry.type] = true; }
+      });
+      if (!geoms.length) { var gj0 = lyr.toGeoJSON(); if (gj0 && gj0.geometry) { geoms.push(gj0.geometry); geomKinds[gj0.geometry.type] = true; } }
+      var hasPoly = geomKinds.Polygon || geomKinds.MultiPolygon;
+      var hasPoint = geomKinds.Point || geomKinds.MultiPoint;
+      var hasLine = geomKinds.LineString || geomKinds.MultiLineString;
 
       // Attribute rows (skip empty + internal keys).
       var rows = '';
@@ -1629,7 +1749,19 @@
       });
       if (!photoHTML) photoHTML = '<p class="rep-none">No photos captured.</p>';
 
-      var snippet = ll ? mapSnippetHTML(ll.lat, ll.lng, 18) : '<p class="rep-none">No location.</p>';
+      var snippet = mapSnippetHTML(geoms, meta.color);
+      var col = meta.color || '#1b6fd6';
+      // Map legend — show only the geometry symbols this building actually has.
+      var legend = '';
+      if (hasPoly) legend += '<span class="lg-it"><span class="lg-poly" style="background:' + col + '33;border-color:' + col + '"></span>Footprint (polygon)</span>';
+      if (hasPoint) legend += '<span class="lg-it"><span class="lg-pt" style="background:' + col + '"></span>Location (point)</span>';
+      if (hasLine) legend += '<span class="lg-it"><span class="lg-line" style="background:' + col + '"></span>Line</span>';
+      var legendHTML = legend ? '<div class="snip-legend">' + legend + '</div>' : '';
+
+      // Absolute logo URL so the image resolves inside the popup document.
+      var logoUrl = '';
+      try { logoUrl = new URL('assets/kukl-logo.png', window.location.href).href; } catch (_) { logoUrl = 'assets/kukl-logo.png'; }
+
       var now = new Date();
       var stamp = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
         ('0' + now.getDate()).slice(-2) + ' ' + ('0' + now.getHours()).slice(-2) + ':' +
@@ -1637,26 +1769,41 @@
 
       var doc =
         '<!doctype html><html><head><meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1">' +
         '<title>Building Report ' + esc(bid || title) + '</title>' +
         '<style>' +
         '*{box-sizing:border-box}' +
-        'body{font-family:Segoe UI,Arial,sans-serif;color:#111;margin:0;padding:24px;}' +
-        '.rep-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #13294b;padding-bottom:10px;margin-bottom:14px;}' +
-        '.rep-head h1{font-size:18px;margin:0 0 3px;color:#13294b;}' +
+        'body{font-family:"Times New Roman",Times,Georgia,serif;color:#111;margin:0;padding:24px;}' +
+        // No-print toolbar: Back + Print (essential on mobile, where the popup has no chrome).
+        '.rep-bar{position:sticky;top:0;z-index:10;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#13294b;color:#fff;margin:-24px -24px 18px;padding:10px 16px;}' +
+        '.rep-bar .ttl{font-size:13px;font-weight:700;letter-spacing:.5px;}' +
+        '.rep-bar .acts{display:flex;gap:8px;}' +
+        '.rep-bar button{font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:none;border-radius:6px;padding:8px 14px;}' +
+        '.rep-bar .b-back{background:#fff;color:#13294b;}' +
+        '.rep-bar .b-print{background:#1b6fd6;color:#fff;}' +
+        '.rep-head{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:3px solid #13294b;padding-bottom:10px;margin-bottom:14px;}' +
+        '.rep-head .brand{display:flex;align-items:center;gap:12px;}' +
+        '.rep-head .logo{width:54px;height:54px;object-fit:contain;flex:0 0 auto;}' +
+        '.rep-head h1{font-size:20px;margin:0 0 3px;color:#13294b;}' +
         '.rep-head .sub{font-size:12px;color:#555;}' +
         '.rep-head .org{text-align:right;font-size:11px;color:#555;}' +
         '.rep-head .org b{display:block;font-size:13px;color:#13294b;}' +
         '.rep-id{display:inline-block;background:#13294b;color:#fff;font-weight:700;font-size:13px;padding:3px 10px;border-radius:5px;margin-bottom:12px;}' +
         '.rep-grid{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;}' +
         '.rep-col{flex:1;min-width:280px;}' +
-        'table.rep-attr{border-collapse:collapse;width:100%;font-size:12px;}' +
+        'table.rep-attr{border-collapse:collapse;width:100%;font-size:13px;}' +
         'table.rep-attr th,table.rep-attr td{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top;}' +
         'table.rep-attr th{background:#eef3fb;width:42%;color:#222;font-weight:700;}' +
-        'h2{font-size:13px;color:#13294b;margin:16px 0 7px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #ccc;padding-bottom:3px;}' +
-        '.snip-frame{width:288px;height:216px;overflow:hidden;border:2px solid #13294b;border-radius:6px;position:relative;}' +
-        '.snip-mosaic{position:absolute;left:-120px;top:-156px;width:768px;height:768px;}' +
+        'h2{font-size:14px;color:#13294b;margin:16px 0 7px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #ccc;padding-bottom:3px;}' +
+        '.snip-frame{overflow:hidden;border:2px solid #13294b;border-radius:6px;position:relative;background:#e8eef5;}' +
+        '.snip-mosaic{position:absolute;inset:0;}' +
         '.snip-tile{position:absolute;width:256px;height:256px;}' +
-        '.snip-dot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#e8002a;border:3px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.5);}' +
+        '.snip-svg{position:absolute;left:0;top:0;}' +
+        '.snip-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:7px;font-size:11px;color:#333;}' +
+        '.snip-legend .lg-it{display:inline-flex;align-items:center;gap:5px;}' +
+        '.snip-legend .lg-poly{width:16px;height:12px;border:2px solid;display:inline-block;border-radius:2px;}' +
+        '.snip-legend .lg-pt{width:12px;height:12px;border:2px solid #fff;box-shadow:0 0 0 1px #999;border-radius:50%;display:inline-block;}' +
+        '.snip-legend .lg-line{width:18px;height:4px;border-radius:2px;display:inline-block;}' +
         '.rep-photos{display:flex;flex-wrap:wrap;gap:10px;}' +
         '.rep-photo{margin:0;width:200px;border:1px solid #ccc;border-radius:5px;overflow:hidden;}' +
         '.rep-photo img{width:100%;height:150px;object-fit:cover;display:block;}' +
@@ -1664,21 +1811,42 @@
         '.rep-meter{background:#0a8f8f;color:#fff;font-weight:700;font-size:9px;padding:1px 4px;border-radius:3px;}' +
         '.rep-none{font-size:12px;color:#888;font-style:italic;}' +
         '.rep-foot{margin-top:22px;border-top:1px solid #ccc;padding-top:8px;font-size:10px;color:#777;display:flex;justify-content:space-between;}' +
-        '@media print{body{padding:0;}.rep-photo{break-inside:avoid;}}' +
+        '@media print{body{padding:0;}.rep-bar{display:none;}.rep-photo{break-inside:avoid;}}' +
         '</style></head><body>' +
-        '<div class="rep-head"><div><h1>Building Survey Report</h1>' +
-        '<div class="sub">Integration of Water Supply Connections &amp; Building Numbering &mdash; Singhadurbar</div></div>' +
+        '<div class="rep-bar"><span class="ttl">Building Report</span><span class="acts">' +
+        '<button type="button" class="b-back" onclick="(window.opener?window.close():history.back())">← Back</button>' +
+        '<button type="button" class="b-print" onclick="window.print()">🖨 Print</button>' +
+        '</span></div>' +
+        '<div class="rep-head"><div class="brand">' +
+        (logoUrl ? '<img class="logo" src="' + esc(logoUrl) + '" alt="KUKL">' : '') +
+        '<div><h1>Building Survey Report</h1>' +
+        '<div class="sub">Integration of Water Supply Connections &amp; Building Numbering &mdash; Singhadurbar</div></div></div>' +
         '<div class="org"><b>KUKL</b>Kathmandu Upatyaka Khanepani Limited<br>Site Survey System</div></div>' +
         (bid ? '<span class="rep-id">' + esc(bid) + '</span>' : '') +
         '<div class="rep-grid">' +
         '<div class="rep-col"><h2>Attributes</h2><table class="rep-attr"><tbody>' +
         (rows || '<tr><td colspan="2" class="rep-none">No attributes.</td></tr>') +
         '</tbody></table></div>' +
-        '<div class="rep-col" style="flex:0 0 auto"><h2>Location</h2>' + snippet +
+        '<div class="rep-col" style="flex:0 0 auto"><h2>Location</h2>' + snippet + legendHTML +
         (ll ? '<div style="font-size:11px;color:#555;margin-top:5px;">' + ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6) + '</div>' : '') +
         '</div></div>' +
         '<h2>Photos (' + photos.length + ')</h2><div class="rep-photos">' + photoHTML + '</div>' +
         '<div class="rep-foot"><span>Generated ' + stamp + '</span><span>KUKL Field GIS</span></div>' +
+        // Wait for the basemap tiles + photos to finish loading before opening
+        // the print dialog, so the map figure is never blank on the printout.
+        // On touch devices we skip auto-print (the Back/Print toolbar drives it)
+        // so the user is never trapped in a print sheet with no way back.
+        '<script>(function(){' +
+        'function go(){try{window.focus();window.print();}catch(e){}}' +
+        'var coarse=window.matchMedia&&window.matchMedia("(pointer:coarse)").matches;' +
+        'var imgs=[].slice.call(document.images),left=imgs.length,done=false;' +
+        'function fin(){if(done)return;done=true;if(!coarse)setTimeout(go,200);}' +
+        'if(!left){fin();}else{imgs.forEach(function(im){' +
+        'if(im.complete){if(--left<=0)fin();}' +
+        'else{im.addEventListener("load",function(){if(--left<=0)fin();});' +
+        'im.addEventListener("error",function(){if(--left<=0)fin();});}});}' +
+        'setTimeout(fin,5000);' +
+        '})();<\/script>' +
         '</body></html>';
 
       var w = window.open('', '_blank');
@@ -1686,8 +1854,6 @@
       w.document.open();
       w.document.write(doc);
       w.document.close();
-      // Give tiles/photos a moment to load, then open the print dialog.
-      setTimeout(function () { try { w.focus(); w.print(); } catch (_) {} }, 800);
     }
 
     function reportFromEditor() {
@@ -1707,7 +1873,14 @@
       var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
       var feats = meta.group.getLayers();
       currentTableMeta = meta;
-      if (tableTitle) tableTitle.textContent = meta.name + ' \u2014 ' + feats.length + ' feature' + (feats.length === 1 ? '' : 's');
+      if (tableTitle) {
+        var ftLabel = feats.length + ' feature' + (feats.length === 1 ? '' : 's');
+        if (meta.category === 'building') {
+          var bn = distinctBuildingCount(feats);
+          ftLabel = bn + ' building' + (bn === 1 ? '' : 's') + ' \u00b7 ' + ftLabel;
+        }
+        tableTitle.textContent = meta.name + ' \u2014 ' + ftLabel;
+      }
       tableWrap.innerHTML = '';
 
       if (!feats.length) {
@@ -1795,30 +1968,45 @@
     }
 
     // ---- Auto building numbering (sequential IDs, restarting per block) ----
-    function autoNumberBuildings(meta) {
-      if (meta.category !== 'building') return;
+    // Sequentially auto-number a layer's features by their map position.
+    // Buildings: one ID per physical building (point + footprint sharing a
+    // building_uuid stay together) and the Block is folded into the ID.
+    // Connections / valves / pipes: one ID per feature.
+    function autoNumberLayer(meta) {
+      var info = ID_DEFAULTS[meta.category];
+      if (!info) { toast('This layer type has no auto-ID'); return; }
+      var idKey = info.key, isBuilding = meta.category === 'building';
       var feats = meta.group.getLayers();
       if (!feats.length) { toast('No features to number yet'); return; }
-      var prefix = prompt('Building number prefix?', buildingPrefix());
+      var count = isBuilding ? distinctBuildingCount(feats) : feats.length;
+      var prefix = prompt(info.noun.charAt(0).toUpperCase() + info.noun.slice(1) + ' ID prefix?', categoryPrefix(meta.category));
       if (prefix == null) return;
-      prefix = prefix.trim() || 'SD';
-      try { localStorage.setItem('kukl_gis_bprefix', prefix); } catch (_) {}
-      if (!confirm('Assign sequential IDs to all ' + feats.length + ' feature' +
-        (feats.length === 1 ? '' : 's') + '? Existing Building IDs will be overwritten.')) return;
+      prefix = prefix.trim() || info.prefix;
+      try { localStorage.setItem('kukl_gis_prefix_' + meta.category, prefix); } catch (_) {}
+      if (!confirm('Assign sequential IDs to all ' + count + ' ' + info.noun +
+        (count === 1 ? '' : 's') + '? Existing IDs will be overwritten.')) return;
       // Stable order: north→south, then west→east, so numbering follows the map.
       feats.sort(function (a, b) {
         var la = featureLatLng(a), lb = featureLatLng(b);
         if (!la || !lb) return 0;
         return (lb.lat - la.lat) || (la.lng - lb.lng);
       });
-      var counters = {};
+      var counters = {}, idByUuid = {};
       feats.forEach(function (lyr) {
         ensureFeatureProps(meta, lyr, false);
         var p = lyr.feature.properties;
-        var block = (p.block || '').toString().trim();
-        counters[block] = (counters[block] || 0) + 1;
-        var pad = ('000' + counters[block]).slice(-3);
-        p.building_id = block ? (prefix + '-' + block + '-' + pad) : (prefix + '-' + pad);
+        if (isBuilding) {
+          var u = p.building_uuid;
+          if (u && idByUuid[u]) { p[idKey] = idByUuid[u]; updateTooltip(meta, lyr); return; }
+          var block = (p.block || '').toString().trim();
+          counters[block] = (counters[block] || 0) + 1;
+          var id = (block ? prefix + '-' + block : prefix) + '-' + ('000' + counters[block]).slice(-3);
+          p[idKey] = id;
+          if (u) idByUuid[u] = id;
+        } else {
+          counters[''] = (counters[''] || 0) + 1;
+          p[idKey] = prefix + '-' + ('000' + counters['']).slice(-3);
+        }
         updateTooltip(meta, lyr);
       });
       persist(meta.id);
@@ -1826,7 +2014,7 @@
       if (currentTableMeta && currentTableMeta.id === meta.id && !tablePanel.hidden) {
         openAttributeTable(meta);
       }
-      toast('Numbered ' + feats.length + ' building' + (feats.length === 1 ? '' : 's'));
+      toast('Numbered ' + count + ' ' + info.noun + (count === 1 ? '' : 's'));
     }
 
     // ---- Sidebar row ----
@@ -1847,10 +2035,11 @@
         '<div class="gis-row-actions">' +
           '<span class="gis-cat" title="Feature type">' + esc((SCHEMAS[meta.category] || SCHEMAS.generic).label) + '</span>' +
           '<span class="gis-row-tools">' +
-            (isBuilding ? '<button type="button" class="gis-ic" data-act="autonum" title="Auto-number buildings">\u0023</button>' : '') +
+            (canAutoNumber(meta.category) ? '<button type="button" class="gis-ic" data-act="autonum" title="Auto-number features">\u0023</button>' : '') +
             '<button type="button" class="gis-ic" data-act="table" title="Open attribute table">\u2637</button>' +
             '<button type="button" class="gis-ic" data-act="zoom" title="Zoom to layer">⤢</button>' +
             '<button type="button" class="gis-ic" data-act="export" title="Export GeoJSON">⤓</button>' +
+            '<button type="button" class="gis-ic" data-act="export-kml" title="Export KML (Google Earth / QGIS / QField)">K</button>' +
             '<button type="button" class="gis-ic gis-ic-del" data-act="del" title="Delete layer">✕</button>' +
           '</span>' +
         '</div>';
@@ -1889,19 +2078,40 @@
 
       row.querySelector('[data-act="zoom"]').addEventListener('click', function () { zoomTo(meta); });
       row.querySelector('[data-act="export"]').addEventListener('click', function () { exportLayer(meta); });
+      row.querySelector('[data-act="export-kml"]').addEventListener('click', function () { exportLayerKml(meta); });
       row.querySelector('[data-act="table"]').addEventListener('click', function () { openAttributeTable(meta); });
       row.querySelector('[data-act="del"]').addEventListener('click', function () { deleteLayer(meta); });
       var autonumBtn = row.querySelector('[data-act="autonum"]');
-      if (autonumBtn) autonumBtn.addEventListener('click', function () { autoNumberBuildings(meta); });
+      if (autonumBtn) autonumBtn.addEventListener('click', function () { autoNumberLayer(meta); });
 
       updateCount(meta);
     }
 
+    // Count distinct buildings in a list of feature-layers. A building's point
+    // (centroid) and footprint (polygon) share a building_uuid and must count
+    // as ONE building. Features without a uuid (legacy / single-geometry) each
+    // count once.
+    function distinctBuildingCount(feats) {
+      var seen = {}, n = 0;
+      feats.forEach(function (lyr) {
+        var p = (lyr.feature && lyr.feature.properties) || {};
+        var u = p.building_uuid;
+        if (u) { if (!seen[u]) { seen[u] = true; n += 1; } }
+        else { n += 1; }
+      });
+      return n;
+    }
+
     function updateCount(meta) {
       if (!meta.row) return;
-      var n = meta.group.getLayers().length;
+      var feats = meta.group.getLayers();
+      // Building layers count physical buildings, not point+footprint features.
+      var n = meta.category === 'building' ? distinctBuildingCount(feats) : feats.length;
       var el = meta.row.querySelector('[data-role="count"]');
-      if (el) el.textContent = n;
+      if (el) {
+        el.textContent = n;
+        el.title = meta.category === 'building' ? 'Building count' : 'Feature count';
+      }
     }
 
     function renameLayer(meta, nameEl) {
@@ -1957,17 +2167,18 @@
       }
     }
 
-    function exportLayer(meta) {
+    // Build a clean FeatureCollection for one layer (schema defaults + computed
+    // fields filled in, heavy/private _keys stripped, source layer tagged).
+    // building_uuid / geometry_role are kept so the point+footprint link
+    // survives into GeoJSON, KML and downstream GIS.
+    function buildLayerFC(meta) {
       var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
       var features = [];
       meta.group.eachLayer(function (lyr) {
         if (typeof lyr.toGeoJSON !== 'function') return;
-        // Fill in schema defaults + auto-computed fields (area, length…) so even
-        // never-opened / imported features export their full attributes.
         ensureFeatureProps(meta, lyr, false);
         var gj = lyr.toGeoJSON();
         gj.properties = gj.properties || {};
-        // Drop only heavy/internal keys (e.g. _photos); keep every real attribute.
         Object.keys(gj.properties).forEach(function (key) {
           if (key.charAt(0) === '_') delete gj.properties[key];
         });
@@ -1975,16 +2186,37 @@
         gj.properties._category = schema.label;
         features.push(gj);
       });
-      if (!features.length) { toast('Nothing to export'); return; }
-      var fc = { type: 'FeatureCollection', features: features };
+      return { type: 'FeatureCollection', features: features };
+    }
+
+    function exportLayer(meta) {
+      var fc = buildLayerFC(meta);
+      if (!fc.features.length) { toast('Nothing to export'); return; }
       var check = validateExportFC(fc);
       if (!check.ok) { toast('Export blocked: ' + check.message); return; }
       try {
         var base = (meta.name || 'layer').replace(/[^\w.-]+/g, '_');
         download(base + '.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
-        toast('Exported ' + features.length + ' feature' + (features.length === 1 ? '' : 's'));
+        toast('Exported ' + fc.features.length + ' feature' + (fc.features.length === 1 ? '' : 's'));
       } catch (err) {
         console.error('[GIS] export failed', err);
+        toast('Export failed: ' + ((err && err.message) || 'unknown error'));
+      }
+    }
+
+    // Per-layer KML export (Google Earth / QGIS / QField). Attributes ride
+    // along as <ExtendedData>; building point + footprint stay linked by uuid.
+    function exportLayerKml(meta) {
+      var fc = buildLayerFC(meta);
+      if (!fc.features.length) { toast('Nothing to export'); return; }
+      var check = validateExportFC(fc);
+      if (!check.ok) { toast('Export blocked: ' + check.message); return; }
+      try {
+        var base = (meta.name || 'layer').replace(/[^\w.-]+/g, '_');
+        download(base + '.kml', geojsonToKml(fc, meta.name), 'application/vnd.google-earth.kml+xml');
+        toast('Exported ' + fc.features.length + ' feature' + (fc.features.length === 1 ? '' : 's') + ' to KML');
+      } catch (err) {
+        console.error('[GIS] KML export failed', err);
         toast('Export failed: ' + ((err && err.message) || 'unknown error'));
       }
     }
@@ -2043,6 +2275,7 @@
         builtupTotal: 0,
         layers: 0, features: 0,
       };
+      var seenBld = {}; // building_uuid → true, so point+footprint count once
       Object.keys(layers).forEach(function (k) {
         var m = layers[k];
         s.layers += 1;
@@ -2051,6 +2284,11 @@
         feats.forEach(function (lyr) {
           var p = (lyr.feature && lyr.feature.properties) || {};
           if (m.category === 'building') {
+            // One physical building may have a centroid + a footprint feature
+            // sharing a building_uuid — count it (and its block/area) once.
+            var u = p.building_uuid;
+            if (u && seenBld[u]) return;
+            if (u) seenBld[u] = true;
             s.buildings += 1;
             var blk = (p.block || '').toString().trim() || '(no block)';
             s.byBlock[blk] = (s.byBlock[blk] || 0) + 1;
@@ -2102,24 +2340,22 @@
     }
 
     // ---- Whole-project export (all layers in one file) ----
-    function exportProjectGeoJSON() {
+    // Returns { fc, perLayer } — a flat FeatureCollection for GeoJSON and a
+    // per-layer list for KML folders. One pass, so both stay in sync.
+    function buildProjectExport() {
       var fc = { type: 'FeatureCollection', features: [] };
+      var perLayer = [];
       Object.keys(layers).forEach(function (k) {
         var m = layers[k];
-        var schema = SCHEMAS[m.category] || SCHEMAS.generic;
-        m.group.eachLayer(function (lyr) {
-          ensureFeatureProps(m, lyr, false);
-          var gj = lyr.toGeoJSON();
-          gj.properties = gj.properties || {};
-          // Strip heavy/private keys (photos) and tag with its source layer.
-          Object.keys(gj.properties).forEach(function (key) {
-            if (key.charAt(0) === '_') delete gj.properties[key];
-          });
-          gj.properties._layer = m.name;
-          gj.properties._category = schema.label;
-          fc.features.push(gj);
-        });
+        var lfc = buildLayerFC(m);
+        perLayer.push({ name: m.name, fc: lfc });
+        lfc.features.forEach(function (f) { fc.features.push(f); });
       });
+      return { fc: fc, perLayer: perLayer };
+    }
+
+    function exportProjectGeoJSON() {
+      var fc = buildProjectExport().fc;
       if (!fc.features.length) { toast('Nothing to export'); return; }
       var check = validateExportFC(fc);
       if (!check.ok) { toast('Export blocked: ' + check.message); return; }
@@ -2128,6 +2364,22 @@
         toast('Exported ' + fc.features.length + ' features');
       } catch (err) {
         console.error('[GIS] project export failed', err);
+        toast('Export failed: ' + ((err && err.message) || 'unknown error'));
+      }
+    }
+
+    // Whole-project KML — one <Folder> per layer, attributes as <ExtendedData>.
+    // Imports directly into Google Earth, QGIS and QField.
+    function exportProjectKml() {
+      var ex = buildProjectExport();
+      if (!ex.fc.features.length) { toast('Nothing to export'); return; }
+      var check = validateExportFC(ex.fc);
+      if (!check.ok) { toast('Export blocked: ' + check.message); return; }
+      try {
+        download('singhadurbar_gis_project.kml', layersToKml(ex.perLayer, 'Singhadurbar GIS'), 'application/vnd.google-earth.kml+xml');
+        toast('Exported ' + ex.fc.features.length + ' features to KML');
+      } catch (err) {
+        console.error('[GIS] project KML export failed', err);
         toast('Export failed: ' + ((err && err.message) || 'unknown error'));
       }
     }
@@ -2271,6 +2523,7 @@
     host.querySelector('[data-act="dashboard"]').addEventListener('click', openDashboard);
     host.querySelector('[data-act="dash-close"]').addEventListener('click', function () { dashPanel.hidden = true; });
     host.querySelector('[data-act="proj-geojson"]').addEventListener('click', exportProjectGeoJSON);
+    host.querySelector('[data-act="proj-kml"]').addEventListener('click', exportProjectKml);
     host.querySelector('[data-act="proj-xlsx"]').addEventListener('click', exportProjectXLSX);
 
     // ---- DMA reference overlay ----
