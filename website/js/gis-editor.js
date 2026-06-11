@@ -1565,6 +1565,30 @@
       toast('Building ' + bid + ' saved (' + (made === 2 ? 'point + footprint' : '1 geometry') + ')');
     }
 
+    // A building's point + footprint share ONE record. After editing one,
+    // copy the shared (descriptive) attributes onto its sibling(s) so they
+    // never drift apart. area_m2/builtup_m2 stay per-geometry — the footprint
+    // owns the measured area; the point has none.
+    var BUILDING_SHARED_KEYS = ['surveyor', 'date', 'building_id', 'block',
+      'office_name', 'office_name_2', 'office_name_3', 'meter_status', 'floors', 'remarks'];
+    function syncBuildingSiblings(meta, lyr) {
+      if (meta.category !== 'building') return;
+      var p = (lyr.feature && lyr.feature.properties) || {};
+      var uuid = p.building_uuid;
+      if (!uuid) return;
+      meta.group.eachLayer(function (other) {
+        if (other === lyr) return;
+        var op = other.feature && other.feature.properties;
+        if (!op || op.building_uuid !== uuid) return;
+        BUILDING_SHARED_KEYS.forEach(function (k) { op[k] = p[k]; });
+        if (layerGeomType(other) === 'polygon') {
+          var fl = parseFloat(op.floors) || 0, ar = parseFloat(op.area_m2) || 0;
+          if (ar) op.builtup_m2 = Math.round(ar * (fl > 0 ? fl : 1) * 100) / 100;
+        }
+        updateTooltip(meta, other);
+      });
+    }
+
     function saveAttrFromEditor() {
       if (!editorTarget) return;
       var meta = editorTarget.meta, lyr = editorTarget.lyr;
@@ -1579,6 +1603,8 @@
         var ar = parseFloat(props.area_m2) || 0;
         if (ar) props.builtup_m2 = Math.round(ar * (fl > 0 ? fl : 1) * 100) / 100;
       }
+      // Keep the building's point + footprint in sync.
+      syncBuildingSiblings(meta, lyr);
       // Re-colour a pipe if its material changed.
       if (meta.category === 'pipe') applyPipeStyle(meta, lyr);
       if (props.surveyor) { try { localStorage.setItem('kukl_gis_surveyor', props.surveyor); } catch (_) {} }
