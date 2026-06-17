@@ -557,6 +557,10 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 .gis-card .card-head{padding:14px 18px;}
 .gis-editor{width:100%;height:80vh;min-height:520px;}
 .gis-host{display:flex;width:100%;height:100%;position:relative;}
+/* Make the native `hidden` attribute win over the panel/button display rules
+   below (.gis-attr/.gis-bwiz use display:flex, .btn uses display:inline-flex,
+   which would otherwise override `hidden` and leave panels/buttons stuck on). */
+.gis-host [hidden]{display:none!important;}
 .gis-host .gis-sidebar{
   width:290px;flex:0 0 290px;overflow-y:auto;
   background:#f5f7fa;border-right:1px solid #d0d5dd;
