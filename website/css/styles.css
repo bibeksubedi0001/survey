@@ -562,8 +562,8 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   background:#f5f7fa;border-right:1px solid #d0d5dd;
   padding:0;display:flex;flex-direction:column;
 }
-.gis-host .gis-map-wrap{flex:1;min-width:0;position:relative;overflow:hidden;}
-.gis-host .gis-map{position:absolute;inset:0;width:100%;height:100%;background:#eee;z-index:0;}
+.gis-host .gis-map-wrap{flex:1;min-width:0;position:relative;}
+.gis-host .gis-map{position:absolute;inset:0;width:100%;height:100%;background:#eee;z-index:0;isolation:isolate;}
 .gis-side-head{
   display:flex;align-items:center;justify-content:space-between;
   font-size:13px;font-weight:800;letter-spacing:.3px;
@@ -718,11 +718,12 @@ svg.gi-xs{width:10px;height:10px;vertical-align:-1px;}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 /* Attribute editor overlay */
-.gis-attr{position:absolute;top:10px;right:10px;z-index:1000;width:300px;max-width:88%;}
-@media (max-width:780px){ .gis-attr{left:10px;right:10px;width:auto;top:8px;} }
+.gis-attr{position:absolute;top:10px;right:10px;z-index:1000;width:300px;max-width:88%;max-height:calc(100% - 20px);}
+@media (max-width:780px){ .gis-attr{left:10px;right:10px;width:auto;top:8px;max-height:calc(100% - 16px);} }
 .gis-attr-card{
   background:#fff;border:1px solid #d0d5dd;border-radius:12px;
   box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;
+  display:flex;flex-direction:column;max-height:100%;
 }
 .gis-attr-head{
   display:flex;align-items:center;justify-content:space-between;
@@ -731,7 +732,7 @@ svg.gi-xs{width:10px;height:10px;vertical-align:-1px;}
 .gis-attr-head strong{font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--accent-fg,#fff);}
 .gis-attr-x{background:none;border:none;color:var(--accent-fg,#fff);font-size:20px;line-height:1;cursor:pointer;padding:2px 4px;border-radius:4px;transition:background .12s;}
 .gis-attr-x:hover{background:rgba(255,255,255,.15);}
-.gis-attr-body{padding:12px 14px;max-height:48vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+.gis-attr-body{padding:12px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:0;flex:1;}
 .gis-attr-field{display:flex;flex-direction:column;gap:3px;
   font-size:10px;font-weight:800;color:#667;text-transform:uppercase;letter-spacing:.4px;}
 .gis-attr-field input,.gis-attr-field select,.gis-attr-field textarea{
@@ -747,16 +748,17 @@ svg.gi-xs{width:10px;height:10px;vertical-align:-1px;}
 .gis-attr-foot .btn{flex:1;border-radius:8px;padding:8px;font-weight:700;font-size:11px;}
 .gis-attr-foot .btn-primary{flex:1.4;}
 /* Building wizard — dual-geometry capture overlay (coexists with the map) */
-.gis-bwiz{position:absolute;top:10px;right:10px;z-index:1001;width:320px;max-width:90%;}
+.gis-bwiz{position:absolute;top:10px;right:10px;z-index:1001;width:320px;max-width:90%;max-height:calc(100% - 20px);}
 .gis-bwiz[hidden]{display:none!important;}
 .gis-bwiz-card{
   background:#fff;border:1px solid #d0d5dd;border-radius:12px;
-  box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;max-height:80vh;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;
+  max-height:100%;
 }
 .gis-bwiz-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1b6fd6;color:#fff;}
 .gis-bwiz-head strong{font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:#fff;}
 .gis-bwiz-head .gis-attr-x{color:#fff;}
-.gis-bwiz-body{padding:12px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.gis-bwiz-body{padding:12px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0;flex:1;}
 .gis-bwiz-sec{display:flex;flex-direction:column;gap:8px;}
 .gis-bwiz-step{
   font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
@@ -778,7 +780,7 @@ svg.gi-xs{width:10px;height:10px;vertical-align:-1px;}
 .gis-bwiz-hint{font-size:11px;line-height:1.35;color:#555;}
 .gis-bwiz-locked{opacity:.45;pointer-events:none;filter:saturate(.4);}
 .gis-bwiz-photos{margin-top:2px;}
-.gis-bwiz-foot{display:flex;gap:7px;padding:10px 14px;border-top:1px solid #edf0f5;background:#f5f7fa;}
+.gis-bwiz-foot{display:flex;gap:7px;padding:10px 14px;border-top:1px solid #edf0f5;background:#f5f7fa;flex-shrink:0;}
 .gis-bwiz-foot .btn{flex:1;border-radius:8px;padding:10px;font-weight:700;}
 .gis-bwiz-foot .btn-primary{flex:1.5;}
 .gis-bwiz-foot .btn:disabled{opacity:.45;cursor:not-allowed;}
@@ -1022,10 +1024,10 @@ svg.gi-xs{width:10px;height:10px;vertical-align:-1px;}
   .gis-attr-field textarea{min-height:64px;}
   .gis-attr-foot .btn{min-height:46px;font-size:13px;}
   .leaflet-pm-toolbar .button-container a,.gis-locate-ctl a.gis-locate-btn{width:42px;height:42px;line-height:42px;}
-  .gis-attr{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;}
-  .gis-attr-body{max-height:54vh;}
-  .gis-bwiz{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;}
-  .gis-bwiz-card{max-height:82vh;}
+  .gis-attr{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;max-height:calc(100% - 16px);}
+  .gis-attr-body{max-height:none;}
+  .gis-bwiz{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;max-height:calc(100% - 16px);}
+  .gis-bwiz-card{max-height:100%;}
   .gis-bwiz-geom{padding:14px 8px;}
   .gis-bwiz-geom-lbl{font-size:13px;}
   .gis-attr-table th,.gis-attr-table td{padding:8px 10px;font-size:13px;}
