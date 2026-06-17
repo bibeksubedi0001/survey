@@ -85,7 +85,7 @@
   // ---------------------------------------------------------------
   var KTM_DEFAULT = [27.6915, 85.3420];
   var PALETTE = ['#c1001f', '#1b6fd6', '#1a7f1a', '#e07a00', '#7d3cb5', '#0a8f8f', '#d4007a', '#444'];
-  var CATEGORY_COLOR = { building: '#1b6fd6', connection: '#0a8f8f', valve: '#c1001f', pipe: '#1a7f1a', generic: '#7d3cb5' };
+  var CATEGORY_COLOR = { building: '#1b6fd6', connection: '#0a8f8f', valve: '#c1001f', pipe: '#1a7f1a', hydrant: '#e8430f', meter: '#a36b00', generic: '#7d3cb5' };
 
   // ---- Feature schemas (QField-style typed layers) ----
   var SCHEMAS = {
@@ -148,6 +148,38 @@
         { key: 'diameter_mm', label: 'Diameter (mm)', type: 'number' },
         { key: 'length_m', label: 'Length (m) \u2014 auto', type: 'number', readonly: true },
         { key: 'status', label: 'Status', type: 'select', options: ['In Service', 'Abandoned', 'Proposed', 'Under Construction'] },
+        { key: 'remarks', label: 'Remarks', type: 'textarea' },
+      ],
+    },
+    hydrant: {
+      label: 'Fire Hydrant', geom: 'point', titleKey: 'hydrant_id', fallbackKey: 'hydrant_type',
+      fields: [
+        { key: 'surveyor', label: 'Surveyor', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'hydrant_id', label: 'Hydrant ID', type: 'text' },
+        { key: 'hydrant_type', label: 'Hydrant Type', type: 'select', options: ['Pillar', 'Underground', 'Post', 'Wall'] },
+        { key: 'outlet_size_mm', label: 'Outlet Size (mm)', type: 'select', options: ['', '63', '80', '100', '150'] },
+        { key: 'outlets', label: 'No. of Outlets', type: 'number' },
+        { key: 'status', label: 'Status', type: 'select', options: ['Working', 'Not Working', 'Damaged', 'Buried', 'Missing'] },
+        { key: 'chamber', label: 'Chamber / Cover', type: 'select', options: ['Good', 'Damaged', 'Buried', 'Missing'] },
+        { key: 'last_inspected', label: 'Last Inspected', type: 'date' },
+        { key: 'remarks', label: 'Remarks', type: 'textarea' },
+      ],
+    },
+    meter: {
+      label: 'Meter', geom: 'point', titleKey: 'meter_id', fallbackKey: 'meter_no',
+      fields: [
+        { key: 'surveyor', label: 'Surveyor', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'meter_id', label: 'Meter ID', type: 'text' },
+        { key: 'meter_type', label: 'Meter Type', type: 'select', options: ['Customer', 'Bulk', 'DMA / Zonal', 'Production', 'Check'] },
+        { key: 'building_id', label: 'Linked Building ID', type: 'text', list: 'buildings' },
+        { key: 'meter_no', label: 'Meter No. / Serial', type: 'text' },
+        { key: 'make', label: 'Make / Brand', type: 'text' },
+        { key: 'meter_size', label: 'Meter Size', type: 'select', options: ['\u00bd\u2033 (15mm)', '\u00be\u2033 (20mm)', '1\u2033 (25mm)', '1\u00bd\u2033 (40mm)', '2\u2033 (50mm)', '3\u2033 (80mm)', '4\u2033 (100mm)', '6\u2033 (150mm)', '8\u2033 (200mm)'] },
+        { key: 'reading', label: 'Current Reading (m\u00b3)', type: 'number' },
+        { key: 'reading_date', label: 'Reading Date', type: 'date' },
+        { key: 'status', label: 'Status', type: 'select', options: ['Working', 'Not Working', 'Stuck', 'Leaking', 'Removed'] },
         { key: 'remarks', label: 'Remarks', type: 'textarea' },
       ],
     },
@@ -286,6 +318,8 @@
       '      <option value="building">Buildings (point + footprint)</option>' +
       '      <option value="connection">Connections (point)</option>' +
       '      <option value="valve">Valves (point)</option>' +
+      '      <option value="hydrant">Fire Hydrants (point)</option>' +
+      '      <option value="meter">Meters (point)</option>' +
       '      <option value="pipe">Pipes (line)</option>' +
       '      <option value="generic">Generic</option>' +
       '    </select>' +
@@ -348,6 +382,7 @@
       '      <div class="gis-attr-body" data-role="attr-body"></div>' +
       '      <div class="gis-attr-foot">' +
       '        <button type="button" class="btn btn-mini btn-outline" data-act="attr-zoom">ZOOM</button>' +
+      '        <button type="button" class="btn btn-mini btn-outline" data-act="attr-redraw" hidden>\u21ba REDRAW</button>' +
       '        <button type="button" class="btn btn-mini btn-outline" data-act="attr-report" hidden>\u29c9 REPORT</button>' +
       '        <button type="button" class="btn btn-mini btn-danger" data-act="attr-del">DELETE</button>' +
       '        <button type="button" class="btn btn-mini btn-primary" data-act="attr-save">SAVE</button>' +
@@ -436,6 +471,7 @@
     var dashPanel = $('dash');
     var dashBody = $('dash-body');
     var reportBtn = host.querySelector('[data-act="attr-report"]');
+    var redrawBtn = host.querySelector('[data-act="attr-redraw"]');
     var editorTarget = null;
     var currentTableMeta = null;
 
@@ -631,6 +667,22 @@
           '<path d="M11 2 C 6 8, 4 12, 6.5 16 C 9 20, 13 20, 15.5 16 C 18 12, 16 8, 11 2 Z" ' +
           'fill="' + c + '" stroke="#fff" stroke-width="1.6"/>' +
           '<circle cx="11" cy="13.5" r="2.6" fill="#fff" opacity="0.9"/></svg>';
+      }
+      if (category === 'hydrant') {
+        return '<svg viewBox="0 0 22 22" width="22" height="22">' +
+          '<rect x="7.5" y="6" width="7" height="11" rx="2.4" fill="' + c + '" stroke="#fff" stroke-width="1.5"/>' +
+          '<rect x="9.3" y="3" width="3.4" height="3.2" rx="1.1" fill="' + c + '" stroke="#fff" stroke-width="1.3"/>' +
+          '<rect x="3.8" y="10.4" width="3.4" height="3" rx="1" fill="' + c + '" stroke="#fff" stroke-width="1.2"/>' +
+          '<rect x="14.8" y="10.4" width="3.4" height="3" rx="1" fill="' + c + '" stroke="#fff" stroke-width="1.2"/>' +
+          '<circle cx="11" cy="10" r="1.7" fill="#fff" opacity="0.9"/>' +
+          '<rect x="5.5" y="17" width="11" height="2.6" rx="1.1" fill="' + c + '" stroke="#fff" stroke-width="1.3"/></svg>';
+      }
+      if (category === 'meter') {
+        return '<svg viewBox="0 0 22 22" width="22" height="22">' +
+          '<circle cx="11" cy="11" r="8.2" fill="' + c + '" stroke="#fff" stroke-width="1.6"/>' +
+          '<circle cx="11" cy="11" r="4.6" fill="#fff" opacity="0.92"/>' +
+          '<line x1="11" y1="11" x2="13.9" y2="8.1" stroke="' + c + '" stroke-width="1.7" stroke-linecap="round"/>' +
+          '<circle cx="11" cy="11" r="1.1" fill="' + c + '"/></svg>';
       }
       // generic / other → circle dot
       return '<svg viewBox="0 0 22 22" width="22" height="22">' +
@@ -936,6 +988,8 @@
       connection: { prefix: 'C', key: 'connection_id', noun: 'connection' },
       valve: { prefix: 'V', key: 'valve_id', noun: 'valve' },
       pipe: { prefix: 'P', key: 'pipe_id', noun: 'pipe' },
+      hydrant: { prefix: 'FH', key: 'hydrant_id', noun: 'fire hydrant' },
+      meter: { prefix: 'M', key: 'meter_id', noun: 'meter' },
     };
     // True for categories that carry a meaningful, auto-numberable ID field.
     function canAutoNumber(category) { return !!ID_DEFAULTS[category]; }
@@ -1059,6 +1113,8 @@
       if (attrTitle) attrTitle.textContent = schema.label + ' attributes';
       // Per-building printable report (attributes + photos + map snippet).
       if (reportBtn) reportBtn.hidden = !(meta.category === 'building');
+      // Redraw is offered for shapes you can trace over: footprints and lines.
+      if (redrawBtn) { var rgt = layerGeomType(lyr); redrawBtn.hidden = !(rgt === 'polygon' || rgt === 'line'); }
       attrBody.innerHTML = '';
       // Schema fields first, then any extra imported properties as text inputs.
       // building_uuid / geometry_role are auto-managed links — show them, but
@@ -1633,6 +1689,92 @@
       } catch (_) {}
     }
 
+    // ---- Redraw an existing feature's geometry (keep its attributes/photos) ----
+    // Lets the surveyor trace a brand-new footprint or line over an existing
+    // feature; the old shape is replaced while the attribute record, photos and
+    // building point+footprint link stay intact.
+    var redrawTarget = null; // { meta, lyr, gt } while a redraw is armed
+
+    // Re-apply a feature's normal styling (pipes keep their per-material look).
+    // Explicitly resets opacity/dashArray since setStyle merges with the dimmed
+    // style applied while redrawing.
+    function restoreFeatureStyle(meta, lyr) {
+      try {
+        if (meta.category === 'pipe' && layerGeomType(lyr) === 'line') applyPipeStyle(meta, lyr);
+        else if (lyr.setStyle) {
+          var s = styleFor(meta.color);
+          s.opacity = 1; s.dashArray = null;
+          lyr.setStyle(s);
+        }
+      } catch (_) {}
+    }
+
+    // Abort an in-progress redraw and restore the original shape + editor.
+    function cancelRedraw() {
+      if (!redrawTarget) return;
+      var t = redrawTarget; redrawTarget = null;
+      try { map.pm.disableDraw(); } catch (_) {}
+      restoreFeatureStyle(t.meta, t.lyr);
+      editorTarget = { meta: t.meta, lyr: t.lyr };
+      openAttributeEditor(t.meta, t.lyr);
+    }
+
+    function redrawFeatureFromEditor() {
+      if (!editorTarget) return;
+      var meta = editorTarget.meta, lyr = editorTarget.lyr;
+      var gt = layerGeomType(lyr);
+      if (gt !== 'polygon' && gt !== 'line') { toast('Only an area or a line can be redrawn'); return; }
+      if (!map.pm) { toast('Drawing tools unavailable'); return; }
+      redrawTarget = { meta: meta, lyr: lyr, gt: gt };
+      // Dim the old shape so the new trace is easy to see, but keep it as a guide.
+      try { if (lyr.setStyle) lyr.setStyle({ opacity: 0.35, fillOpacity: 0.08, dashArray: '4,6' }); } catch (_) {}
+      attrPanel.hidden = true;
+      try { map.pm.disableDraw(); } catch (_) {}
+      try {
+        map.pm.enableDraw(gt === 'polygon' ? 'Polygon' : 'Line', { continueDrawing: false, snappable: true, snapDistance: 20 });
+        toast(gt === 'polygon'
+          ? 'Trace the NEW footprint \u00b7 double-tap to finish (replaces the old shape)'
+          : 'Trace the NEW line \u00b7 double-tap to finish (replaces the old shape)');
+      } catch (_) { toast('Could not start drawing'); cancelRedraw(); }
+    }
+
+    // Apply a freshly-drawn shape onto the existing feature, preserving attrs.
+    function redrawCapture(e) {
+      var drawn = e.layer;
+      try { map.removeLayer(drawn); } catch (_) {}
+      if (!redrawTarget) return;
+      var meta = redrawTarget.meta, lyr = redrawTarget.lyr, gt = redrawTarget.gt;
+      redrawTarget = null;
+      var lls = drawn.getLatLngs ? drawn.getLatLngs() : null;
+      if (gt === 'polygon') { while (lls && lls.length && Array.isArray(lls[0]) && Array.isArray(lls[0][0])) lls = lls[0]; }
+      else { while (lls && lls.length && Array.isArray(lls[0])) lls = lls[0]; }
+      try { lyr.setLatLngs(lls); }
+      catch (_) { toast('Could not apply the new shape'); restoreFeatureStyle(meta, lyr); editorTarget = { meta: meta, lyr: lyr }; openAttributeEditor(meta, lyr); return; }
+      // Recompute derived measurements from the new geometry.
+      var pp = lyr.feature && lyr.feature.properties;
+      if (pp) {
+        if (gt === 'polygon') {
+          var ar = polygonArea(lyr);
+          if (ar != null) pp.area_m2 = ar;
+          if (meta.category === 'building') {
+            var fl = parseFloat(pp.floors) || 0, a2 = parseFloat(pp.area_m2) || 0;
+            if (a2) pp.builtup_m2 = Math.round(a2 * (fl > 0 ? fl : 1) * 100) / 100;
+          }
+        } else if (gt === 'line') {
+          var len = lineLength(lyr);
+          if (len != null) pp.length_m = len;
+        }
+      }
+      restoreFeatureStyle(meta, lyr);
+      updateTooltip(meta, lyr);
+      syncBuildingSiblings(meta, lyr);
+      try { map.pm.disableDraw(); } catch (_) {}
+      persist(meta.id);
+      editorTarget = { meta: meta, lyr: lyr };
+      openAttributeEditor(meta, lyr);
+      toast('Shape updated');
+    }
+
     // ---- Per-building printable report (attributes + photos + map figure) ----
     // Web-Mercator pixel projection at a given zoom (256-px tiles).
     function projectPx(lng, lat, zoom) {
@@ -2204,12 +2346,20 @@
         if (typeof lyr.toGeoJSON !== 'function') return;
         ensureFeatureProps(meta, lyr, false);
         var gj = lyr.toGeoJSON();
-        gj.properties = gj.properties || {};
-        Object.keys(gj.properties).forEach(function (key) {
-          if (key.charAt(0) === '_') delete gj.properties[key];
+        // toGeoJSON() shares the live feature's properties object, so build a
+        // fresh bag instead of mutating it. Keep public fields and _photos so
+        // captured field photos survive the GeoJSON round-trip to another
+        // device; drop other internal/transient _keys. (KML export skips all
+        // _keys separately, so embedded photo data never bloats a .kml.)
+        var src = gj.properties || {};
+        var clean = {};
+        Object.keys(src).forEach(function (key) {
+          if (key.charAt(0) === '_' && key !== '_photos') return;
+          clean[key] = src[key];
         });
-        gj.properties._layer = meta.name;
-        gj.properties._category = schema.label;
+        clean._layer = meta.name;
+        clean._category = schema.label;
+        gj.properties = clean;
         features.push(gj);
       });
       return { type: 'FeatureCollection', features: features };
@@ -2296,6 +2446,7 @@
     function computeSummary() {
       var s = {
         buildings: 0, connections: 0,
+        hydrants: 0, meters: 0,
         metered: 0, unmetered: 0,
         byType: {}, byStatus: {}, byBlock: {}, linked: 0, unlinked: 0,
         builtupTotal: 0,
@@ -2329,6 +2480,8 @@
             var st = (p.status || '').toString().trim() || '(unspecified)';
             s.byStatus[st] = (s.byStatus[st] || 0) + 1;
           }
+          if (m.category === 'hydrant') s.hydrants += 1;
+          if (m.category === 'meter') s.meters += 1;
         });
       });
       return s;
@@ -2348,6 +2501,8 @@
         '<div class="gis-dash-cards">' +
           '<div class="gis-dash-kpi"><b>' + s.buildings + '</b><span>Buildings</span></div>' +
           '<div class="gis-dash-kpi"><b>' + s.connections + '</b><span>Connections</span></div>' +
+          '<div class="gis-dash-kpi"><b>' + s.hydrants + '</b><span>Fire Hydrants</span></div>' +
+          '<div class="gis-dash-kpi"><b>' + s.meters + '</b><span>Meters (mapped)</span></div>' +
           '<div class="gis-dash-kpi"><b>' + s.metered + '</b><span>Metered</span></div>' +
           '<div class="gis-dash-kpi gis-dash-warn"><b>' + s.unmetered + '</b><span>Unmetered</span></div>' +
           '<div class="gis-dash-kpi"><b>' + s.linked + '</b><span>Linked to bldg</span></div>' +
@@ -2421,6 +2576,8 @@
       var sumRows = [
         { Metric: 'Buildings', Value: s.buildings },
         { Metric: 'Connections', Value: s.connections },
+        { Metric: 'Fire hydrants', Value: s.hydrants },
+        { Metric: 'Meters (mapped)', Value: s.meters },
         { Metric: 'Metered connections', Value: s.metered },
         { Metric: 'Unmetered connections', Value: s.unmetered },
         { Metric: 'Connections linked to a building', Value: s.linked },
@@ -2467,6 +2624,8 @@
     map.on('pm:create', function (e) {
       // Building wizard owns the draw while it is capturing geometry.
       if (bwiz.open && bwiz.drawing) { bwizCapture(e); return; }
+      // Redrawing an existing feature's geometry (keeps its attributes/photos).
+      if (redrawTarget) { redrawCapture(e); return; }
       var lyr = e.layer;
       var meta = layers[activeId];
       if (!meta) {
@@ -2499,6 +2658,8 @@
     // If a wizard draw is cancelled (Esc) with nothing captured, reset the chip.
     map.on('pm:drawend', function () {
       if (bwiz.open) { bwiz.drawing = null; updateBwizGeomStatus(); }
+      // A redraw that ends without producing a shape (Esc) → restore the feature.
+      if (redrawTarget) { setTimeout(function () { if (redrawTarget) cancelRedraw(); }, 0); }
     });
 
     // ---- New-layer button ----
@@ -2540,6 +2701,7 @@
     host.querySelector('[data-act="attr-save"]').addEventListener('click', saveAttrFromEditor);
     host.querySelector('[data-act="attr-del"]').addEventListener('click', deleteFeatureFromEditor);
     host.querySelector('[data-act="attr-zoom"]').addEventListener('click', zoomFeatureFromEditor);
+    if (redrawBtn) redrawBtn.addEventListener('click', redrawFeatureFromEditor);
     if (reportBtn) reportBtn.addEventListener('click', reportFromEditor);
     host.querySelector('[data-act="table-close"]').addEventListener('click', function () { tablePanel.hidden = true; });
     host.querySelector('[data-act="table-csv"]').addEventListener('click', function () { exportTableSpreadsheet(currentTableMeta, 'csv'); });
