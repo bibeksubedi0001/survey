@@ -569,6 +569,37 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
   margin-top:4px;padding-bottom:3px;border-bottom:1px dashed #000;
 }
+/* ---- GIS Tabs ---- */
+.gis-tabs{display:flex;gap:2px;background:#e0e0e0;padding:3px;border-radius:8px;margin-bottom:6px;}
+.gis-tab{
+  flex:1;padding:7px 4px;font-size:10px;font-weight:700;text-align:center;
+  border:none;background:transparent;border-radius:6px;cursor:pointer;
+  color:#444;transition:background .15s,color .15s;white-space:nowrap;
+}
+.gis-tab:hover{background:#d0d0d0;}
+.gis-tab.active{background:#fff;color:#1a4480;box-shadow:0 1px 3px rgba(0,0,0,.15);}
+.gis-tab-content{display:none;flex-direction:column;gap:8px;}
+.gis-tab-content.active{display:flex;}
+.gis-tab-section{background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px;}
+.gis-tab-section-head{
+  font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:#666;margin-bottom:8px;padding-bottom:4px;border-bottom:1px dashed #ccc;
+}
+.gis-btn-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.gis-btn-grid .btn{padding:8px 6px;font-size:10px;text-align:center;}
+.gis-full-btn{width:100%;padding:10px;font-size:12px;}
+/* Import grid */
+.gis-import-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.gis-import-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;padding:14px 8px;border:2px dashed #bbb;border-radius:8px;
+  background:#f9f9f9;cursor:pointer;text-align:center;transition:border-color .15s,background .15s;
+}
+.gis-import-btn:hover{border-color:#1a4480;background:#f0f5ff;}
+.gis-import-ic{font-size:22px;}
+.gis-import-lbl{font-size:11px;font-weight:700;color:#333;line-height:1.2;}
+.gis-import-lbl small{display:block;font-size:9px;font-weight:400;color:#777;margin-top:2px;}
+.gis-gnss-disc{width:100%;margin-top:6px;}
 .gis-layer-list{display:flex;flex-direction:column;gap:5px;}
 .gis-layer-row{
   display:flex;flex-direction:column;gap:5px;position:relative;

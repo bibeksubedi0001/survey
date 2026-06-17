@@ -311,66 +311,96 @@
     host.classList.add('gis-host');
     host.innerHTML =
       '<div class="gis-sidebar" data-role="sidebar">' +
-      '  <div class="gis-side-head gis-side-top"><strong>Layers</strong>' +
+      '  <div class="gis-side-head gis-side-top"><strong>GIS Tools</strong>' +
       '    <button type="button" class="gis-panel-close" data-act="panel-close" title="Hide panel">\u00d7</button></div>' +
-      '  <div class="gis-new-row">' +
-      '    <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
-      '      <option value="building">Buildings (point + footprint)</option>' +
-      '      <option value="connection">Connections (point)</option>' +
-      '      <option value="valve">Valves (point)</option>' +
-      '      <option value="hydrant">Fire Hydrants (point)</option>' +
-      '      <option value="meter">Meters (point)</option>' +
-      '      <option value="pipe">Pipes (line)</option>' +
-      '      <option value="generic">Generic</option>' +
-      '    </select>' +
-      '    <button type="button" class="btn btn-mini btn-primary" data-act="new-layer">+ NEW</button>' +
+      '  <div class="gis-tabs" data-role="gis-tabs">' +
+      '    <button type="button" class="gis-tab active" data-tab="layers">\ud83d\uddfa Layers</button>' +
+      '    <button type="button" class="gis-tab" data-tab="project">\ud83d\udcca Project</button>' +
+      '    <button type="button" class="gis-tab" data-tab="import">\ud83d\udce5 Import</button>' +
+      '    <button type="button" class="gis-tab" data-tab="gps">\ud83d\udce1 GPS</button>' +
       '  </div>' +
-      '  <div class="gis-bwiz-row" data-role="bwiz-row" hidden>' +
-      '    <button type="button" class="btn btn-mini btn-primary gis-bwiz-launch" data-act="add-building">\uff0b Add Building (point + footprint)</button>' +
-      '  </div>' +
-      '  <div class="gis-layer-list" data-role="layers"></div>' +
-      '  <div class="gis-side-head"><strong>Project</strong></div>' +
-      '  <div class="gis-project">' +
-      '    <button type="button" class="btn btn-mini btn-outline" data-act="dashboard">\u2637 SUMMARY</button>' +
-      '    <button type="button" class="btn btn-mini btn-outline" data-act="proj-geojson">ALL \u2192 GEOJSON</button>' +
-      '    <button type="button" class="btn btn-mini btn-outline" data-act="proj-kml">ALL \u2192 KML</button>' +
-      '    <button type="button" class="btn btn-mini btn-outline" data-act="proj-xlsx">ALL \u2192 EXCEL</button>' +
-      '  </div>' +
-      '  <div class="gis-side-head"><strong>Import</strong></div>' +
-      '  <div class="gis-import">' +
-      '    <label class="btn btn-outline btn-mini gis-file">' +
-      '      SHAPEFILE (.zip)<input type="file" accept=".zip" data-role="imp-shp" hidden>' +
-      '    </label>' +
-      '    <label class="btn btn-outline btn-mini gis-file">' +
-      '      GEOJSON<input type="file" accept=".geojson,.json" data-role="imp-geojson" hidden>' +
-      '    </label>' +
-      '    <label class="btn btn-outline btn-mini gis-file">' +
-      '      KML / GPX<input type="file" accept=".kml,.gpx" data-role="imp-kmlgpx" hidden>' +
-      '    </label>' +
-      '    <label class="btn btn-outline btn-mini gis-file">' +
-      '      EXCEL / CSV<input type="file" accept=".xlsx,.xls,.csv" data-role="imp-excel" hidden>' +
-      '    </label>' +
-      '  </div>' +
-      '  <div class="gis-side-head"><strong>GNSS Receiver</strong></div>' +
-      '  <div class="gis-gnss">' +
-      '    <div class="gis-gnss-status" data-role="gnss-status">Internal device GPS</div>' +
-      '    <div class="gis-gnss-readout" data-role="gnss-readout" hidden>' +
-      '      <div><span>Fix</span><b data-role="gnss-fix">\u2014</b></div>' +
-      '      <div><span>Sats</span><b data-role="gnss-sats">\u2014</b></div>' +
-      '      <div><span>\u00b1 m</span><b data-role="gnss-acc">\u2014</b></div>' +
-      '      <div class="wide"><span>Lat</span><b data-role="gnss-lat">\u2014</b></div>' +
-      '      <div class="wide"><span>Lng</span><b data-role="gnss-lng">\u2014</b></div>' +
+      '  <div class="gis-tab-content active" data-content="layers">' +
+      '    <div class="gis-new-row">' +
+      '      <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
+      '        <option value="building">Buildings (point + footprint)</option>' +
+      '        <option value="connection">Connections (point)</option>' +
+      '        <option value="valve">Valves (point)</option>' +
+      '        <option value="hydrant">Fire Hydrants (point)</option>' +
+      '        <option value="meter">Meters (point)</option>' +
+      '        <option value="pipe">Pipes (line)</option>' +
+      '        <option value="generic">Generic</option>' +
+      '      </select>' +
+      '      <button type="button" class="btn btn-mini btn-primary" data-act="new-layer">+ NEW</button>' +
       '    </div>' +
-      '    <div class="gis-gnss-btns">' +
-      '      <button type="button" class="btn btn-mini btn-outline" data-act="gnss-ble">BLUETOOTH</button>' +
-      '      <button type="button" class="btn btn-mini btn-outline" data-act="gnss-serial">SERIAL / USB</button>' +
-      '      <button type="button" class="btn btn-mini btn-danger" data-act="gnss-disconnect" hidden>DISCONNECT</button>' +
+      '    <div class="gis-bwiz-row" data-role="bwiz-row" hidden>' +
+      '      <button type="button" class="btn btn-mini btn-primary gis-bwiz-launch" data-act="add-building">\uff0b Add Building (point + footprint)</button>' +
       '    </div>' +
-      '    <button type="button" class="btn btn-mini btn-primary gis-gnss-drop" data-act="gnss-drop" hidden>DROP POINT AT GNSS</button>' +
+      '    <div class="gis-layer-list" data-role="layers"></div>' +
+      '    <label class="gis-ref-toggle"><input type="checkbox" data-role="dma-toggle"> Show DMA reference network</label>' +
       '  </div>' +
-      '  <div class="gis-side-head"><strong>Reference</strong></div>' +
-      '  <label class="gis-ref-toggle"><input type="checkbox" data-role="dma-toggle"> Show DMA network</label>' +
-      '  <p class="gis-tip">Pick a layer type, tap <strong>+ NEW</strong>, then draw with the map toolbar. For buildings, select the Building layer and tap <strong>+ Add Building</strong> to capture a point and a footprint under one shared record. Tap any feature later to edit it. Pipe length and footprint area are measured automatically. Everything saves offline.</p>' +
+      '  <div class="gis-tab-content" data-content="project">' +
+      '    <div class="gis-tab-section">' +
+      '      <div class="gis-tab-section-head">Summary</div>' +
+      '      <button type="button" class="btn btn-outline gis-full-btn" data-act="dashboard">\u2637 PROJECT SUMMARY</button>' +
+      '    </div>' +
+      '    <div class="gis-tab-section">' +
+      '      <div class="gis-tab-section-head">Export All Layers</div>' +
+      '      <div class="gis-btn-grid">' +
+      '        <button type="button" class="btn btn-outline" data-act="proj-geojson">\ud83d\uddfa GeoJSON</button>' +
+      '        <button type="button" class="btn btn-outline" data-act="proj-kml">\ud83c\udf10 KML</button>' +
+      '        <button type="button" class="btn btn-outline" data-act="proj-xlsx">\ud83d\udcca Excel</button>' +
+      '      </div>' +
+      '    </div>' +
+      '    <p class="gis-tip">Export the entire project (all layers) in one file. Individual layers can also be exported from their menu in the Layers tab.</p>' +
+      '  </div>' +
+      '  <div class="gis-tab-content" data-content="import">' +
+      '    <div class="gis-tab-section">' +
+      '      <div class="gis-tab-section-head">Import GIS Data</div>' +
+      '      <div class="gis-import-grid">' +
+      '        <label class="gis-import-btn">' +
+      '          <span class="gis-import-ic">\ud83d\udce6</span>' +
+      '          <span class="gis-import-lbl">Shapefile<small>.zip</small></span>' +
+      '          <input type="file" accept=".zip" data-role="imp-shp" hidden>' +
+      '        </label>' +
+      '        <label class="gis-import-btn">' +
+      '          <span class="gis-import-ic">\ud83d\uddfa</span>' +
+      '          <span class="gis-import-lbl">GeoJSON<small>.geojson / .json</small></span>' +
+      '          <input type="file" accept=".geojson,.json" data-role="imp-geojson" hidden>' +
+      '        </label>' +
+      '        <label class="gis-import-btn">' +
+      '          <span class="gis-import-ic">\ud83c\udf10</span>' +
+      '          <span class="gis-import-lbl">KML / GPX<small>.kml / .gpx</small></span>' +
+      '          <input type="file" accept=".kml,.gpx" data-role="imp-kmlgpx" hidden>' +
+      '        </label>' +
+      '        <label class="gis-import-btn">' +
+      '          <span class="gis-import-ic">\ud83d\udcca</span>' +
+      '          <span class="gis-import-lbl">Spreadsheet<small>.xlsx / .csv</small></span>' +
+      '          <input type="file" accept=".xlsx,.xls,.csv" data-role="imp-excel" hidden>' +
+      '        </label>' +
+      '      </div>' +
+      '    </div>' +
+      '    <p class="gis-tip">Import existing GIS files. Features will be sorted into layers by type (Building, Connection, Pipe, etc.) or a new layer will be created. Spreadsheets need lat/lng columns.</p>' +
+      '  </div>' +
+      '  <div class="gis-tab-content" data-content="gps">' +
+      '    <div class="gis-tab-section">' +
+      '      <div class="gis-tab-section-head">GNSS Receiver</div>' +
+      '      <div class="gis-gnss-status" data-role="gnss-status">Internal device GPS</div>' +
+      '      <div class="gis-gnss-readout" data-role="gnss-readout" hidden>' +
+      '        <div><span>Fix</span><b data-role="gnss-fix">\u2014</b></div>' +
+      '        <div><span>Sats</span><b data-role="gnss-sats">\u2014</b></div>' +
+      '        <div><span>\u00b1 m</span><b data-role="gnss-acc">\u2014</b></div>' +
+      '        <div class="wide"><span>Lat</span><b data-role="gnss-lat">\u2014</b></div>' +
+      '        <div class="wide"><span>Lng</span><b data-role="gnss-lng">\u2014</b></div>' +
+      '      </div>' +
+      '      <div class="gis-gnss-btns">' +
+      '        <button type="button" class="btn btn-outline" data-act="gnss-ble">\ud83d\udcf6 Bluetooth</button>' +
+      '        <button type="button" class="btn btn-outline" data-act="gnss-serial">\ud83d\udd0c Serial / USB</button>' +
+      '      </div>' +
+      '      <button type="button" class="btn btn-mini btn-danger gis-gnss-disc" data-act="gnss-disconnect" hidden>DISCONNECT</button>' +
+      '      <button type="button" class="btn btn-primary gis-full-btn gis-gnss-drop" data-act="gnss-drop" hidden>\ud83d\udccd DROP POINT AT GNSS POSITION</button>' +
+      '    </div>' +
+      '    <p class="gis-tip">Connect an external GNSS receiver (via Bluetooth or USB serial) for higher accuracy than phone GPS. Use "Drop Point" to capture a survey point at the current GNSS position.</p>' +
+      '  </div>' +
       '</div>' +
       '<div class="gis-map-wrap"><div class="gis-map" data-role="map"></div>' +
       '  <div class="gis-sidebar-backdrop" data-act="sidebar-backdrop"></div>' +
@@ -2695,6 +2725,21 @@
     if (pToggle) pToggle.addEventListener('click', function () { setPanelOpen(true); });
     if (pClose) pClose.addEventListener('click', function () { setPanelOpen(false); });
     if (pBackdrop) pBackdrop.addEventListener('click', function () { setPanelOpen(false); });
+
+    // ---- Sidebar tab switching ----
+    var tabBtns = host.querySelectorAll('.gis-tab[data-tab]');
+    var tabContents = host.querySelectorAll('.gis-tab-content[data-content]');
+    function switchTab(tabId) {
+      tabBtns.forEach(function (btn) {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+      });
+      tabContents.forEach(function (c) {
+        c.classList.toggle('active', c.dataset.content === tabId);
+      });
+    }
+    tabBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () { switchTab(btn.dataset.tab); });
+    });
 
     // ---- Attribute editor wiring ----
     host.querySelector('[data-act="attr-close"]').addEventListener('click', function () { attrPanel.hidden = true; });
