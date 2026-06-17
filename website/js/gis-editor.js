@@ -2810,7 +2810,11 @@
 
     // If a wizard draw is cancelled (Esc) with nothing captured, reset the chip.
     map.on('pm:drawend', function () {
-      if (bwiz.open) { bwiz.drawing = null; updateBwizGeomStatus(); }
+      if (bwiz.open) {
+        bwiz.drawing = null;
+        updateBwizGeomStatus();
+        bwizPanel.classList.remove('gis-bwiz-drawing');
+      }
       // A redraw that ends without producing a shape (Esc) → restore the feature.
       if (redrawTarget) { setTimeout(function () { if (redrawTarget) cancelRedraw(); }, 0); }
     });
