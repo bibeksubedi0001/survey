@@ -225,6 +225,61 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
   }
 
+  // ---- Photo compression for export (resize + lower JPEG quality) ----
+  // Shrinks a base64 dataUrl image via an off-screen canvas. Returns a Promise
+  // resolving to the compressed dataUrl. Falls back to the original on error.
+  var EXPORT_MAX_PX = 800;   // max dimension (width or height)
+  var EXPORT_QUALITY = 0.45; // JPEG quality (0-1); ~45% is a good size/quality trade-off
+
+  function compressDataUrl(dataUrl, maxPx, quality) {
+    maxPx = maxPx || EXPORT_MAX_PX;
+    quality = quality || EXPORT_QUALITY;
+    return new Promise(function (resolve) {
+      if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) {
+        resolve(dataUrl); return;
+      }
+      var img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight;
+        if (w <= maxPx && h <= maxPx) {
+          // Already small — just re-encode at lower quality.
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0);
+          resolve(c.toDataURL('image/jpeg', quality));
+          return;
+        }
+        var ratio = Math.min(maxPx / w, maxPx / h);
+        var nw = Math.round(w * ratio), nh = Math.round(h * ratio);
+        var c = document.createElement('canvas');
+        c.width = nw; c.height = nh;
+        c.getContext('2d').drawImage(img, 0, 0, nw, nh);
+        resolve(c.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = function () { resolve(dataUrl); };
+      img.src = dataUrl;
+    });
+  }
+
+  // Compress all _photos arrays inside a FeatureCollection (mutates in place).
+  // Returns a Promise that resolves when all images are done.
+  function compressFCPhotos(fc) {
+    var tasks = [];
+    (fc.features || []).forEach(function (f) {
+      var photos = f.properties && f.properties._photos;
+      if (!Array.isArray(photos)) return;
+      photos.forEach(function (ph, idx) {
+        if (!ph.dataUrl) return;
+        tasks.push(
+          compressDataUrl(ph.dataUrl).then(function (compressed) {
+            ph.dataUrl = compressed;
+          })
+        );
+      });
+    });
+    return Promise.all(tasks);
+  }
+
   // ---- GeoJSON → KML with full ExtendedData ------------------------------
   // Every feature property is emitted as a <Data> element so rich attributes
   // (Building ID, Meter Status, building_uuid, geometry_role …) survive the
@@ -2369,7 +2424,9 @@
     // fields filled in, heavy/private _keys stripped, source layer tagged).
     // building_uuid / geometry_role are kept so the point+footprint link
     // survives into GeoJSON, KML and downstream GIS.
-    function buildLayerFC(meta) {
+    // Build a clean FeatureCollection for one layer. When stripPhotos is true,
+    // _photos are excluded to produce a lightweight file for mobile export.
+    function buildLayerFC(meta, stripPhotos) {
       var schema = SCHEMAS[meta.category] || SCHEMAS.generic;
       var features = [];
       meta.group.eachLayer(function (lyr) {
@@ -2384,9 +2441,15 @@
         var src = gj.properties || {};
         var clean = {};
         Object.keys(src).forEach(function (key) {
+          if (key === '_photos' && stripPhotos) return;
           if (key.charAt(0) === '_' && key !== '_photos') return;
           clean[key] = src[key];
         });
+        // When stripping photos, keep a count so the receiving end knows images
+        // existed (useful for audit trail).
+        if (stripPhotos && Array.isArray(src._photos) && src._photos.length) {
+          clean._photo_count = src._photos.length;
+        }
         clean._layer = meta.name;
         clean._category = schema.label;
         gj.properties = clean;
@@ -2396,17 +2459,46 @@
     }
 
     function exportLayer(meta) {
-      var fc = buildLayerFC(meta);
+      // Count photos to decide which options to offer.
+      var photoCount = 0;
+      meta.group.eachLayer(function (lyr) {
+        var p = lyr.feature && lyr.feature.properties;
+        if (p && Array.isArray(p._photos)) photoCount += p._photos.length;
+      });
+      var mode = 'full'; // 'none' | 'compressed' | 'full'
+      if (photoCount > 0) {
+        var choice = prompt(
+          photoCount + ' photo(s) embedded.\n\n' +
+          'Choose export mode:\n' +
+          '  1 = No photos (smallest, fastest)\n' +
+          '  2 = Compressed photos (reduced size, recommended)\n' +
+          '  3 = Full quality photos (large file)\n\n' +
+          'Enter 1, 2 or 3:',
+          '2'
+        );
+        if (choice === null) return; // cancelled
+        if (choice.trim() === '1') mode = 'none';
+        else if (choice.trim() === '3') mode = 'full';
+        else mode = 'compressed';
+      }
+      var fc = buildLayerFC(meta, mode === 'none');
       if (!fc.features.length) { toast('Nothing to export'); return; }
       var check = validateExportFC(fc);
       if (!check.ok) { toast('Export blocked: ' + check.message); return; }
-      try {
+
+      function doDownload(fc2, tag) {
         var base = (meta.name || 'layer').replace(/[^\w.-]+/g, '_');
-        download(base + '.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
-        toast('Exported ' + fc.features.length + ' feature' + (fc.features.length === 1 ? '' : 's'));
-      } catch (err) {
-        console.error('[GIS] export failed', err);
-        toast('Export failed: ' + ((err && err.message) || 'unknown error'));
+        var json = (mode === 'full') ? JSON.stringify(fc2, null, 2) : JSON.stringify(fc2);
+        download(base + tag + '.geojson', json, 'application/geo+json');
+        toast('Exported ' + fc2.features.length + ' feature(s)' +
+          (mode === 'none' ? ' (no photos)' : mode === 'compressed' ? ' (compressed photos)' : ''));
+      }
+
+      if (mode === 'compressed') {
+        toast('Compressing ' + photoCount + ' photo(s)\u2026');
+        compressFCPhotos(fc).then(function () { doDownload(fc, '_compressed'); });
+      } else {
+        doDownload(fc, mode === 'none' ? '_no-photos' : '');
       }
     }
 
@@ -2553,12 +2645,12 @@
     // ---- Whole-project export (all layers in one file) ----
     // Returns { fc, perLayer } — a flat FeatureCollection for GeoJSON and a
     // per-layer list for KML folders. One pass, so both stay in sync.
-    function buildProjectExport() {
+    function buildProjectExport(stripPhotos) {
       var fc = { type: 'FeatureCollection', features: [] };
       var perLayer = [];
       Object.keys(layers).forEach(function (k) {
         var m = layers[k];
-        var lfc = buildLayerFC(m);
+        var lfc = buildLayerFC(m, stripPhotos);
         perLayer.push({ name: m.name, fc: lfc });
         lfc.features.forEach(function (f) { fc.features.push(f); });
       });
@@ -2566,16 +2658,47 @@
     }
 
     function exportProjectGeoJSON() {
-      var fc = buildProjectExport().fc;
+      // Count total photos across all layers.
+      var photoCount = 0;
+      Object.keys(layers).forEach(function (k) {
+        layers[k].group.eachLayer(function (lyr) {
+          var p = lyr.feature && lyr.feature.properties;
+          if (p && Array.isArray(p._photos)) photoCount += p._photos.length;
+        });
+      });
+      var mode = 'full'; // 'none' | 'compressed' | 'full'
+      if (photoCount > 0) {
+        var choice = prompt(
+          photoCount + ' photo(s) embedded in this project.\n\n' +
+          'Choose export mode:\n' +
+          '  1 = No photos (smallest, fastest)\n' +
+          '  2 = Compressed photos (reduced size, recommended)\n' +
+          '  3 = Full quality photos (large file)\n\n' +
+          'Enter 1, 2 or 3:',
+          '2'
+        );
+        if (choice === null) return; // cancelled
+        if (choice.trim() === '1') mode = 'none';
+        else if (choice.trim() === '3') mode = 'full';
+        else mode = 'compressed';
+      }
+      var fc = buildProjectExport(mode === 'none').fc;
       if (!fc.features.length) { toast('Nothing to export'); return; }
       var check = validateExportFC(fc);
       if (!check.ok) { toast('Export blocked: ' + check.message); return; }
-      try {
-        download('singhadurbar_gis_project.geojson', JSON.stringify(fc, null, 2), 'application/geo+json');
-        toast('Exported ' + fc.features.length + ' features');
-      } catch (err) {
-        console.error('[GIS] project export failed', err);
-        toast('Export failed: ' + ((err && err.message) || 'unknown error'));
+
+      function doDownload(fc2, tag) {
+        var json = (mode === 'full') ? JSON.stringify(fc2, null, 2) : JSON.stringify(fc2);
+        download('singhadurbar_gis_project' + tag + '.geojson', json, 'application/geo+json');
+        toast('Exported ' + fc2.features.length + ' features' +
+          (mode === 'none' ? ' (no photos)' : mode === 'compressed' ? ' (compressed photos)' : ''));
+      }
+
+      if (mode === 'compressed') {
+        toast('Compressing ' + photoCount + ' photo(s)\u2026');
+        compressFCPhotos(fc).then(function () { doDownload(fc, '_compressed'); });
+      } else {
+        doDownload(fc, mode === 'none' ? '_no-photos' : '');
       }
     }
 
