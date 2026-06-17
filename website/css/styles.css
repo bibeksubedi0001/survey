@@ -575,6 +575,10 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
 }
 .gis-side-head .gis-panel-close:hover{color:#c1001f;background:#fde8ec;}
 /* ---- GIS Tabs ---- */
+/* Inline SVG icons */
+svg.gi{width:14px;height:14px;vertical-align:-2px;flex-shrink:0;}
+svg.gi-lg{width:26px;height:26px;}
+svg.gi-xs{width:10px;height:10px;vertical-align:-1px;}
 .gis-tabs{
   display:flex;gap:0;background:#e8ecf1;padding:4px 10px;margin:0;
   border-bottom:1px solid #d0d5dd;
@@ -629,7 +633,7 @@ tbody td .mini-thumbs img{width:28px;height:28px;object-fit:cover;border:1px sol
   transform:translateY(-1px);box-shadow:0 3px 10px rgba(26,115,232,.1);
 }
 .gis-import-btn:active{transform:translateY(0);}
-.gis-import-ic{font-size:24px;line-height:1;}
+.gis-import-ic{font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;color:#667;}
 .gis-import-lbl{font-size:12px;font-weight:700;color:#333;line-height:1.3;}
 .gis-import-lbl small{display:block;font-size:9.5px;font-weight:400;color:#8893a4;margin-top:2px;}
 .gis-gnss-disc{width:100%;margin-top:8px;}

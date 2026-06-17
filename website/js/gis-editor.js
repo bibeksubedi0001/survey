@@ -314,10 +314,10 @@
       '  <div class="gis-side-head gis-side-top"><strong>GIS Tools</strong>' +
       '    <button type="button" class="gis-panel-close" data-act="panel-close" title="Hide panel">\u00d7</button></div>' +
       '  <div class="gis-tabs" data-role="gis-tabs">' +
-      '    <button type="button" class="gis-tab active" data-tab="layers">\ud83d\uddfa Layers</button>' +
-      '    <button type="button" class="gis-tab" data-tab="project">\ud83d\udcca Project</button>' +
-      '    <button type="button" class="gis-tab" data-tab="import">\ud83d\udce5 Import</button>' +
-      '    <button type="button" class="gis-tab" data-tab="gps">\ud83d\udce1 GPS</button>' +
+      '    <button type="button" class="gis-tab active" data-tab="layers"><svg class="gi" viewBox="0 0 16 16"><path d="M8 1L1 5l7 4 7-4L8 1zm-7 8l7 4 7-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M1 9l7 4 7-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" opacity=".5"/></svg> Layers</button>' +
+      '    <button type="button" class="gis-tab" data-tab="project"><svg class="gi" viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="6" rx=".5" fill="currentColor"/><rect x="6.5" y="4" width="3" height="10" rx=".5" fill="currentColor"/><rect x="12" y="1" width="3" height="13" rx=".5" fill="currentColor"/></svg> Project</button>' +
+      '    <button type="button" class="gis-tab" data-tab="import"><svg class="gi" viewBox="0 0 16 16"><path d="M8 2v8M5 7l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Import</button>' +
+      '    <button type="button" class="gis-tab" data-tab="gps"><svg class="gi" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> GPS</button>' +
       '  </div>' +
       '  <div class="gis-tab-content active" data-content="layers">' +
       '    <div class="gis-new-row">' +
@@ -341,14 +341,14 @@
       '  <div class="gis-tab-content" data-content="project">' +
       '    <div class="gis-tab-section">' +
       '      <div class="gis-tab-section-head">Summary</div>' +
-      '      <button type="button" class="btn btn-outline gis-full-btn" data-act="dashboard">\u2637 PROJECT SUMMARY</button>' +
+      '      <button type="button" class="btn btn-outline gis-full-btn" data-act="dashboard"><svg class="gi" viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="6" rx=".5" fill="currentColor"/><rect x="6.5" y="4" width="3" height="10" rx=".5" fill="currentColor"/><rect x="12" y="1" width="3" height="13" rx=".5" fill="currentColor"/></svg> PROJECT SUMMARY</button>' +
       '    </div>' +
       '    <div class="gis-tab-section">' +
       '      <div class="gis-tab-section-head">Export All Layers</div>' +
       '      <div class="gis-btn-grid">' +
-      '        <button type="button" class="btn btn-outline" data-act="proj-geojson">\ud83d\uddfa GeoJSON</button>' +
-      '        <button type="button" class="btn btn-outline" data-act="proj-kml">\ud83c\udf10 KML</button>' +
-      '        <button type="button" class="btn btn-outline" data-act="proj-xlsx">\ud83d\udcca Excel</button>' +
+      '        <button type="button" class="btn btn-outline" data-act="proj-geojson"><svg class="gi" viewBox="0 0 16 16"><path d="M2 3a1 1 0 011-1h6l4 4v7a1 1 0 01-1 1H3a1 1 0 01-1-1V3z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v4h4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> GeoJSON</button>' +
+      '        <button type="button" class="btn btn-outline" data-act="proj-kml"><svg class="gi" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.3"/><ellipse cx="8" cy="8" rx="3" ry="6.5" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M1.5 8h13M2.5 4.5h11M2.5 11.5h11" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/></svg> KML</button>' +
+      '        <button type="button" class="btn btn-outline" data-act="proj-xlsx"><svg class="gi" viewBox="0 0 16 16"><rect x="1.5" y="2" width="13" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.5h13M1.5 9h13M6 2v12" fill="none" stroke="currentColor" stroke-width="1" opacity=".5"/></svg> Excel</button>' +
       '      </div>' +
       '    </div>' +
       '    <p class="gis-tip">Export the entire project (all layers) in one file. Individual layers can also be exported from their menu in the Layers tab.</p>' +
@@ -358,22 +358,22 @@
       '      <div class="gis-tab-section-head">Import GIS Data</div>' +
       '      <div class="gis-import-grid">' +
       '        <label class="gis-import-btn">' +
-      '          <span class="gis-import-ic">\ud83d\udce6</span>' +
+      '          <span class="gis-import-ic"><svg class="gi-lg" viewBox="0 0 24 24"><path d="M4 4a2 2 0 012-2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 2v6h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 14l3 3 3-3M12 10v7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
       '          <span class="gis-import-lbl">Shapefile<small>.zip</small></span>' +
       '          <input type="file" accept=".zip" data-role="imp-shp" hidden>' +
       '        </label>' +
       '        <label class="gis-import-btn">' +
-      '          <span class="gis-import-ic">\ud83d\uddfa</span>' +
+      '          <span class="gis-import-ic"><svg class="gi-lg" viewBox="0 0 24 24"><path d="M3 5l9 5 9-5-9-5-9 5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 10l9 5 9-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 15l9 5 9-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span>' +
       '          <span class="gis-import-lbl">GeoJSON<small>.geojson / .json</small></span>' +
       '          <input type="file" accept=".geojson,.json" data-role="imp-geojson" hidden>' +
       '        </label>' +
       '        <label class="gis-import-btn">' +
-      '          <span class="gis-import-ic">\ud83c\udf10</span>' +
+      '          <span class="gis-import-ic"><svg class="gi-lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="12" cy="12" rx="4" ry="9.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2.5 12h19M4 7h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1" opacity=".5"/></svg></span>' +
       '          <span class="gis-import-lbl">KML / GPX<small>.kml / .gpx</small></span>' +
       '          <input type="file" accept=".kml,.gpx" data-role="imp-kmlgpx" hidden>' +
       '        </label>' +
       '        <label class="gis-import-btn">' +
-      '          <span class="gis-import-ic">\ud83d\udcca</span>' +
+      '          <span class="gis-import-ic"><svg class="gi-lg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h18M3 13h18M3 18h18M9 3v18" fill="none" stroke="currentColor" stroke-width="1" opacity=".5"/></svg></span>' +
       '          <span class="gis-import-lbl">Spreadsheet<small>.xlsx / .csv</small></span>' +
       '          <input type="file" accept=".xlsx,.xls,.csv" data-role="imp-excel" hidden>' +
       '        </label>' +
@@ -393,11 +393,11 @@
       '        <div class="wide"><span>Lng</span><b data-role="gnss-lng">\u2014</b></div>' +
       '      </div>' +
       '      <div class="gis-gnss-btns">' +
-      '        <button type="button" class="btn btn-outline" data-act="gnss-ble">\ud83d\udcf6 Bluetooth</button>' +
-      '        <button type="button" class="btn btn-outline" data-act="gnss-serial">\ud83d\udd0c Serial / USB</button>' +
+      '        <button type="button" class="btn btn-outline" data-act="gnss-ble"><svg class="gi" viewBox="0 0 16 16"><path d="M6 3l4 5-4 5M10 3L6 8l4 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Bluetooth</button>' +
+      '        <button type="button" class="btn btn-outline" data-act="gnss-serial"><svg class="gi" viewBox="0 0 16 16"><path d="M3 8h3M10 8h3M7 5a1 1 0 00-1 1v4a1 1 0 001 1h2a1 1 0 001-1V6a1 1 0 00-1-1H7z" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg> Serial / USB</button>' +
       '      </div>' +
       '      <button type="button" class="btn btn-mini btn-danger gis-gnss-disc" data-act="gnss-disconnect" hidden>DISCONNECT</button>' +
-      '      <button type="button" class="btn btn-primary gis-full-btn gis-gnss-drop" data-act="gnss-drop" hidden>\ud83d\udccd DROP POINT AT GNSS POSITION</button>' +
+      '      <button type="button" class="btn btn-primary gis-full-btn gis-gnss-drop" data-act="gnss-drop" hidden><svg class="gi" viewBox="0 0 16 16"><path d="M8 1C5.5 1 4 3 4 5.5 4 9 8 15 8 15s4-6 4-9.5C12 3 10.5 1 8 1z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="5.5" r="1.8" fill="currentColor"/></svg> DROP POINT AT GNSS POSITION</button>' +
       '    </div>' +
       '    <p class="gis-tip">Connect an external GNSS receiver (via Bluetooth or USB serial) for higher accuracy than phone GPS. Use "Drop Point" to capture a survey point at the current GNSS position.</p>' +
       '  </div>' +
@@ -1313,7 +1313,7 @@
           if (ph.lat != null && ph.lng != null) {
             var geo = document.createElement('span');
             geo.className = 'gis-photo-geo';
-            geo.textContent = '\ud83d\udccd';
+            geo.innerHTML = '<svg class="gi-xs" viewBox="0 0 16 16"><path d="M8 1C5.5 1 4 3 4 5.5 4 9 8 15 8 15s4-6 4-9.5C12 3 10.5 1 8 1z" fill="currentColor"/></svg>';
             geo.title = 'Geotagged';
             t.appendChild(geo);
           }
