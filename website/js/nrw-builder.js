@@ -115,40 +115,6 @@
     ws[ref] = cell;
   }
 
-  function findSheetByPrefix(wb, prefix) {
-    const p = prefix.toLowerCase();
-    const name = wb.SheetNames.find(s => s.trim().toLowerCase().startsWith(p));
-    return name ? wb.Sheets[name] : null;
-  }
-
-  const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june',
-                       'july', 'august', 'september', 'october', 'november', 'december'];
-  const MONTH_ABBR  = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
-                       'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-
-  // Locate the worksheet for a given 0-based calendar month. Prefers an exact
-  // full-name prefix ("April"), then falls back to the 3-letter abbreviation
-  // ("Apr") so SCADA books using either naming convention both work.
-  function findMonthSheet(wb, monthIdx) {
-    return findSheetByPrefix(wb, MONTH_NAMES[monthIdx]) ||
-           findSheetByPrefix(wb, MONTH_ABBR[monthIdx]);
-  }
-
-  // Enumerate every calendar month touched by [ds, de] inclusive.
-  // Returns [{ y, m }] with m 0-based. Capped defensively against bad input.
-  function monthsInRange(ds, de) {
-    const out = [];
-    let y = ds.getFullYear(), m = ds.getMonth();
-    const endY = de.getFullYear(), endM = de.getMonth();
-    while ((y < endY || (y === endY && m <= endM)) && out.length < 240) {
-      out.push({ y, m });
-      if (++m > 11) { m = 0; y++; }
-    }
-    return out;
-  }
-
-  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
-
   function findDmaCol(sheet, dma, headerRow) {
     // headerRow is 0-based (typically 7 for Excel row 8)
     const target = dma.trim().toLowerCase();
@@ -261,46 +227,37 @@
     extendRange(ws, totalRow, OBS_COL);
 
     // ---------- SCADA extraction ----------
-    // The requested range can span any month(s). For every calendar month the
-    // range touches, locate the matching month sheet in the SCADA workbook and
-    // pull the daily values that fall inside the range. Replaces the old
-    // hard-coded April/May handling so any reporting period works.
+    // Sheet-name independent: scan every sheet, read its date column (col 0,
+    // rows 9+) and the DMA column (header row 8), and keep the daily values
+    // whose date falls inside [dateStart, dateEnd]. The calendar month comes
+    // from the data itself, so this works whether sheets are named by month
+    // ("April"/"May ") or generically ("OMU - Volumes"). A trailing "Total"
+    // row is ignored automatically because its date cell is not numeric.
     const ds = new Date(dateStart.getFullYear(), dateStart.getMonth(), dateStart.getDate());
     const de = new Date(dateEnd.getFullYear(),   dateEnd.getMonth(),   dateEnd.getDate());
 
-    const months = monthsInRange(ds, de);
-    let daily = [];
+    const byDay = new Map();   // dateKey -> [ymd, value]; first sheet to supply a day wins
     let headerSheet = null;
     let headerCol   = -1;
-    let anySheetFound = false;
 
-    for (const { y, m } of months) {
-      const sheet = findMonthSheet(scadaWB, m);
-      if (!sheet) continue;
-      anySheetFound = true;
+    for (const sheetName of scadaWB.SheetNames) {
+      const sheet = scadaWB.Sheets[sheetName];
+      if (!sheet || !sheet['!ref']) continue;
       const dmaCol = findDmaCol(sheet, dmaName, 7);
       if (dmaCol < 0) continue;
       if (headerSheet === null) { headerSheet = sheet; headerCol = dmaCol; }
-
-      const monthFirst = new Date(y, m, 1);
-      const monthLast  = new Date(y, m + 1, 0);            // last calendar day of month
-      const sliceStart = ds > monthFirst ? ds : monthFirst;
-      const sliceEnd   = de < monthLast  ? de : monthLast;
-      if (sliceStart <= sliceEnd) {
-        daily = daily.concat(collectDailyForRange(sheet, dmaCol, sliceStart, sliceEnd));
+      for (const entry of collectDailyForRange(sheet, dmaCol, ds, de)) {
+        const k = ymdKey(entry[0]);
+        if (!byDay.has(k)) byDay.set(k, entry);
       }
     }
 
-    if (!anySheetFound) {
-      const wanted = [...new Set(months.map(x => capitalize(MONTH_NAMES[x.m])))].join("', '");
-      throw new Error(`SCADA workbook has no sheet for the selected month(s): '${wanted}'.`);
-    }
     if (headerSheet === null) {
-      throw new Error(`DMA "${dmaName}" not found in SCADA month headers (row 8).`);
+      throw new Error(`DMA "${dmaName}" not found in any SCADA sheet (DMA names are read from row 8).`);
     }
 
-    // sort chronologically just in case
-    daily.sort((a, b) => ymdKey(a[0]) - ymdKey(b[0]));
+    // chronological order
+    const daily = [...byDay.values()].sort((a, b) => ymdKey(a[0]) - ymdKey(b[0]));
 
     const dailyTotal = daily.reduce((s, [, v]) => s + (v || 0), 0);
 
