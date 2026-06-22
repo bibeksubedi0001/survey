@@ -152,6 +152,7 @@
       <button id="tabbtn-water24"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-water24"  tabindex="-1" data-tab="water24"><svg class="tab-ico"><use href="#ico-water24"/></svg> 24-HOUR SUPPLY <span id="water24Count" class="badge">0</span></button>
       <span class="nav-sep" aria-hidden="true"></span>
       <button id="tabbtn-gis"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-gis"      tabindex="-1" data-tab="gis"><svg class="tab-ico"><use href="#ico-gis"/></svg> MAP / GIS</button>
+      <button id="tabbtn-merge"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-merge"    tabindex="-1" data-tab="merge"><svg class="tab-ico"><use href="#ico-nrw"/></svg> MERGE READINGS</button>
       <button id="tabbtn-nrw"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-nrw"      tabindex="-1" data-tab="nrw"><svg class="tab-ico"><use href="#ico-nrw"/></svg> NRW REPORT</button>
       <button id="tabbtn-about"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-about"    tabindex="-1" data-tab="about"><svg class="tab-ico"><use href="#ico-help"/></svg> HELP</button>
       <button id="btnTheme" class="theme-toggle" type="button" title="Toggle theme (light / dark / sunlight)" aria-label="Toggle theme"><svg class="tab-ico"><use href="#ico-theme"/></svg> THEME</button>
@@ -269,6 +270,14 @@
       <div class="hub-section">
         <h2 class="hub-heading">DATA CALCULATION</h2>
         <div class="hub-grid">
+          <div class="hub-card" data-topic="merge">
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-nrw"/></svg></div>
+            <h3>Customer File Builder</h3>
+            <p>Merge many exported meter-reading <b>.xlsx</b> files into one clean workbook per DMA &mdash; ready for the NRW Report.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="merge">OPEN</button>
+            </div>
+          </div>
           <div class="hub-card" data-topic="nrw">
             <div class="hub-icon"><svg class="hub-svg"><use href="#ico-nrw"/></svg></div>
             <h3>NRW Report</h3>
@@ -663,6 +672,44 @@
       </div>
     </section>
 
+    <!-- ===== TAB: MERGE READINGS (Customer File Builder) ===== -->
+    <section id="tab-merge" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-merge" tabindex="0">
+      <div class="card">
+        <div class="card-head"><h2>Customer File Builder &mdash; Merge Meter Readings by DMA</h2></div>
+
+        <p class="hint" style="margin-top:0;">
+          Select all the exported meter-reading <b>.xlsx</b> files (e.g. everything inside your
+          <code>meter_read</code> folder). The tool reads each row's <b>Area No</b>, auto-classifies it
+          into a DMA (3.4, 9.1, 4.1.2, 2.3, 2.4, 3.5) using the field mapping, and builds one clean
+          workbook per DMA &mdash; ready to drop into <b>NRW Report &rarr; Customer reading file</b>.
+        </p>
+
+        <div class="btn-row" style="margin-top:6px;">
+          <label class="btn btn-primary">
+            SELECT FILES
+            <input type="file" id="mergeFiles" accept=".xlsx,.xlsm" multiple hidden />
+          </label>
+          <label class="btn btn-outline">
+            SELECT FOLDER
+            <input type="file" id="mergeFolder" webkitdirectory directory multiple hidden />
+          </label>
+          <button id="mergeClear" class="btn btn-outline" type="button">CLEAR</button>
+        </div>
+
+        <div id="mergeLog" class="hint" style="margin-top:14px;white-space:pre-wrap;">
+          No files selected yet.
+        </div>
+
+        <div id="mergeMapHost"></div>
+
+        <div class="btn-row" style="margin-top:14px;">
+          <button id="mergeGenerate" class="btn btn-primary" disabled>GENERATE MERGED FILES</button>
+        </div>
+
+        <div id="mergePreview" class="nrw-preview-host"></div>
+      </div>
+    </section>
+
     <!-- ===== TAB: CHIEF OFFICER ===== -->
     <section id="tab-chief"    class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-chief"    tabindex="0" data-extra-section="chief"></section>
 
@@ -690,6 +737,7 @@
           <li><b>NEW SURVEY</b> — Tap CAPTURE LOCATION; the app refines GPS until accuracy reaches ≤ 2 m. Tap START CAMERA, then CAPTURE PHOTO. Fill the form, then SAVE SURVEY.</li>
           <li><b>RECORDS</b> — view, edit, delete, or EXPORT EXCEL. Data is stored locally on this device (offline-safe).</li>
           <li><b>FIELD REPORTS</b> (Chief Officer, Leakage, Pressure, Area Survey) — each works the same way: fill the form, capture stamped photos, dictate remarks via MIC, and export to Excel.</li>
+          <li><b>CUSTOMER FILE BUILDER</b> — Select all exported meter-reading <b>.xlsx</b> files; the tool auto-classifies each row into a DMA by its Area No and merges them into one clean workbook per DMA, ready for the NRW Report.</li>
           <li><b>NRW REPORT</b> — Upload customer reading + SCADA workbooks to auto-build a Baishakh-style report.</li>
         </ol>
         <p class="hint">Tip: For best GPS accuracy, stand outdoors with clear sky for 10–15 seconds before capturing location.</p>
@@ -772,6 +820,7 @@
   <script src="js/gis-editor.js?v=35"      data-cfasync="false"></script>
   <script src="js/app.js?v=20"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=4"      data-cfasync="false"></script>
+  <script src="js/meter-merge.js?v=3"      data-cfasync="false"></script>
   <script src="js/extra-sections.js?v=12"   data-cfasync="false"></script>
 
   <!-- Global navigation wiring (extracted from inline <script> for CSP) -->

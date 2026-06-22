@@ -21,6 +21,7 @@
     satisfaction: 'Customer Satisfaction',
     water24: '24-Hour Supply Survey',
     gis: 'Field GIS — Map & Editor',
+    merge: 'Customer File Builder',
     nrw: 'NRW Report Builder',
     about: 'Help & About',
   };
