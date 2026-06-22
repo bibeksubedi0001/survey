@@ -121,6 +121,34 @@
     return name ? wb.Sheets[name] : null;
   }
 
+  const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june',
+                       'july', 'august', 'september', 'october', 'november', 'december'];
+  const MONTH_ABBR  = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+                       'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+  // Locate the worksheet for a given 0-based calendar month. Prefers an exact
+  // full-name prefix ("April"), then falls back to the 3-letter abbreviation
+  // ("Apr") so SCADA books using either naming convention both work.
+  function findMonthSheet(wb, monthIdx) {
+    return findSheetByPrefix(wb, MONTH_NAMES[monthIdx]) ||
+           findSheetByPrefix(wb, MONTH_ABBR[monthIdx]);
+  }
+
+  // Enumerate every calendar month touched by [ds, de] inclusive.
+  // Returns [{ y, m }] with m 0-based. Capped defensively against bad input.
+  function monthsInRange(ds, de) {
+    const out = [];
+    let y = ds.getFullYear(), m = ds.getMonth();
+    const endY = de.getFullYear(), endM = de.getMonth();
+    while ((y < endY || (y === endY && m <= endM)) && out.length < 240) {
+      out.push({ y, m });
+      if (++m > 11) { m = 0; y++; }
+    }
+    return out;
+  }
+
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
   function findDmaCol(sheet, dma, headerRow) {
     // headerRow is 0-based (typically 7 for Excel row 8)
     const target = dma.trim().toLowerCase();
@@ -211,7 +239,10 @@
         totalCons += cons;
         totalBill += bill;
       } else {
+        // Blank / non-numeric consumption still bills the minimum (5); include it
+        // in the grand total so the column sum matches the printed total row.
         bill = 5;
+        totalBill += 5;
       }
       setCell(ws, r, BILL_COL, bill);
 
@@ -230,50 +261,50 @@
     extendRange(ws, totalRow, OBS_COL);
 
     // ---------- SCADA extraction ----------
-    const sApr = findSheetByPrefix(scadaWB, 'april');
-    const sMay = findSheetByPrefix(scadaWB, 'may');
-    if (!sApr || !sMay) {
-      throw new Error("SCADA workbook must contain 'April' and 'May' sheets.");
-    }
-    const dmaColApr = findDmaCol(sApr, dmaName, 7);
-    const dmaColMay = findDmaCol(sMay, dmaName, 7);
-    if (dmaColApr < 0 && dmaColMay < 0) {
-      throw new Error(`DMA "${dmaName}" not found in SCADA April/May headers (row 8).`);
-    }
-
-    // Decide which slices to pull from each sheet based on requested range
+    // The requested range can span any month(s). For every calendar month the
+    // range touches, locate the matching month sheet in the SCADA workbook and
+    // pull the daily values that fall inside the range. Replaces the old
+    // hard-coded April/May handling so any reporting period works.
     const ds = new Date(dateStart.getFullYear(), dateStart.getMonth(), dateStart.getDate());
     const de = new Date(dateEnd.getFullYear(),   dateEnd.getMonth(),   dateEnd.getDate());
 
+    const months = monthsInRange(ds, de);
     let daily = [];
-    // April portion
-    if (dmaColApr >= 0) {
-      const aprFirst = new Date(ds.getFullYear(), 3, 1);   // Apr 1
-      const aprLast  = new Date(ds.getFullYear(), 3, 30);  // Apr 30
-      const sliceStart = ds > aprFirst ? ds : aprFirst;
-      const sliceEnd   = de < aprLast  ? de : aprLast;
+    let headerSheet = null;
+    let headerCol   = -1;
+    let anySheetFound = false;
+
+    for (const { y, m } of months) {
+      const sheet = findMonthSheet(scadaWB, m);
+      if (!sheet) continue;
+      anySheetFound = true;
+      const dmaCol = findDmaCol(sheet, dmaName, 7);
+      if (dmaCol < 0) continue;
+      if (headerSheet === null) { headerSheet = sheet; headerCol = dmaCol; }
+
+      const monthFirst = new Date(y, m, 1);
+      const monthLast  = new Date(y, m + 1, 0);            // last calendar day of month
+      const sliceStart = ds > monthFirst ? ds : monthFirst;
+      const sliceEnd   = de < monthLast  ? de : monthLast;
       if (sliceStart <= sliceEnd) {
-        daily = daily.concat(collectDailyForRange(sApr, dmaColApr, sliceStart, sliceEnd));
+        daily = daily.concat(collectDailyForRange(sheet, dmaCol, sliceStart, sliceEnd));
       }
     }
-    // May portion
-    if (dmaColMay >= 0) {
-      const mayFirst = new Date(de.getFullYear(), 4, 1);   // May 1
-      const mayLast  = new Date(de.getFullYear(), 4, 31);  // May 31
-      const sliceStart = ds > mayFirst ? ds : mayFirst;
-      const sliceEnd   = de < mayLast  ? de : mayLast;
-      if (sliceStart <= sliceEnd) {
-        daily = daily.concat(collectDailyForRange(sMay, dmaColMay, sliceStart, sliceEnd));
-      }
+
+    if (!anySheetFound) {
+      const wanted = [...new Set(months.map(x => capitalize(MONTH_NAMES[x.m])))].join("', '");
+      throw new Error(`SCADA workbook has no sheet for the selected month(s): '${wanted}'.`);
     }
+    if (headerSheet === null) {
+      throw new Error(`DMA "${dmaName}" not found in SCADA month headers (row 8).`);
+    }
+
     // sort chronologically just in case
     daily.sort((a, b) => ymdKey(a[0]) - ymdKey(b[0]));
 
     const dailyTotal = daily.reduce((s, [, v]) => s + (v || 0), 0);
 
     // DMA header label (e.g. "9.1 (OMU 036)")
-    const headerSheet = dmaColApr >= 0 ? sApr : sMay;
-    const headerCol   = dmaColApr >= 0 ? dmaColApr : dmaColMay;
     const dmaLabel = (getCell(headerSheet, 7, headerCol) || dmaName).toString();
 
     // ---------- Daily SCADA block ----------
