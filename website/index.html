@@ -56,7 +56,7 @@
         integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+"
         crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="assets/vendor/leaflet-geoman.css" />
-  <link rel="stylesheet" href="css/styles.css?v=63" />
+  <link rel="stylesheet" href="css/styles.css?v=64" />
 
   <!-- Apply theme as early as possible to avoid FOUC.
        External so CSP can drop 'unsafe-inline' for script-src. -->
@@ -679,9 +679,10 @@
 
         <p class="hint" style="margin-top:0;">
           Select all the exported meter-reading <b>.xlsx</b> files (e.g. everything inside your
-          <code>meter_read</code> folder). The tool reads each row's <b>Area No</b>, auto-classifies it
-          into a DMA (3.4, 9.1, 4.1.2, 2.3, 2.4, 3.5) using the field mapping, and builds one clean
-          workbook per DMA &mdash; ready to drop into <b>NRW Report &rarr; Customer reading file</b>.
+          <code>meter_read</code> folder) &mdash; this handles 1000+ files in one go. The tool reads
+          each row's <b>Area No</b>, auto-classifies it into a DMA using the full field allocation
+          table (1.2, 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1.2, 9.1, 9.2), and builds one
+          clean workbook per DMA &mdash; ready to drop into <b>NRW Report &rarr; Customer reading file</b>.
         </p>
 
         <div class="btn-row" style="margin-top:6px;">
@@ -693,7 +694,13 @@
             SELECT FOLDER
             <input type="file" id="mergeFolder" webkitdirectory directory multiple hidden />
           </label>
+          <button id="mergeCancel" class="btn btn-outline" type="button" hidden>CANCEL</button>
           <button id="mergeClear" class="btn btn-outline" type="button">CLEAR</button>
+        </div>
+
+        <div id="mergeProgress" class="merge-progress" hidden>
+          <div class="merge-progress-track"><div id="mergeProgressFill" class="merge-progress-fill"></div></div>
+          <div id="mergeProgressText" class="merge-progress-text"></div>
         </div>
 
         <div id="mergeLog" class="hint" style="margin-top:14px;white-space:pre-wrap;">
@@ -737,7 +744,7 @@
           <li><b>NEW SURVEY</b> — Tap CAPTURE LOCATION; the app refines GPS until accuracy reaches ≤ 2 m. Tap START CAMERA, then CAPTURE PHOTO. Fill the form, then SAVE SURVEY.</li>
           <li><b>RECORDS</b> — view, edit, delete, or EXPORT EXCEL. Data is stored locally on this device (offline-safe).</li>
           <li><b>FIELD REPORTS</b> (Chief Officer, Leakage, Pressure, Area Survey) — each works the same way: fill the form, capture stamped photos, dictate remarks via MIC, and export to Excel.</li>
-          <li><b>CUSTOMER FILE BUILDER</b> — Select all exported meter-reading <b>.xlsx</b> files; the tool auto-classifies each row into a DMA by its Area No and merges them into one clean workbook per DMA, ready for the NRW Report.</li>
+          <li><b>CUSTOMER FILE BUILDER</b> — Select all exported meter-reading <b>.xlsx</b> files (handles 1000+ at once, with a progress bar and CANCEL); the tool auto-classifies each row into a DMA by its Area No and merges them into one clean workbook per DMA, ready for the NRW Report.</li>
           <li><b>NRW REPORT</b> — Upload customer reading + SCADA workbooks to auto-build a Baishakh-style report.</li>
         </ol>
         <p class="hint">Tip: For best GPS accuracy, stand outdoors with clear sky for 10–15 seconds before capturing location.</p>
@@ -820,7 +827,7 @@
   <script src="js/gis-editor.js?v=35"      data-cfasync="false"></script>
   <script src="js/app.js?v=20"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=6"      data-cfasync="false"></script>
-  <script src="js/meter-merge.js?v=4"      data-cfasync="false"></script>
+  <script src="js/meter-merge.js?v=5"      data-cfasync="false"></script>
   <script src="js/extra-sections.js?v=12"   data-cfasync="false"></script>
 
   <!-- Global navigation wiring (extracted from inline <script> for CSP) -->

@@ -1899,6 +1899,10 @@ a.brand:hover .brand-text h1{text-decoration:underline;}
 .merge-unmatched td{background:#fff5f5;}
 .merge-unmatched .merge-dma{border-color:#a8001a;}
 .merge-warn{display:inline-block;font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.5px;color:#a8001a;border:1px solid #a8001a;background:#fdecea;padding:1px 6px;border-radius:3px;}
+.merge-progress{margin-top:14px;}
+.merge-progress-track{height:10px;border:1px solid #000;background:#eee;overflow:hidden;}
+.merge-progress-fill{height:100%;width:0;background:#1565c0;transition:width .12s linear;}
+.merge-progress-text{margin-top:4px;font-size:12px;font-weight:700;letter-spacing:.3px;color:#333;}
 
 /* =============================================================
    PRIMARY NAV BAR — always visible, sticky below header
