@@ -196,6 +196,109 @@
     return { name, ok: true, error: null, rows };
   }
 
+  // ---------- pure: fingerprint a row for duplicate detection (ignores Sl.) ----------
+  // Sl. is a position-derived serial number that gets re-sequenced on every export
+  // and again on output — two rows/files that are identical except for row ORDER
+  // (which shifts Sl.) must still be recognized as the same customer record.
+  function rowKey(row) {
+    return row.slice(1).map(v => (v == null ? '' : String(v).trim().toLowerCase())).join('\u0001');
+  }
+
+  // ---------- pure: drop files & rows that are exact re-exports of something already read ----------
+  // Two-stage, both order-insensitive and Sl.-agnostic:
+  //   1. Whole-file dupes: a file whose entire row set (as a multiset) matches an
+  //      earlier file's is dropped outright (e.g. the same book exported twice).
+  //   2. Row-level dupes: within what's left, if the *same* customer row (identical
+  //      in every column but Sl.) still appears more than once — even split across
+  //      two otherwise-different files — only the first occurrence is kept, so a
+  //      customer's consumption is never silently double-counted downstream.
+  // Returns the same records (mutated in place for .rows) plus counts for the log.
+  function dedupeRecords(records) {
+    const seenFileKey = new Set();
+    const kept = [];
+    const duplicateFiles = [];
+    for (const rec of records) {
+      if (!rec.ok || !rec.rows.length) { kept.push(rec); continue; }
+      const fileKey = rec.rows.map(rowKey).sort().join('\u0002');
+      if (seenFileKey.has(fileKey)) { duplicateFiles.push(rec.name); continue; }
+      seenFileKey.add(fileKey);
+      kept.push(rec);
+    }
+    const seenRow = new Set();
+    let duplicateRows = 0;
+    for (const rec of kept) {
+      if (!rec.ok || !rec.rows.length) continue;
+      const uniqueRows = [];
+      for (const row of rec.rows) {
+        const k = rowKey(row);
+        if (seenRow.has(k)) { duplicateRows++; continue; }
+        seenRow.add(k);
+        uniqueRows.push(row);
+      }
+      rec.rows = uniqueRows;
+    }
+    return { records: kept, duplicateFiles, duplicateRows };
+  }
+
+  // ---------- pure: data-quality scan over a set of merged rows ----------
+  // Flags things worth a human's attention without ever silently altering data:
+  //   negative      — Present Reading < Prev Reading (rollover, meter swap, typo)
+  //   blankName     — a real Con No/Customer No with no Name on file
+  //   conflict      — the same Con No appears twice with genuinely different data
+  //                   (dedupeRecords already removed *identical* repeats, so any
+  //                   Con No seen twice here is a real conflict worth reviewing)
+  //   outlier       — Consumption far above the group's own median (soft heuristic)
+  function analyzeRows(rows) {
+    const issues = { negative: [], blankName: [], conflict: [], outlier: [] };
+    const cons = [];
+    for (const row of rows) {
+      const c = parseFloat(row[IDX['Consumption']]);
+      if (!isNaN(c)) cons.push(c);
+    }
+    cons.sort((a, b) => a - b);
+    const median = cons.length ? cons[Math.floor(cons.length / 2)] : 0;
+    const outlierCap = Math.max(200, median * 6);
+
+    const firstSeen = new Map();
+    for (const row of rows) {
+      const conNo = row[IDX['Con No']];
+      const name = row[IDX['Name']];
+      const prev = parseFloat(row[IDX['Prev Reading']]);
+      const pres = parseFloat(row[IDX['Present Reading']]);
+      const consVal = parseFloat(row[IDX['Consumption']]);
+
+      if (!isNaN(prev) && !isNaN(pres) && pres < prev) issues.negative.push(row);
+      if (conNo != null && String(conNo).trim() && !(name != null && String(name).trim())) issues.blankName.push(row);
+      if (!isNaN(consVal) && consVal > outlierCap) issues.outlier.push(row);
+
+      const idKey = conNo != null ? String(conNo).trim().toLowerCase() : '';
+      if (idKey) {
+        if (firstSeen.has(idKey)) issues.conflict.push(row);
+        else firstSeen.set(idKey, row);
+      }
+    }
+    return issues;
+  }
+
+  // ---------- pure: roll up per-DMA outputs into dashboard-friendly stats ----------
+  function computeStats(outputs) {
+    const files = new Set();
+    let totalRows = 0;
+    let totalConsumption = 0;
+    const byDma = outputs.map(o => {
+      let consumption = 0;
+      for (const row of o.rows) {
+        const c = parseFloat(row[IDX['Consumption']]);
+        if (!isNaN(c)) consumption += c;
+      }
+      for (const f of o.files) files.add(f);
+      totalRows += o.rows.length;
+      totalConsumption += consumption;
+      return { name: o.dmaName, rows: o.rows.length, files: o.files.size, consumption };
+    });
+    return { totalDmas: outputs.length, totalFiles: files.size, totalRows, totalConsumption, byDma };
+  }
+
   // ---------- pure: classify every row into one or more DMAs, or a leftover zone ----------
   // Matched rows are bucketed by DMA (a row lands in *every* DMA whose rule matches
   // its Area No — see classifyAreaAll — so overlapping-book rows are duplicated on
@@ -297,6 +400,11 @@
     zoneLabel,
     areaPrefix,
     sanitizeFileName,
+    sanitizeSheetName,
+    rowKey,
+    dedupeRecords,
+    analyzeRows,
+    computeStats,
   };
 
 
@@ -321,28 +429,67 @@
   }
 
   function initUI() {
-    const filesIn      = $('mergeFiles');
-    const folderIn     = $('mergeFolder');
-    const clearBtn     = $('mergeClear');
-    const cancelBtn    = $('mergeCancel');
-    const genBtn       = $('mergeGenerate');
-    const mapHost      = $('mergeMapHost');
-    const preview      = $('mergePreview');
-    const logEl        = $('mergeLog');
-    const progressEl   = $('mergeProgress');
-    const progressFill = $('mergeProgressFill');
-    const progressText = $('mergeProgressText');
+    const filesIn        = $('mergeFiles');
+    const folderIn       = $('mergeFolder');
+    const clearBtn       = $('mergeClear');
+    const cancelBtn      = $('mergeCancel');
+    const genBtn         = $('mergeGenerate');
+    const genCombinedBtn = $('mergeGenerateCombined');
+    const issuesBtn      = $('mergeDownloadIssues');
+    const mapHost        = $('mergeMapHost');
+    const preview        = $('mergePreview');
+    const logEl          = $('mergeLog');
+    const progressEl     = $('mergeProgress');
+    const progressFill   = $('mergeProgressFill');
+    const progressText   = $('mergeProgressText');
+    const statsHost       = $('mergeStats');
+    const qualityHost     = $('mergeQuality');
+    const dmaToolbar      = $('mergeDmaToolbar');
+    const dmaFilterInput  = $('mergeDmaFilter');
+    const forgetBtn       = $('mergeForgetNames');
     if (!filesIn || !genBtn) return;   // tool not on this page
 
     let groups = [];        // current grouped zones
     let skipped = [];       // files that were ignored
     let busy = false;       // a read or generate pass is in progress
     let cancelRequested = false;
+    let lastOutputs = [];       // last computed per-DMA outputs (post name-mapping)
+    let lastIssueEntries = [];  // flattened data-quality rows for the issues download
+    let dmaFilterText = '';     // Detected-DMAs search box value
+    let dmaSort = { col: 'display', dir: 1 };
+    let previewSort = { col: 'dmaName', dir: 1 };
 
     function log(msg, isError) {
       if (!logEl) return;
       logEl.style.color = isError ? '#a8001a' : '';
       logEl.textContent = msg;
+    }
+
+    // ---- remembered output names for zones that didn't auto-match a DMA ----
+    // Scoped to *unmatched* zones only — a matched DMA's name comes straight from
+    // the allocation table and must never be silently overridden by a stale
+    // value saved in a previous session.
+    const REMEMBER_PREFIX = 'kuklMerge.zoneName.';
+    function rememberedName(key) {
+      try { return localStorage.getItem(REMEMBER_PREFIX + key) || ''; } catch (e) { return ''; }
+    }
+    function rememberName(key, value) {
+      try {
+        if (value) localStorage.setItem(REMEMBER_PREFIX + key, value);
+        else localStorage.removeItem(REMEMBER_PREFIX + key);
+      } catch (e) { /* localStorage unavailable (private browsing etc.) — ignore */ }
+    }
+    function forgetRememberedNames() {
+      try {
+        const toRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf(REMEMBER_PREFIX) === 0) toRemove.push(k);
+        }
+        toRemove.forEach(k => localStorage.removeItem(k));
+      } catch (e) { /* ignore */ }
+      renderMap();
+      log('Forgot all remembered unmatched-zone names.');
     }
 
     // Batch size processed before yielding to the event loop (keeps the tab
@@ -374,38 +521,165 @@
       return map;
     }
 
+    // ---- generic click-to-sort helper shared by both tables ----
+    function sortRows(rows, getters, sort) {
+      const get = getters[sort.col] || getters[Object.keys(getters)[0]];
+      return rows.slice().sort((a, b) => {
+        const va = get(a), vb = get(b);
+        const cmp = (typeof va === 'number' && typeof vb === 'number')
+          ? va - vb
+          : String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' });
+        return cmp * sort.dir;
+      });
+    }
+    function sortArrow(sort, col) {
+      return sort.col === col ? (sort.dir === 1 ? ' \u25B2' : ' \u25BC') : '';
+    }
+
     function renderPreview() {
-      if (!preview) return;
-      if (!groups.length) { preview.innerHTML = ''; return; }
       const outputs = API.assignDmas(groups, currentMapping());
+      lastOutputs = outputs;
       genBtn.disabled = outputs.length === 0;
-      const rowsHtml = outputs.map(o =>
-        `<tr>
-           <td><b>${escapeHtml(API.sanitizeFileName(o.dmaName))}.xlsx</b></td>
-           <td>${escapeHtml(zonesText(o.zones))}</td>
-           <td class="num">${o.files.size}</td>
-           <td class="num">${o.rows.length}</td>
-         </tr>`).join('');
-      preview.innerHTML =
-        `<div class="nrw-preview">
-           <h3>Output preview &mdash; ${outputs.length} file${outputs.length === 1 ? '' : 's'} will be created</h3>
-           <div class="nrw-table-wrap nrw-scroll">
-             <table class="nrw-tbl">
-               <thead><tr><th>Output file</th><th>Merged zones</th><th class="num">Src files</th><th class="num">Rows</th></tr></thead>
-               <tbody>${rowsHtml}</tbody>
-             </table>
+      if (genCombinedBtn) genCombinedBtn.disabled = outputs.length === 0;
+
+      if (preview) {
+        if (!outputs.length) {
+          preview.innerHTML = '';
+        } else {
+          const sorted = sortRows(outputs, {
+            dmaName: o => o.dmaName,
+            zones: o => zonesText(o.zones),
+            files: o => o.files.size,
+            rows: o => o.rows.length,
+          }, previewSort);
+          const rowsHtml = sorted.map(o =>
+            `<tr>
+               <td><b>${escapeHtml(API.sanitizeFileName(o.dmaName))}.xlsx</b></td>
+               <td>${escapeHtml(zonesText(o.zones))}</td>
+               <td class="num">${o.files.size}</td>
+               <td class="num">${o.rows.length.toLocaleString()}</td>
+             </tr>`).join('');
+          preview.innerHTML =
+            `<div class="nrw-preview">
+               <h3>Output preview &mdash; ${outputs.length} file${outputs.length === 1 ? '' : 's'} will be created</h3>
+               <div class="nrw-table-wrap nrw-scroll">
+                 <table class="nrw-tbl">
+                   <thead><tr>
+                     <th data-sort="dmaName" class="sortable">Output file${sortArrow(previewSort, 'dmaName')}</th>
+                     <th data-sort="zones" class="sortable">Merged zones${sortArrow(previewSort, 'zones')}</th>
+                     <th data-sort="files" class="sortable num">Src files${sortArrow(previewSort, 'files')}</th>
+                     <th data-sort="rows" class="sortable num">Rows${sortArrow(previewSort, 'rows')}</th>
+                   </tr></thead>
+                   <tbody>${rowsHtml}</tbody>
+                 </table>
+               </div>
+             </div>`;
+          preview.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+              const col = th.getAttribute('data-sort');
+              previewSort = { col, dir: (previewSort.col === col ? -previewSort.dir : 1) };
+              renderPreview();
+            });
+          });
+        }
+      }
+
+      renderStats(outputs);
+      renderQuality(outputs);
+    }
+
+    function renderStats(outputs) {
+      if (!statsHost) return;
+      if (!outputs.length) { statsHost.innerHTML = ''; return; }
+      const stats = API.computeStats(outputs);
+      const maxRows = Math.max(1, ...stats.byDma.map(d => d.rows));
+      const bars = stats.byDma.slice().sort((a, b) => b.rows - a.rows).map(d => `
+        <div class="merge-bar-row">
+          <div class="merge-bar-label" title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</div>
+          <div class="merge-bar-track"><div class="merge-bar-fill" style="width:${Math.max(2, Math.round(d.rows / maxRows * 100))}%"></div></div>
+          <div class="merge-bar-value">${d.rows.toLocaleString()}</div>
+        </div>`).join('');
+      statsHost.innerHTML =
+        `<div class="merge-stats">
+           <h3>Summary</h3>
+           <div class="merge-stat-cards">
+             <div class="merge-stat-card"><span class="merge-stat-num">${stats.totalFiles.toLocaleString()}</span><span class="merge-stat-lbl">Source files used</span></div>
+             <div class="merge-stat-card"><span class="merge-stat-num">${stats.totalDmas.toLocaleString()}</span><span class="merge-stat-lbl">Output DMA files</span></div>
+             <div class="merge-stat-card"><span class="merge-stat-num">${stats.totalRows.toLocaleString()}</span><span class="merge-stat-lbl">Customer rows</span></div>
+             <div class="merge-stat-card"><span class="merge-stat-num">${Math.round(stats.totalConsumption).toLocaleString()}</span><span class="merge-stat-lbl">Total consumption</span></div>
            </div>
+           <div class="merge-bars">${bars}</div>
+         </div>`;
+    }
+
+    function renderQuality(outputs) {
+      if (!qualityHost) return;
+      if (!outputs.length) {
+        qualityHost.innerHTML = '';
+        lastIssueEntries = [];
+        if (issuesBtn) issuesBtn.disabled = true;
+        return;
+      }
+      const entries = [];   // { reason, dma, row }
+      const totals = { negative: 0, blankName: 0, conflict: 0, outlier: 0 };
+      const labels = {
+        negative: 'Present < Prev reading',
+        blankName: 'Con No with no Name',
+        conflict: 'Same Con No, conflicting data',
+        outlier: 'Unusually high consumption',
+      };
+      for (const o of outputs) {
+        const issues = API.analyzeRows(o.rows);
+        for (const key of Object.keys(labels)) {
+          for (const row of issues[key]) entries.push({ reason: labels[key], dma: o.dmaName, row });
+          totals[key] += issues[key].length;
+        }
+      }
+      lastIssueEntries = entries;
+      if (issuesBtn) issuesBtn.disabled = entries.length === 0;
+      const totalIssues = totals.negative + totals.blankName + totals.conflict + totals.outlier;
+      if (!totalIssues) {
+        qualityHost.innerHTML = `<div class="merge-quality merge-quality-ok">\u2713 No data-quality issues detected across ${outputs.length} output file(s).</div>`;
+        return;
+      }
+      const chip = (n, label) => n ? `<span class="merge-chip">${n.toLocaleString()} &times; ${escapeHtml(label)}</span>` : '';
+      qualityHost.innerHTML =
+        `<div class="merge-quality">
+           <h3>Data Quality &mdash; ${totalIssues.toLocaleString()} row(s) flagged for review</h3>
+           <div class="merge-chips">
+             ${chip(totals.negative, labels.negative)}
+             ${chip(totals.blankName, labels.blankName)}
+             ${chip(totals.conflict, labels.conflict)}
+             ${chip(totals.outlier, labels.outlier)}
+           </div>
+           <p class="hint">These rows are still included in the generated files &mdash; nothing is changed
+             automatically. Click <b>DOWNLOAD ISSUES REPORT</b> below for one workbook listing every
+             flagged row with its reason, for a quick field review.</p>
          </div>`;
     }
 
     function renderMap() {
+      if (dmaToolbar) dmaToolbar.hidden = !groups.length;
       if (!groups.length) {
         mapHost.innerHTML = '';
         genBtn.disabled = true;
+        if (genCombinedBtn) genCombinedBtn.disabled = true;
+        renderPreview();
         return;
       }
-      const body = groups.map(g => {
+      const q = dmaFilterText.trim().toLowerCase();
+      const filtered = !q ? groups : groups.filter(g =>
+        g.display.toLowerCase().indexOf(q) >= 0 || zonesText(g.zones).toLowerCase().indexOf(q) >= 0);
+      const sorted = sortRows(filtered, {
+        display: g => g.display,
+        zones: g => zonesText(g.zones),
+        files: g => g.files.size,
+        rows: g => g.rows.length,
+      }, dmaSort);
+
+      const body = sorted.map(g => {
         const unmatched = g.matched === false;
+        const value = g.defaultName || (unmatched ? rememberedName(g.key) : '');
         const ph = unmatched ? 'type a DMA to include' : '';
         const label = unmatched
           ? '<span class="merge-warn">unmatched</span>'
@@ -414,18 +688,27 @@
            <td>${label}</td>
            <td>${escapeHtml(zonesText(g.zones))}</td>
            <td class="num">${g.files.size}</td>
-           <td class="num">${g.rows.length}</td>
-           <td><input class="merge-dma" type="text" data-prefix="${escapeHtml(g.key)}"
-                      value="${escapeHtml(g.defaultName)}" placeholder="${ph}" autocomplete="off" spellcheck="false" /></td>
+           <td class="num">${g.rows.length.toLocaleString()}</td>
+           <td><input class="merge-dma" type="text" data-prefix="${escapeHtml(g.key)}" data-unmatched="${unmatched ? '1' : ''}"
+                      value="${escapeHtml(value)}" placeholder="${ph}" autocomplete="off" spellcheck="false" /></td>
          </tr>`;
       }).join('');
+      const emptyNote = !sorted.length
+        ? `<tr><td colspan="5" class="muted">No DMA/zone matches "${escapeHtml(dmaFilterText)}".</td></tr>` : '';
+
       mapHost.innerHTML =
         `<div class="merge-map">
            <h3>Detected DMAs &mdash; auto-classified from Area No</h3>
            <div class="nrw-table-wrap nrw-scroll">
              <table class="nrw-tbl">
-               <thead><tr><th>DMA</th><th>Zones (prefix&#8209;book)</th><th class="num">Files</th><th class="num">Rows</th><th>Output name</th></tr></thead>
-               <tbody>${body}</tbody>
+               <thead><tr>
+                 <th data-sort="display" class="sortable">DMA${sortArrow(dmaSort, 'display')}</th>
+                 <th data-sort="zones" class="sortable">Zones (prefix&#8209;book)${sortArrow(dmaSort, 'zones')}</th>
+                 <th data-sort="files" class="sortable num">Files${sortArrow(dmaSort, 'files')}</th>
+                 <th data-sort="rows" class="sortable num">Rows${sortArrow(dmaSort, 'rows')}</th>
+                 <th>Output name</th>
+               </tr></thead>
+               <tbody>${body || emptyNote}</tbody>
              </table>
            </div>
            <p class="hint">Rows are mapped to DMAs automatically from the full Area-No allocation table
@@ -433,10 +716,21 @@
              shared by two DMAs in that table (e.g. <code>32b</code> books 3&ndash;15 &rarr; both 2.2 and
              4.1.2) &mdash; those rows are included in both output files on purpose.
              Edit an <b>Output name</b> to rename or merge two rows; clear it to skip those rows.
-             <b>Unmatched</b> rows are blank by default &mdash; type a DMA name to fold them in.</p>
+             <b>Unmatched</b> rows are blank by default &mdash; type a DMA name to fold them in
+             (remembered automatically for next time you see that zone).</p>
          </div>`;
       mapHost.querySelectorAll('.merge-dma').forEach(inp => {
-        inp.addEventListener('input', renderPreview);
+        inp.addEventListener('input', () => {
+          if (inp.getAttribute('data-unmatched') === '1') rememberName(inp.getAttribute('data-prefix'), inp.value.trim());
+          renderPreview();
+        });
+      });
+      mapHost.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.getAttribute('data-sort');
+          dmaSort = { col, dir: (dmaSort.col === col ? -dmaSort.dir : 1) };
+          renderMap();
+        });
       });
       renderPreview();
     }
@@ -504,11 +798,17 @@
         return;
       }
 
-      const res = API.groupByDma(records);
+      // Drop whole files / rows that are exact re-exports of something already
+      // read (order- and Sl.-agnostic — see dedupeRecords doc comment) BEFORE
+      // classifying, so a re-exported book never gets double-counted in a DMA.
+      const dedup = API.dedupeRecords(records);
+      const dedupedRecords = dedup.records;
+
+      const res = API.groupByDma(dedupedRecords);
       groups = res.groups;
       skipped = res.skipped;
 
-      const okCount = records.filter(r => r.ok).length;
+      const okCount = dedupedRecords.filter(r => r.ok).length;
       const dmaGroups = groups.filter(g => g.matched !== false);
       const unmatchedGroups = groups.filter(g => g.matched === false);
       const totalRows = groups.reduce((s, g) => s + g.rows.length, 0);
@@ -517,6 +817,15 @@
         `Read ${okCount.toLocaleString()} of ${total.toLocaleString()} file(s) — ${totalRows.toLocaleString()} reading rows.`,
         `Classified into ${dmaGroups.length} DMA(s): ${dmaGroups.map(g => g.display).join(', ') || '—'}.`,
       ];
+      if (dedup.duplicateFiles.length) {
+        lines.push('\u2672 ' + dedup.duplicateFiles.length.toLocaleString() + ' file(s) were an exact re-export of ' +
+          'another file (same customers, any row order) and were skipped: ' +
+          dedup.duplicateFiles.slice(0, 20).join(', ') + (dedup.duplicateFiles.length > 20 ? ', …' : '') + '.');
+      }
+      if (dedup.duplicateRows) {
+        lines.push('\u2672 ' + dedup.duplicateRows.toLocaleString() + ' additional duplicate row(s) (same customer, ' +
+          'same reading, repeated across files) were collapsed to one.');
+      }
       if (res.duplicatedRows) {
         lines.push('\u2139 ' + res.duplicatedRows.toLocaleString() + ' row(s) fall in an Area-No range shared by ' +
           'two DMAs in the allocation table and were included in both output files (by design).');
@@ -546,6 +855,7 @@
 
       setBusy(true);
       genBtn.disabled = true;
+      if (genCombinedBtn) genCombinedBtn.disabled = true;
       setProgress(0, outputs.length, 'Building');
       log('Building ' + outputs.length + ' workbook' + (outputs.length === 1 ? '' : 's') + '…');
       let cancelledAt = -1;
@@ -574,16 +884,88 @@
       } finally {
         setBusy(false);
         genBtn.disabled = false;
+        if (genCombinedBtn) genCombinedBtn.disabled = false;
       }
+    }
+
+    // Alternative output: every DMA as its own sheet in ONE workbook, for users
+    // who'd rather open a single file than juggle a dozen separate downloads.
+    function uniqueSheetName(name, used) {
+      let candidate = API.sanitizeSheetName(name);
+      let n = 1;
+      while (used.has(candidate.toLowerCase())) {
+        n++;
+        const suffix = '_' + n;
+        candidate = candidate.slice(0, 31 - suffix.length) + suffix;
+      }
+      used.add(candidate.toLowerCase());
+      return candidate;
+    }
+
+    async function generateCombined() {
+      if (busy) { log('Still busy — please wait.', true); return; }
+      if (!groups.length) { log('Select meter-reading files first.', true); return; }
+      if (typeof XLSX === 'undefined') { log('Excel library (SheetJS) is not loaded.', true); return; }
+      const outputs = API.assignDmas(groups, currentMapping());
+      if (!outputs.length) { log('Nothing to generate.', true); return; }
+
+      setBusy(true);
+      genBtn.disabled = true;
+      genCombinedBtn.disabled = true;
+      log('Building one combined workbook — ' + outputs.length + ' sheet' + (outputs.length === 1 ? '' : 's') + '…');
+      try {
+        const wb = XLSX.utils.book_new();
+        const used = new Set();
+        let totalRows = 0;
+        for (const o of outputs) {
+          const single = API.buildWorkbook(o.dmaName, o.rows);
+          const ws = single.Sheets[single.SheetNames[0]];
+          XLSX.utils.book_append_sheet(wb, ws, uniqueSheetName(o.dmaName, used));
+          totalRows += o.rows.length;
+          await sleep(0);   // yield between sheets so very large batches don't freeze the tab
+        }
+        XLSX.writeFile(wb, 'All_DMAs_Merged.xlsx');
+        log(`Saved All_DMAs_Merged.xlsx — ${outputs.length} sheet(s), ${totalRows.toLocaleString()} total rows.\n\n` +
+            'Open the sheet you need, or feed the whole workbook into NRW Report one tab at a time.');
+      } catch (err) {
+        console.error(err);
+        log('Error: ' + ((err && err.message) || String(err)), true);
+      } finally {
+        setBusy(false);
+        genBtn.disabled = false;
+        genCombinedBtn.disabled = false;
+      }
+    }
+
+    function downloadIssues() {
+      if (!lastIssueEntries.length) { log('No data-quality issues to export.', true); return; }
+      if (typeof XLSX === 'undefined') { log('Excel library (SheetJS) is not loaded.', true); return; }
+      const aoa = [['Reason', 'DMA'].concat(API.HEADERS)];
+      for (const e of lastIssueEntries) aoa.push([e.reason, e.dma].concat(e.row));
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [{ wch: 30 }, { wch: 12 }].concat(new Array(API.HEADERS.length).fill({ wch: 14 }));
+      ws['!autofilter'] = { ref: 'A1:' + XLSX.utils.encode_cell({ r: aoa.length - 1, c: aoa[0].length - 1 }) };
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Issues');
+      XLSX.writeFile(wb, 'Customer_File_Builder_Issues.xlsx');
+      log('Saved Customer_File_Builder_Issues.xlsx — ' + lastIssueEntries.length.toLocaleString() + ' flagged row(s).');
     }
 
     function clearAll() {
       cancelRequested = true;   // in case a read/generate is still winding down
-      groups = []; skipped = [];
+      groups = []; skipped = []; lastOutputs = []; lastIssueEntries = [];
+      dmaFilterText = ''; if (dmaFilterInput) dmaFilterInput.value = '';
+      dmaSort = { col: 'display', dir: 1 };
+      previewSort = { col: 'dmaName', dir: 1 };
       filesIn.value = ''; if (folderIn) folderIn.value = '';
       mapHost.innerHTML = '';
       if (preview) preview.innerHTML = '';
+      if (statsHost) statsHost.innerHTML = '';
+      if (qualityHost) qualityHost.innerHTML = '';
+      if (dmaToolbar) dmaToolbar.hidden = true;
       genBtn.disabled = true;
+      if (genCombinedBtn) genCombinedBtn.disabled = true;
+      if (issuesBtn) issuesBtn.disabled = true;
       if (progressEl) progressEl.hidden = true;
       log('No files selected yet.');
     }
@@ -593,6 +975,13 @@
     clearBtn && clearBtn.addEventListener('click', clearAll);
     cancelBtn && cancelBtn.addEventListener('click', () => { cancelRequested = true; });
     genBtn.addEventListener('click', generate);
+    genCombinedBtn && genCombinedBtn.addEventListener('click', generateCombined);
+    issuesBtn && issuesBtn.addEventListener('click', downloadIssues);
+    dmaFilterInput && dmaFilterInput.addEventListener('input', () => {
+      dmaFilterText = dmaFilterInput.value;
+      renderMap();
+    });
+    forgetBtn && forgetBtn.addEventListener('click', forgetRememberedNames);
   }
 
   if (document.readyState === 'loading') {
