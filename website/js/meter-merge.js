@@ -111,12 +111,12 @@
     { dma: 'dma 3.5',   prefix: '9chhut', min: 24, max: 29 },
     // DMA 4.1.2 — overlaps DMA 2.2 on 32b books 3-15
     { dma: 'dma 4.1.2', prefix: '32b',    min: 3,  max: 15 },
-    // DMA 9.1
-    { dma: 'dma 9.1',   prefix: '32ga',   min: 1,  max: 18 },
+    // DMA 9.1 — overlaps DMA 3.3 on 32g books 1-18
+    { dma: 'dma 9.1',   prefix: '32g',    min: 1,  max: 18 },
     { dma: 'dma 9.1',   prefix: '32f',    min: 1,  max: 29 },
     { dma: 'dma 9.1',   prefix: '35kha',  min: 1,  max: 17 },
     { dma: 'dma 9.1',   prefix: '35ga',   min: 1,  max: 8 },
-    // DMA 9.2 — overlaps DMA 3.4 on 32d books 1-5, and DMA 3.3 on 32g books 18-29
+    // DMA 9.2 — overlaps DMA 3.4 on 32d books 1-5, and DMA 3.3 / 9.1 on 32g books 18-29
     { dma: 'dma 9.2',   prefix: '32d',    min: 1,  max: 29 },
     { dma: 'dma 9.2',   prefix: '32g',    min: 18, max: 29 },
     { dma: 'dma 9.2',   prefix: '32e',    min: 1,  max: 29 },
