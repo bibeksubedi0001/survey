@@ -85,7 +85,7 @@
   // ---------------------------------------------------------------
   var KTM_DEFAULT = [27.6915, 85.3420];
   var PALETTE = ['#c1001f', '#1b6fd6', '#1a7f1a', '#e07a00', '#7d3cb5', '#0a8f8f', '#d4007a', '#444'];
-  var CATEGORY_COLOR = { building: '#1b6fd6', connection: '#0a8f8f', valve: '#c1001f', pipe: '#1a7f1a', hydrant: '#e8430f', meter: '#a36b00', generic: '#7d3cb5' };
+  var CATEGORY_COLOR = { building: '#1b6fd6', connection: '#0a8f8f', node: '#007c91', valve: '#c1001f', pipe: '#1a7f1a', hydrant: '#e8430f', meter: '#a36b00', generic: '#7d3cb5' };
 
   // ---- Feature schemas (QField-style typed layers) ----
   var SCHEMAS = {
@@ -121,6 +121,17 @@
         { key: 'pipe_size', label: 'Service Pipe Size', type: 'select', options: ['\u00bd\u2033', '\u00be\u2033', '1\u2033', '1\u00bd\u2033', '2\u2033'] },
         { key: 'status', label: 'Status', type: 'select', options: ['Active', 'Inactive', 'Disconnected', 'Illegal'] },
         { key: 'supply_hours', label: 'Supply Hours / Day', type: 'number' },
+        { key: 'remarks', label: 'Remarks', type: 'textarea' },
+      ],
+    },
+    node: {
+      label: 'Node', geom: 'point', titleKey: 'node_id', fallbackKey: 'node_type',
+      fields: [
+        { key: 'node_id', label: 'Node ID', type: 'text' },
+        { key: 'node_type', label: 'Node Type', type: 'select', options: ['Junction', 'Reservoir', 'Tank', 'Source', 'Demand'] },
+        { key: 'elevation', label: 'Elevation (m)', type: 'number' },
+        { key: 'demand', label: 'Demand', type: 'number' },
+        { key: 'status', label: 'Status', type: 'select', options: ['Active', 'Inactive', 'Unknown'] },
         { key: 'remarks', label: 'Remarks', type: 'textarea' },
       ],
     },
@@ -370,6 +381,7 @@
       '    <button type="button" class="gis-panel-close" data-act="panel-close" title="Hide panel">\u00d7</button></div>' +
       '  <div class="gis-tabs" data-role="gis-tabs">' +
       '    <button type="button" class="gis-tab active" data-tab="layers"><svg class="gi" viewBox="0 0 16 16"><path d="M8 1L1 5l7 4 7-4L8 1zm-7 8l7 4 7-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M1 9l7 4 7-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" opacity=".5"/></svg> Layers</button>' +
+      '    <button type="button" class="gis-tab" data-tab="network"><svg class="gi" viewBox="0 0 16 16"><circle cx="3" cy="8" r="1.8" fill="currentColor"/><circle cx="13" cy="3" r="1.8" fill="currentColor"/><circle cx="13" cy="13" r="1.8" fill="currentColor"/><path d="M4.5 7.2l6.8-3.4M4.5 8.8l6.8 3.4" stroke="currentColor" stroke-width="1.4"/></svg> Network</button>' +
       '    <button type="button" class="gis-tab" data-tab="project"><svg class="gi" viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="6" rx=".5" fill="currentColor"/><rect x="6.5" y="4" width="3" height="10" rx=".5" fill="currentColor"/><rect x="12" y="1" width="3" height="13" rx=".5" fill="currentColor"/></svg> Project</button>' +
       '    <button type="button" class="gis-tab" data-tab="import"><svg class="gi" viewBox="0 0 16 16"><path d="M8 2v8M5 7l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Import</button>' +
       '    <button type="button" class="gis-tab" data-tab="gps"><svg class="gi" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> GPS</button>' +
@@ -379,6 +391,7 @@
       '      <select class="gis-cat-select" data-role="cat-select" title="Feature type for the next new layer">' +
       '        <option value="building">Buildings (point + footprint)</option>' +
       '        <option value="connection">Connections (point)</option>' +
+      '        <option value="node">Hydraulic Nodes (point)</option>' +
       '        <option value="valve">Valves (point)</option>' +
       '        <option value="hydrant">Fire Hydrants (point)</option>' +
       '        <option value="meter">Meters (point)</option>' +
@@ -392,6 +405,9 @@
       '    </div>' +
       '    <div class="gis-layer-list" data-role="layers"></div>' +
       '    <label class="gis-ref-toggle"><input type="checkbox" data-role="dma-toggle"> Show DMA reference network</label>' +
+      '  </div>' +
+      '  <div class="gis-tab-content" data-content="network">' +
+      '    <div class="hydroflow-panel" data-role="hydroflow-panel"></div>' +
       '  </div>' +
       '  <div class="gis-tab-content" data-content="project">' +
       '    <div class="gis-tab-section">' +
@@ -695,6 +711,14 @@
     var activeId = null;
     var colorIdx = 0;
     var dmaCtl = null;
+    // Canonical hydraulic groups. These are aliases into the same persisted
+    // layer model used by imports, attribute editing and project export.
+    var pipeLayerGroup = null;
+    var nodeLayerGroup = null;
+    var valveLayerGroup = null;
+    var hydraulicController = null;
+    var hydraulicBridge = null;
+    var hydraulicListeners = [];
 
     function nextColor() { var c = PALETTE[colorIdx % PALETTE.length]; colorIdx++; return c; }
     function catSelectValue() { var s = $('cat-select'); return (s && s.value) || 'generic'; }
@@ -752,6 +776,11 @@
           '<path d="M11 2 C 6 8, 4 12, 6.5 16 C 9 20, 13 20, 15.5 16 C 18 12, 16 8, 11 2 Z" ' +
           'fill="' + c + '" stroke="#fff" stroke-width="1.6"/>' +
           '<circle cx="11" cy="13.5" r="2.6" fill="#fff" opacity="0.9"/></svg>';
+      }
+      if (category === 'node') {
+        return '<svg viewBox="0 0 22 22" width="22" height="22">' +
+          '<circle cx="11" cy="11" r="7.5" fill="#fff" stroke="' + c + '" stroke-width="3"/>' +
+          '<circle cx="11" cy="11" r="2.5" fill="' + c + '"/></svg>';
       }
       if (category === 'hydrant') {
         return '<svg viewBox="0 0 22 22" width="22" height="22">' +
@@ -936,6 +965,7 @@
     }
 
     function loadGeoJSONInto(meta, fc) {
+      var result = [];
       var added = L.geoJSON(fc, {
         style: styleFor(meta.color),
         pointToLayer: function (f, latlng) {
@@ -943,7 +973,8 @@
         },
         onEachFeature: function (f, lyr) { attachFeatureBehavior(meta, lyr, false); },
       });
-      added.eachLayer(function (lyr) { meta.group.addLayer(lyr); });
+      added.eachLayer(function (lyr) { meta.group.addLayer(lyr); result.push(lyr); });
+      return result;
     }
 
     function ensureFeatureProps(meta, lyr, isNew) {
@@ -1071,6 +1102,7 @@
     var ID_DEFAULTS = {
       building: { prefix: 'SD', key: 'building_id', noun: 'building' },
       connection: { prefix: 'C', key: 'connection_id', noun: 'connection' },
+      node: { prefix: 'N', key: 'node_id', noun: 'node' },
       valve: { prefix: 'V', key: 'valve_id', noun: 'valve' },
       pipe: { prefix: 'P', key: 'pipe_id', noun: 'pipe' },
       hydrant: { prefix: 'FH', key: 'hydrant_id', noun: 'fire hydrant' },
@@ -1167,6 +1199,7 @@
       }
       lyr.on('click', function () {
         if (inEditMode()) return;
+        if (hydraulicController && hydraulicController.handlesFeatureClick(meta.category)) return;
         openAttributeEditor(meta, lyr);
       });
       lyr.on('pm:edit pm:update pm:dragend', function () {
@@ -2863,6 +2896,9 @@
       tabContents.forEach(function (c) {
         c.classList.toggle('active', c.dataset.content === tabId);
       });
+      if (hydraulicController && hydraulicController.setWorkspaceActive) {
+        hydraulicController.setWorkspaceActive(tabId === 'network');
+      }
     }
     tabBtns.forEach(function (btn) {
       btn.addEventListener('click', function () { switchTab(btn.dataset.tab); });
@@ -3068,6 +3104,18 @@
       var t = g && g.type;
       if (t === 'LineString' || t === 'MultiLineString') return 'pipe';
       if (t === 'Polygon' || t === 'MultiPolygon') return 'building';
+      if (t === 'Point' || t === 'MultiPoint') {
+        var normalized = {};
+        Object.keys(p).forEach(function (key) {
+          normalized[key.toLowerCase().replace(/[^a-z0-9]/g, '')] = p[key];
+        });
+        var kind = String(normalized.kind || normalized.featuretype || normalized.type || '').trim().toLowerCase();
+        if (normalized.valveid != null || /(^|\s)valve($|\s)/.test(kind)) return 'valve';
+        if (normalized.nodeid != null || normalized.junctionid != null || /junction|reservoir|tank|source|node/.test(kind)) return 'node';
+        if (normalized.connectionid != null || /connection/.test(kind)) return 'connection';
+        if (normalized.hydrantid != null || /hydrant/.test(kind)) return 'hydrant';
+        if (normalized.meterid != null || /meter/.test(kind)) return 'meter';
+      }
       return null; // point / unknown → ambiguous, handled by caller
     }
 
@@ -3087,6 +3135,176 @@
         if (!hit && layers[k].category === cat) hit = layers[k];
       });
       return hit;
+    }
+
+    function layerMetasByCategory(category) {
+      return Object.keys(layers).map(function (key) { return layers[key]; })
+        .filter(function (meta) { return meta.category === category; });
+    }
+
+    function ensureHydraulicMeta(category) {
+      var meta = findLayerByCategory(category);
+      if (!meta) meta = createLayer({ category: category, name: defaultLayerName(category) });
+      if (category === 'pipe') pipeLayerGroup = meta.group;
+      if (category === 'node') nodeLayerGroup = meta.group;
+      if (category === 'valve') valveLayerGroup = meta.group;
+      return meta;
+    }
+
+    function syncLayerGeometry(lyr) {
+      if (!lyr || typeof lyr.toGeoJSON !== 'function') return null;
+      var current = lyr.feature || { type: 'Feature', properties: {} };
+      var rendered = lyr.toGeoJSON();
+      current.type = 'Feature';
+      current.properties = current.properties || rendered.properties || {};
+      current.geometry = rendered.geometry;
+      if (rendered.id != null && current.id == null) current.id = rendered.id;
+      lyr.feature = current;
+      return current;
+    }
+
+    function hydraulicEntry(meta, lyr) {
+      return { category: meta.category, meta: meta, layer: lyr, feature: lyr.feature };
+    }
+
+    function emitHydraulicChange(categories) {
+      hydraulicListeners.slice().forEach(function (listener) {
+        try { listener(categories || []); } catch (error) { console.warn('[HydroFlow] change listener failed', error); }
+      });
+    }
+
+    function createHydraulicBridge() {
+      return {
+        map: map,
+        host: host,
+        getLayerGroup: function (category, ensure) {
+          var meta = findLayerByCategory(category);
+          if (!meta && ensure) meta = ensureHydraulicMeta(category);
+          return meta ? meta.group : null;
+        },
+        getLayerGroups: function (category) {
+          return layerMetasByCategory(category).map(function (meta) { return meta.group; });
+        },
+        getEntries: function (category) {
+          var entries = [];
+          layerMetasByCategory(category).forEach(function (meta) {
+            meta.group.eachLayer(function (lyr) {
+              syncLayerGeometry(lyr);
+              entries.push(hydraulicEntry(meta, lyr));
+            });
+          });
+          return entries;
+        },
+        entryForLayer: function (lyr) {
+          var found = null;
+          Object.keys(layers).some(function (key) {
+            var meta = layers[key];
+            if (meta.group.hasLayer && meta.group.hasLayer(lyr)) {
+              found = hydraulicEntry(meta, lyr);
+              return true;
+            }
+            return false;
+          });
+          return found;
+        },
+        addFeature: function (category, feature) {
+          var meta = ensureHydraulicMeta(category);
+          var created = L.geoJSON(feature, {
+            style: category === 'pipe' ? pipeStyle((feature.properties || {}).material, meta.color) : styleFor(meta.color),
+            pointToLayer: function (_feature, latlng) { return makePointMarker(meta, latlng); },
+          });
+          var result = null;
+          created.eachLayer(function (lyr) {
+            meta.group.addLayer(lyr);
+            attachFeatureBehavior(meta, lyr, true);
+            syncLayerGeometry(lyr);
+            if (!result) result = hydraulicEntry(meta, lyr);
+          });
+          updateCount(meta);
+          persist(meta.id);
+          rebuildLegend();
+          emitHydraulicChange([category]);
+          return result;
+        },
+        setCoordinates: function (entry, coordinates) {
+          if (!entry || !entry.layer) return;
+          if (entry.category === 'node' || entry.category === 'valve') {
+            entry.layer.setLatLng([Number(coordinates[1]), Number(coordinates[0])]);
+          } else if (entry.category === 'pipe') {
+            entry.layer.setLatLngs((coordinates || []).map(function (coordinate) {
+              return L.latLng(Number(coordinate[1]), Number(coordinate[0]), coordinate.length > 2 ? Number(coordinate[2]) : undefined);
+            }));
+          }
+          syncLayerGeometry(entry.layer);
+          updateTooltip(entry.meta, entry.layer);
+          if (entry.category === 'pipe') applyPipeStyle(entry.meta, entry.layer);
+        },
+        removeFeature: function (entry) {
+          if (!entry || !entry.meta || !entry.layer) return;
+          try { entry.meta.group.removeLayer(entry.layer); } catch (_) {}
+          updateCount(entry.meta);
+        },
+        commit: function (categories) {
+          var wanted = Object.create(null);
+          (categories || []).forEach(function (category) { wanted[category] = true; });
+          Object.keys(layers).forEach(function (key) {
+            var meta = layers[key];
+            if (categories && categories.length && !wanted[meta.category]) return;
+            meta.group.eachLayer(syncLayerGeometry);
+            updateCount(meta);
+            persist(meta.id);
+          });
+          rebuildLegend();
+          emitHydraulicChange(categories || []);
+        },
+        setActiveCategory: function (category) {
+          var meta = ensureHydraulicMeta(category);
+          setActive(meta.id);
+          return meta;
+        },
+        openAttributes: function (entry) {
+          if (entry && entry.meta && entry.layer) openAttributeEditor(entry.meta, entry.layer);
+        },
+        focusEntry: function (entry) {
+          if (!entry || !entry.layer) return;
+          zoomToLayerFeature(entry.layer);
+        },
+        download: download,
+        toast: toast,
+        onChange: function (listener) {
+          if (typeof listener !== 'function') return function () {};
+          hydraulicListeners.push(listener);
+          return function () {
+            hydraulicListeners = hydraulicListeners.filter(function (item) { return item !== listener; });
+          };
+        },
+      };
+    }
+
+    function mountHydraulicWorkspace() {
+      ensureHydraulicMeta('pipe');
+      ensureHydraulicMeta('node');
+      ensureHydraulicMeta('valve');
+      hydraulicBridge = createHydraulicBridge();
+      if (!window.HydroFlowEditor || !window.HydroFlowMap) {
+        console.warn('[HydroFlow] network modules failed to load');
+        return;
+      }
+      hydraulicController = window.HydroFlowEditor.mount({
+        map: map,
+        host: host,
+        panel: $('hydroflow-panel'),
+        bridge: hydraulicBridge,
+      });
+      window.pipeLayerGroup = pipeLayerGroup;
+      window.nodeLayerGroup = nodeLayerGroup;
+      window.valveLayerGroup = valveLayerGroup;
+      if (api) {
+        api.hydraulic = hydraulicController;
+        api.pipeLayerGroup = pipeLayerGroup;
+        api.nodeLayerGroup = nodeLayerGroup;
+        api.valveLayerGroup = valveLayerGroup;
+      }
     }
 
     function defaultLayerName(cat) {
@@ -3234,7 +3452,7 @@
       });
       if (!recs.length) {
         // Seed with the standard KUKL field-survey layers.
-        ['building', 'connection', 'pipe', 'valve'].forEach(function (cat) {
+        ['building', 'connection', 'node', 'pipe', 'valve'].forEach(function (cat) {
           var m = createLayer({ category: cat, name: SCHEMAS[cat].label + 's' });
           persist(m.id);
         });
@@ -3251,25 +3469,39 @@
       if (b && b.isValid && b.isValid()) {
         try { map.fitBounds(b.pad(0.2), { maxZoom: 18 }); } catch (_) {}
       }
+      mountHydraulicWorkspace();
     }).catch(function (e) {
       console.warn('[GIS] restore failed', e);
       createLayer({ name: 'My Survey Layer' });
+      mountHydraulicWorkspace();
     });
 
     function refresh() {
       setTimeout(function () { try { map.invalidateSize(); } catch (_) {} }, 60);
     }
     function destroy() {
+      try { if (hydraulicController && hydraulicController.destroy) hydraulicController.destroy(); } catch (_) {}
       try { if (gnss) gnss.disconnect(); } catch (_) {}
       try { stopLocate(); } catch (_) {}
+      try { window.removeEventListener('resize', refresh); } catch (_) {}
       try { map.remove(); } catch (_) {}
+      if (window.pipeLayerGroup === pipeLayerGroup) window.pipeLayerGroup = null;
+      if (window.nodeLayerGroup === nodeLayerGroup) window.nodeLayerGroup = null;
+      if (window.valveLayerGroup === valveLayerGroup) window.valveLayerGroup = null;
       host._kuklGis = null;
       host.innerHTML = '';
     }
 
     window.addEventListener('resize', refresh);
 
-    var api = { map: map, refresh: refresh, destroy: destroy };
+    var api = {
+      map: map,
+      refresh: refresh,
+      destroy: destroy,
+      pipeLayerGroup: pipeLayerGroup,
+      nodeLayerGroup: nodeLayerGroup,
+      valveLayerGroup: valveLayerGroup,
+    };
     host._kuklGis = api;
     refresh();
     return api;

@@ -5,7 +5,7 @@
      - OSM tiles (*.tile.openstreetmap.org)   → stale-while-revalidate (capped LRU)
      - Everything else → network-first, fall back to cache
 */
-const VERSION = 'v88-2026-07-17-merge-quality-dashboard';
+const VERSION = 'v95-2026-07-23-hydroflow-network';
 const SHELL_CACHE = `kukl-shell-${VERSION}`;
 const LIB_CACHE   = `kukl-libs-${VERSION}`;
 const TILE_CACHE  = `kukl-tiles-${VERSION}`;
@@ -15,9 +15,9 @@ const SHELL_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/styles.css?v=65',
+  './css/styles.css?v=68',
   './js/app.js?v=20',
-  './js/nrw-builder.js?v=6',
+  './js/nrw-builder.js?v=8',
   './js/meter-merge.js?v=6',
   './js/extra-sections.js?v=12',
   './js/media-widgets.js?v=1',
@@ -25,11 +25,16 @@ const SHELL_ASSETS = [
   './js/geo-utils.js?v=1',
   './js/dma-overlay.js?v=8',
   './js/gnss-connector.js?v=1',
-  './js/gis-editor.js?v=35',
+  './js/map.js?v=4',
+  './js/topology.js?v=2',
+  './js/analysis.js?v=2',
+  './js/editor.js?v=5',
+  './js/gis-editor.js?v=37',
   './js/theme-boot.js?v=1',
   './js/nav-wiring.js?v=3',
   './assets/vendor/leaflet-geoman.min.js',
   './assets/vendor/leaflet-geoman.css',
+  './assets/vendor/turf.min.js',
   './assets/vendor/shp.min.js',
   './assets/vendor/togeojson.js',
   './assets/vendor/xlsx.full.min.js',
