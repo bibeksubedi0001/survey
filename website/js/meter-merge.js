@@ -111,12 +111,12 @@
     { dma: 'dma 3.5',   prefix: '9chhut', min: 24, max: 29 },
     // DMA 4.1.2 — overlaps DMA 2.2 on 32b books 3-15
     { dma: 'dma 4.1.2', prefix: '32b',    min: 3,  max: 15 },
-    // DMA 9.1 — overlaps DMA 3.3 on 32g books 1-18
-    { dma: 'dma 9.1',   prefix: '32g',    min: 1,  max: 18 },
+    // DMA 9.1
+    { dma: 'dma 9.1',   prefix: '32ga',   min: 1,  max: 18 },
     { dma: 'dma 9.1',   prefix: '32f',    min: 1,  max: 29 },
     { dma: 'dma 9.1',   prefix: '35kha',  min: 1,  max: 17 },
     { dma: 'dma 9.1',   prefix: '35ga',   min: 1,  max: 8 },
-    // DMA 9.2 — overlaps DMA 3.4 on 32d books 1-5, and DMA 3.3 / 9.1 on 32g books 18-29
+    // DMA 9.2 — overlaps DMA 3.4 on 32d books 1-5, and DMA 3.3 on 32g books 18-29
     { dma: 'dma 9.2',   prefix: '32d',    min: 1,  max: 29 },
     { dma: 'dma 9.2',   prefix: '32g',    min: 18, max: 29 },
     { dma: 'dma 9.2',   prefix: '32e',    min: 1,  max: 29 },
@@ -558,6 +558,7 @@
                <td>${escapeHtml(zonesText(o.zones))}</td>
                <td class="num">${o.files.size}</td>
                <td class="num">${o.rows.length.toLocaleString()}</td>
+               <td class="merge-dl-cell"><button type="button" class="btn btn-outline btn-sm merge-dl-one" data-dma="${escapeHtml(o.dmaName)}">DOWNLOAD</button></td>
              </tr>`).join('');
           preview.innerHTML =
             `<div class="nrw-preview">
@@ -569,6 +570,7 @@
                      <th data-sort="zones" class="sortable">Merged zones${sortArrow(previewSort, 'zones')}</th>
                      <th data-sort="files" class="sortable num">Src files${sortArrow(previewSort, 'files')}</th>
                      <th data-sort="rows" class="sortable num">Rows${sortArrow(previewSort, 'rows')}</th>
+                     <th>Download</th>
                    </tr></thead>
                    <tbody>${rowsHtml}</tbody>
                  </table>
@@ -580,6 +582,9 @@
               previewSort = { col, dir: (previewSort.col === col ? -previewSort.dir : 1) };
               renderPreview();
             });
+          });
+          preview.querySelectorAll('.merge-dl-one').forEach(btn => {
+            btn.addEventListener('click', () => downloadOne(btn.getAttribute('data-dma')));
           });
         }
       }
@@ -844,6 +849,25 @@
       lines.push('Review the table below, then click GENERATE MERGED FILES.');
       log(lines.join('\n'));
       renderMap();
+    }
+
+    // Download a single DMA's workbook straight from the preview table, without
+    // having to generate the whole set. `dmaName` matches an entry in lastOutputs.
+    function downloadOne(dmaName) {
+      if (busy) { log('Still busy — please wait.', true); return; }
+      if (typeof XLSX === 'undefined') { log('Excel library (SheetJS) is not loaded.', true); return; }
+      const outputs = API.assignDmas(groups, currentMapping());
+      const o = outputs.find(x => x.dmaName === dmaName);
+      if (!o) { log('That DMA is no longer available — refresh the list.', true); return; }
+      try {
+        const wb = API.buildWorkbook(o.dmaName, o.rows);
+        const fileName = API.sanitizeFileName(o.dmaName) + '.xlsx';
+        XLSX.writeFile(wb, fileName);
+        log(`Saved ${fileName} — ${o.rows.length.toLocaleString()} rows (${zonesText(o.zones)}).`);
+      } catch (err) {
+        console.error(err);
+        log('Error: ' + ((err && err.message) || String(err)), true);
+      }
     }
 
     async function generate() {

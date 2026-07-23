@@ -2021,6 +2021,8 @@ a.brand:hover .brand-text h1{text-decoration:underline;}
 /* ---- sortable table column headers ---- */
 .nrw-tbl th.sortable{cursor:pointer;user-select:none;}
 .nrw-tbl th.sortable:hover{background:#222;}
+.nrw-tbl td.merge-dl-cell{text-align:center;white-space:nowrap;padding:3px 6px;}
+.merge-dl-one{letter-spacing:.5px;}
 
 /* ---- summary dashboard ---- */
 .merge-stats{margin-top:18px;border:1px solid #000;background:#fafafa;padding:12px 14px;}
