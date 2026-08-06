@@ -56,7 +56,7 @@
         integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+"
         crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="assets/vendor/leaflet-geoman.css" />
-  <link rel="stylesheet" href="css/styles.css?v=69" />
+  <link rel="stylesheet" href="css/styles.css?v=70" />
 
   <!-- Apply theme as early as possible to avoid FOUC.
        External so CSP can drop 'unsafe-inline' for script-src. -->
@@ -108,6 +108,7 @@
     <symbol id="ico-area" viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 7h4v4H7V7zm6 0h4v4h-4V7zm-6 6h4v4H7v-4zm6 0h4v4h-4v-4z"/></symbol>
     <symbol id="ico-satisfaction" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="10" r="1.2" fill="#fff"/><circle cx="15" cy="10" r="1.2" fill="#fff"/></symbol>
     <symbol id="ico-water24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 6v6l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="ico-toilet" viewBox="0 0 24 24"><path d="M6 3h2v7h9a1 1 0 0 1 1 1c0 2.9-1.7 5.4-4.2 6.6L15 21h-2l-.4-2c-.2 0-.4 0-.6 0A6.4 6.4 0 0 1 6 12.6V3zm2 9a4.4 4.4 0 0 0 4.4 4.4A4.4 4.4 0 0 0 16.8 12H8z"/></symbol>
     <symbol id="ico-nrw" viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm0 5h10v2H4z"/><path d="M18 10l-2 3h4l-2 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
     <symbol id="ico-gis" viewBox="0 0 24 24"><path d="M9 2 3 4v18l6-2 6 2 6-2V2l-6 2-6-2zm0 2.2 6 2v13.6l-6-2V4.2z"/></symbol>
     <symbol id="ico-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1"/></symbol>
@@ -150,6 +151,7 @@
       <button id="tabbtn-area"     class="tab"        role="tab" aria-selected="false" aria-controls="tab-area"     tabindex="-1" data-tab="area"><svg class="tab-ico"><use href="#ico-area"/></svg> AREA SURVEY <span id="areaCount" class="badge">0</span></button>
       <button id="tabbtn-satisfaction" class="tab"    role="tab" aria-selected="false" aria-controls="tab-satisfaction" tabindex="-1" data-tab="satisfaction"><svg class="tab-ico"><use href="#ico-satisfaction"/></svg> SATISFACTION <span id="satisfactionCount" class="badge">0</span></button>
       <button id="tabbtn-water24"  class="tab"        role="tab" aria-selected="false" aria-controls="tab-water24"  tabindex="-1" data-tab="water24"><svg class="tab-ico"><use href="#ico-water24"/></svg> 24-HOUR SUPPLY <span id="water24Count" class="badge">0</span></button>
+      <button id="tabbtn-toilet"   class="tab"        role="tab" aria-selected="false" aria-controls="tab-toilet"   tabindex="-1" data-tab="toilet"><svg class="tab-ico"><use href="#ico-toilet"/></svg> TOILET SURVEY <span id="toiletCount" class="badge">0</span></button>
       <span class="nav-sep" aria-hidden="true"></span>
       <button id="tabbtn-gis"      class="tab"        role="tab" aria-selected="false" aria-controls="tab-gis"      tabindex="-1" data-tab="gis"><svg class="tab-ico"><use href="#ico-gis"/></svg> MAP / GIS</button>
       <button id="tabbtn-merge"    class="tab"        role="tab" aria-selected="false" aria-controls="tab-merge"    tabindex="-1" data-tab="merge"><svg class="tab-ico"><use href="#ico-nrw"/></svg> MERGE READINGS</button>
@@ -250,6 +252,23 @@
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <div class="hub-section">
+        <h2 class="hub-heading">SANITATION / CONSTRUCTION</h2>
+        <div class="hub-grid">
+          <div class="hub-card" data-topic="toilet">
+            <div class="hub-icon"><svg class="hub-svg"><use href="#ico-toilet"/></svg></div>
+            <h3>Toilet Site Survey</h3>
+            <p>Final on-site survey to confirm and set out a household site for the finalized toilet design in Bhadaure, Dhading &mdash; GPS plus full site measurements (plot, terrain, building setting-out, leach-pit, utilities &amp; access). Includes the finalized design drawing, setting-out targets and site maps.</p>
+            <div class="hub-actions">
+              <button class="btn btn-primary hub-go" data-goto="toilet" data-view="survey">SURVEY</button>
+              <button class="btn btn-outline hub-go" data-goto="toilet" data-view="designs">DESIGN</button>
+              <button class="btn btn-outline hub-go" data-goto="toilet" data-view="report">REPORT</button>
+              <button class="btn btn-outline hub-go" data-goto="toilet" data-view="map">MAP</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -738,6 +757,9 @@
     <!-- ===== TAB: 24-HOUR WATER SUPPLY ===== -->
     <section id="tab-water24"  class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-water24"  tabindex="0" data-extra-section="water24"></section>
 
+    <!-- ===== TAB: TOILET CONSTRUCTION SITE SURVEY ===== -->
+    <section id="tab-toilet"   class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-toilet"   tabindex="0" data-extra-section="toilet"></section>
+
     <!-- ===== TAB: HELP ===== -->
     <section id="tab-about" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-about" tabindex="0">
       <div class="card">
@@ -836,7 +858,7 @@
   <script src="js/app.js?v=20"             data-cfasync="false"></script>
   <script src="js/nrw-builder.js?v=8"      data-cfasync="false"></script>
   <script src="js/meter-merge.js?v=8"      data-cfasync="false"></script>
-  <script src="js/extra-sections.js?v=12"   data-cfasync="false"></script>
+  <script src="js/extra-sections.js?v=19"   data-cfasync="false"></script>
 
   <!-- Global navigation wiring (extracted from inline <script> for CSP) -->
   <script src="js/nav-wiring.js?v=3" data-cfasync="false"></script>

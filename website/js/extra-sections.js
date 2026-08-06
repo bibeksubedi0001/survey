@@ -13,8 +13,8 @@
 
   // ---------- IndexedDB ----------
   const DB_NAME = 'kukl_extra_db';
-  const DB_VER  = 2;
-  const STORES  = ['chief_reports', 'leakage_reports', 'pressure_reports', 'area_reports', 'satisfaction_reports', 'water24_reports'];
+  const DB_VER  = 3;
+  const STORES  = ['chief_reports', 'leakage_reports', 'pressure_reports', 'area_reports', 'satisfaction_reports', 'water24_reports', 'toilet_reports'];
   let dbPromise = null;
 
   function openDB() {
@@ -232,7 +232,198 @@
         { group: 'Reporter & Notes', key: 'photos',     label: 'Photo Capture', type: 'photos', full: true },
       ],
     },
+
+    toilet: {
+      store: 'toilet_reports',
+      title: 'Toilet Construction — Final Site Survey',
+      idPrefix: 'TLT',
+      exportName: 'Toilet_Site_Survey',
+      sheetName: 'Toilet Site Survey',
+      dmaOverlay: false,  // hide the water-network DMA layer control on this section's map
+      // A DESIGNS reference view (drawings, 3D renders, site maps) is added to the
+      // SURVEY / REPORT / MAP switcher for this section — see renderSection().
+      buildReference: () => buildToiletReference(),
+      fields: [
+        { group: 'Beneficiary & Location', key: 'beneficiaryName', label: 'Beneficiary / Household Name', type: 'text', placeholder: 'Head of household' },
+        { group: 'Beneficiary & Location', key: 'contact',    label: 'Contact Number',   type: 'text' },
+        { group: 'Beneficiary & Location', key: 'houseNo',    label: 'House Number',      type: 'text', placeholder: 'e.g. 114' },
+        { group: 'Beneficiary & Location', key: 'district',   label: 'District',          type: 'text', default: 'Dhading' },
+        { group: 'Beneficiary & Location', key: 'wardTole',   label: 'Ward / Tole / Cluster', type: 'text', full: true, placeholder: 'e.g. Bhadaure, Ward 4' },
+        { group: 'Beneficiary & Location', key: 'gps',        label: 'GPS Coordinates',   type: 'location', full: true, required: true },
+
+        { group: 'Household Context', key: 'householdSize',   label: 'Household Size (persons)', type: 'number' },
+        { group: 'Household Context', key: 'socialGroup',     label: 'Social Group',      type: 'select', options: ['Dalit — Kami','Dalit — Sarki','Dalit — Other','Janajati','Brahmin / Chhetri','Other'] },
+        { group: 'Household Context', key: 'houseCondition',  label: 'House Condition',   type: 'select', options: ['Very Poor','Poor','Average','Good','Very Good'] },
+        { group: 'Household Context', key: 'currentSanitation', label: 'Current Sanitation', type: 'select', options: ['Own toilet','Shared toilet','Open-field defecation'] },
+        { group: 'Household Context', key: 'priority',        label: 'Beneficiary Priority', type: 'select', options: ['High — open defecation','Medium — shared / overcrowded','Low'] },
+        { group: 'Household Context', key: 'willingToUse',    label: 'Willingness to Use New Toilet', type: 'select', options: ['Yes','Probably yes','Not sure','No'] },
+
+        { group: 'Plot & Available Space', key: 'plotLength',  label: 'Plot Length (m)',  type: 'number', placeholder: 'along building axis' },
+        { group: 'Plot & Available Space', key: 'plotWidth',   label: 'Plot Width (m)',   type: 'number' },
+        { group: 'Plot & Available Space', key: 'plotArea',    label: 'Plot / Available Area (m²)', type: 'number' },
+        { group: 'Plot & Available Space', key: 'clearLength', label: 'Clear Buildable Length (m)', type: 'number', placeholder: 'after obstructions' },
+        { group: 'Plot & Available Space', key: 'clearWidth',  label: 'Clear Buildable Width (m)',  type: 'number' },
+        { group: 'Plot & Available Space', key: 'obstructions',label: 'Obstructions in Plot',       type: 'text', full: true, placeholder: 'trees, rock, structures, drains…' },
+
+        { group: 'Ground & Terrain', key: 'groundSlope',    label: 'Ground Slope',       type: 'select', options: ['Flat (0–5%)','Gentle (5–15%)','Moderate (15–30%)','Steep (>30%)'] },
+        { group: 'Ground & Terrain', key: 'slopeDirection', label: 'Ground Falls Toward',type: 'select', options: ['Flat','North','North-East','East','South-East','South','South-West','West','North-West'] },
+        { group: 'Ground & Terrain', key: 'levelDiff',      label: 'Level Difference Across Footprint (m)', type: 'number', placeholder: 'high − low point' },
+        { group: 'Ground & Terrain', key: 'cutFill',        label: 'Cut / Fill Needed',  type: 'select', options: ['None','Cut required','Fill required','Both cut & fill'] },
+        { group: 'Ground & Terrain', key: 'soilType',       label: 'Soil Type',          type: 'select', options: ['Sandy','Silty','Clayey','Gravelly','Rocky','Mixed'] },
+        { group: 'Ground & Terrain', key: 'rockDepth',      label: 'Depth to Rock / Hardpan (m)', type: 'number', placeholder: 'blank if none within 1 m' },
+        { group: 'Ground & Terrain', key: 'excavationDepth',label: 'Planned Footing Excavation Depth (m)', type: 'number', placeholder: 'design ≥ 0.8' },
+        { group: 'Ground & Terrain', key: 'floodProne',     label: 'Flood / Waterlogging Prone', type: 'yesno' },
+
+        { group: 'Building Setting-Out', key: 'fitsFootprint',   label: 'Site Fits Building Footprint (1.9 × 1.7 m)', type: 'yesno' },
+        { group: 'Building Setting-Out', key: 'clearanceAround', label: 'Working Clearance Around Building (m)', type: 'number' },
+        { group: 'Building Setting-Out', key: 'setbackBoundary', label: 'Setback to Property Boundary (m)', type: 'number' },
+        { group: 'Building Setting-Out', key: 'setbackHouse',    label: 'Distance from Main House (m)', type: 'number' },
+        { group: 'Building Setting-Out', key: 'setbackKitchen',  label: 'Distance from Kitchen / Food Store (m)', type: 'number' },
+        { group: 'Building Setting-Out', key: 'doorFacing',      label: 'Door Facing Direction', type: 'select', options: ['North','North-East','East','South-East','South','South-West','West','North-West'] },
+        { group: 'Building Setting-Out', key: 'stairSpace',      label: 'Space for 3-Step Entry Stair', type: 'yesno' },
+        { group: 'Building Setting-Out', key: 'orientation',     label: 'Placement / Setting-Out Notes', type: 'text', full: true },
+
+        { group: 'Leach-Pit & Disposal', key: 'pitDistFromToilet',  label: 'Pit Distance from Toilet (m)', type: 'number' },
+        { group: 'Leach-Pit & Disposal', key: 'pitSpacing',         label: 'Spacing Between Twin Pits (m)', type: 'number' },
+        { group: 'Leach-Pit & Disposal', key: 'pitDistFromWater',   label: 'Pit → Nearest Water Source (m)', type: 'number', placeholder: 'keep ≥ 15' },
+        { group: 'Leach-Pit & Disposal', key: 'groundwaterDepth',   label: 'Groundwater Table Depth (m)', type: 'number' },
+        { group: 'Leach-Pit & Disposal', key: 'pitDistFromBoundary',label: 'Pit → Property Boundary (m)', type: 'number' },
+        { group: 'Leach-Pit & Disposal', key: 'pitSpace',           label: 'Space for Wet Twin Leach-Pit + Outlet', type: 'yesno' },
+        { group: 'Leach-Pit & Disposal', key: 'existingPitReuse',   label: 'Existing Pit Reusable', type: 'yesno' },
+
+        { group: 'Water, Rainwater & Power', key: 'waterSource',    label: 'Water Source',      type: 'select', options: ['Piped tap','Spring / Padhero','Both','None'] },
+        { group: 'Water, Rainwater & Power', key: 'waterYearRound', label: 'Year-round Water Availability', type: 'yesno' },
+        { group: 'Water, Rainwater & Power', key: 'waterPipeRun',   label: 'Pipe Run: Source → Toilet (m)', type: 'number' },
+        { group: 'Water, Rainwater & Power', key: 'tankCapacity',   label: 'Proposed Overhead Tank (L)', type: 'number' },
+        { group: 'Water, Rainwater & Power', key: 'rwhPotential',   label: 'Rainwater Harvesting Feasible', type: 'yesno' },
+        { group: 'Water, Rainwater & Power', key: 'roofCatchment',  label: 'Roof Catchment Area (m²)', type: 'number', placeholder: 'design roof ≈ 4.65' },
+        { group: 'Water, Rainwater & Power', key: 'electricity',    label: 'Grid Electricity Present', type: 'yesno' },
+        { group: 'Water, Rainwater & Power', key: 'distToPower',    label: 'Distance to Power Pole / Supply (m)', type: 'number' },
+
+        { group: 'Access & Material Logistics', key: 'accessForMaterials', label: 'Material Access', type: 'select', options: ['Easy — vehicle access','Moderate — porter / hand-carry','Difficult'] },
+        { group: 'Access & Material Logistics', key: 'carriageDistance',   label: 'Manual Carriage Distance from Road (m)', type: 'number' },
+        { group: 'Access & Material Logistics', key: 'accessWidth',        label: 'Narrowest Access Width (m)', type: 'number' },
+        { group: 'Access & Material Logistics', key: 'storageSpace',       label: 'Space to Stockpile Stone / Sand / Aggregate', type: 'yesno' },
+
+        { group: 'Confirmation', key: 'siteConfirmed', label: 'Site Confirmation', type: 'select', full: true, required: true, options: ['Confirmed — suitable','Conditionally suitable','Not suitable'] },
+        { group: 'Confirmation', key: 'constraints',   label: 'Site Constraints / Issues', type: 'textarea', full: true, placeholder: 'e.g. steep slope needs retaining wall, limited access for materials…' },
+        { group: 'Confirmation', key: 'remarks',       label: 'Remarks / Recommendations', type: 'textarea', full: true },
+
+        { group: 'Surveyor & Media', key: 'reportedBy', label: 'Surveyed By',   type: 'text' },
+        { group: 'Surveyor & Media', key: 'reportedAt', label: 'Date / Time',   type: 'datetime' },
+        { group: 'Surveyor & Media', key: 'photos',     label: 'Site Photo Capture', type: 'photos', full: true },
+      ],
+    },
   };
+
+  // ---------- Toilet finalized design reference (drawing · specs · site maps) ----------
+  // Single finalized design issued for construction — Figure 4.1 of the Bhadaure
+  // report: stone masonry, RCC roofing, SATO pan, wet twin leach-pit.
+  // Specs from report §4 "Design basis, as drawn on the final CAD layout".
+  const FINAL_DESIGN = {
+    title: 'Stone masonry · RCC roof · SATO pan',
+    drawing: 'assets/toilet/designs/final-design.png',
+    specs: [
+      ['Internal clear',       '1.20 × 1.00 m (walls out-to-out 1.90 × 1.70 m)'],
+      ['Foundation',           '0.8 m deep trench; stepped stone masonry footing (2 steps, 1:6) on PCC 1:3:6 + brick soling'],
+      ['Substructure',         '350 mm stone masonry (1:6) to plinth; earth + sand fill; brick soling; PCC; 50 mm punning; 12 mm non-slip stone floor'],
+      ['Walls',                '350 mm first-class stone masonry (1:4), 2.10 m high'],
+      ['Bands',                '150 mm RC plinth band + 75 mm sill band + 300 mm RCC ring beam (M20)'],
+      ['Roof',                 'RCC slab 125 mm (M20), 2.26 × 2.06 m, ~180 mm eaves overhang'],
+      ['Fixtures',             'SATO pan + 110 mm uPVC soil pipe; S.S. wash basin 550×400; rooftop overhead PVC tank'],
+      ['Door / window',        '0.75 × 2.10 m door + 0.70 × 0.50 m window; panelled Sal shutters'],
+      ['Substructure disposal','Wet twin leach-pit with alternating outlet'],
+      ['Access',               '3-step mass-concrete stair (M20)'],
+    ],
+    why: [
+      'Stone masonry — most abundant local material; weather- and earthquake-resilient for a free-standing rural structure.',
+      'RCC slab roof — low maintenance; supports the rooftop overhead tank and the rainwater-harvesting catchment.',
+      'SATO pan — keeps water demand low, matching intermittent water availability.',
+      'Wash basin + tank — address the hygiene concerns raised in the household survey.',
+    ],
+    targets: [
+      ['Building footprint (walls out-to-out)', '1.90 × 1.70 m'],
+      ['Internal clear', '1.20 × 1.00 m'],
+      ['Footing excavation depth', '≥ 0.80 m'],
+      ['RCC roof slab (RWH catchment)', '2.26 × 2.06 m (≈ 4.65 m²)'],
+      ['Pit → nearest water source', '≥ 15 m'],
+      ['Door (height × width)', '2.10 × 0.75 m'],
+      ['Entry stair', '3 steps'],
+    ],
+  };
+
+  const TOILET_MAPS = [
+    { src: 'assets/toilet/maps/slope.png',    label: 'Slope Map',    desc: 'Terrain steepness — informs siting, cut/fill and retaining needs.' },
+    { src: 'assets/toilet/maps/contour.png',  label: 'Contour Map',  desc: 'Elevation contours across the settlement.' },
+    { src: 'assets/toilet/maps/drainage.png', label: 'Drainage Map', desc: 'Natural drainage — keep pits clear of channels and low points.' },
+  ];
+
+  function buildToiletReference() {
+    const wrap = el('div', { class: 'toilet-ref' });
+
+    // Lightbox: reuse the photo viewer with plain URL "photos".
+    const openImg = (list, idx) => openPhotoViewer(list.map(s => ({ dataUrl: s })), idx || 0);
+
+    const d = FINAL_DESIGN;
+    const card = el('div', { class: 'card toilet-opt' });
+    card.appendChild(el('h2', { class: 'card-title' }, 'Finalized Toilet Design'));
+    card.appendChild(el('p', { class: 'hint', style: 'border:none;background:none;padding:0 0 10px;' },
+      `Single design issued for construction — ${d.title}. This is the finalized drawing (Bhadaure report, Fig. 4.1). Tap it to enlarge, then confirm the site fits this design in the SURVEY tab.`));
+
+    const grid = el('div', { class: 'toilet-opt-grid' });
+
+    const drawFig = el('figure', { class: 'toilet-draw' });
+    const drawImg = el('img', { src: d.drawing, alt: 'Finalized construction drawing', loading: 'lazy' });
+    drawImg.addEventListener('click', () => openImg([d.drawing], 0));
+    drawFig.appendChild(drawImg);
+    drawFig.appendChild(el('figcaption', null, 'Issued construction drawing — plan, section & twin leach-pit'));
+    grid.appendChild(drawFig);
+
+    const specs = el('div', { class: 'toilet-specs' });
+    const tbl = el('table', { class: 'toilet-spec-tbl' });
+    d.specs.forEach(([k, v]) => tbl.appendChild(el('tr', null, el('th', null, k), el('td', null, v))));
+    specs.appendChild(tbl);
+    grid.appendChild(specs);
+
+    card.appendChild(grid);
+
+    card.appendChild(el('div', { class: 'toilet-render-head' }, 'Why this design'));
+    const ul = el('ul', { class: 'toilet-why' });
+    d.why.forEach(w => ul.appendChild(el('li', null, w)));
+    card.appendChild(ul);
+
+    wrap.appendChild(card);
+
+    // Setting-out targets — the fixed dimensions the surveyor measures against.
+    const targetsCard = el('div', { class: 'card' },
+      el('h2', { class: 'card-title' }, 'Setting-Out Targets'),
+      el('p', { class: 'hint', style: 'border:none;background:none;padding:0 0 8px;' }, 'Measure the site against these fixed design dimensions and record them in the SURVEY tab.'),
+    );
+    const ttbl = el('table', { class: 'toilet-spec-tbl' });
+    FINAL_DESIGN.targets.forEach(([k, v]) => ttbl.appendChild(el('tr', null, el('th', null, k), el('td', null, v))));
+    targetsCard.appendChild(ttbl);
+    wrap.appendChild(targetsCard);
+
+    // Site maps
+    const mapsCard = el('div', { class: 'card' },
+      el('h2', { class: 'card-title' }, 'Site Maps'),
+      el('p', { class: 'hint', style: 'border:none;background:none;padding:0 0 8px;' }, 'Bhadaure (Dhading) terrain references for siting. Tap to enlarge.'),
+    );
+    const mapsGrid = el('div', { class: 'toilet-maps-grid' });
+    const mapSrcs = TOILET_MAPS.map(m => m.src);
+    TOILET_MAPS.forEach((m, i) => {
+      const fig = el('figure', { class: 'toilet-map' });
+      const im = el('img', { src: m.src, alt: m.label, loading: 'lazy' });
+      im.addEventListener('click', () => openImg(mapSrcs, i));
+      fig.appendChild(im);
+      fig.appendChild(el('figcaption', null, el('strong', null, m.label), el('span', null, m.desc)));
+      mapsGrid.appendChild(fig);
+    });
+    mapsCard.appendChild(mapsGrid);
+    wrap.appendChild(mapsCard);
+
+    return wrap;
+  }
 
   // ---------- Helpers ----------
   const $ = (id) => document.getElementById(id);
@@ -370,7 +561,7 @@
           input = el('textarea', { id: inputId, rows: 3, placeholder: f.placeholder || '' });
           break;
         case 'number':
-          input = el('input', { id: inputId, type: 'number', step: 'any', placeholder: f.placeholder || '' });
+          input = el('input', { id: inputId, type: 'number', step: 'any', placeholder: f.placeholder || '', value: (f.default != null ? f.default : false) });
           break;
         case 'datetime':
           input = el('input', { id: inputId, type: 'datetime-local' });
@@ -379,7 +570,7 @@
         case 'select':
           input = el('select', { id: inputId });
           input.appendChild(el('option', { value: '' }, '— select —'));
-          (f.options || []).forEach(o => input.appendChild(el('option', { value: o }, o)));
+          (f.options || []).forEach(o => input.appendChild(el('option', { value: o, selected: (f.default === o ? '' : false) }, o)));
           break;
         case 'yesno':
           input = el('select', { id: inputId });
@@ -392,7 +583,7 @@
           input = buildPhotosWidget(inputId, key);
           break;
         default:
-          input = el('input', { id: inputId, type: 'text', placeholder: f.placeholder || '' });
+          input = el('input', { id: inputId, type: 'text', placeholder: f.placeholder || '', value: (f.default != null ? f.default : false) });
       }
       if (f.required && input.tagName !== 'DIV') input.required = true;
       fld.appendChild(input);
@@ -480,16 +671,23 @@
       mapEmpty,
     );
 
-    // ---- View switcher (SURVEY / REPORT / MAP) ----
+    // ---- View switcher (SURVEY / [DESIGNS] / REPORT / MAP) ----
     const formView    = el('div', { class: 'section-view active', 'data-view': 'survey' }, gpsHost, draftBanner, formCard);
     const reportView  = el('div', { class: 'section-view',        'data-view': 'report' }, recordsCard);
     const mapView     = el('div', { class: 'section-view',        'data-view': 'map'    }, mapCard);
 
+    // Optional reference view (e.g. Toilet design drawings / renders / maps).
+    let designsView = null;
+    if (typeof section.buildReference === 'function') {
+      designsView = el('div', { class: 'section-view', 'data-view': 'designs' }, section.buildReference());
+    }
+
     const switcher = el('nav', { class: 'view-switcher main-switcher', id: `${key}_switcher` },
       el('button', { type: 'button', class: 'vs-btn active', 'data-view': 'survey' }, 'SURVEY'),
-      el('button', { type: 'button', class: 'vs-btn',        'data-view': 'report' }, 'REPORT'),
-      el('button', { type: 'button', class: 'vs-btn',        'data-view': 'map'    }, 'MAP'),
     );
+    if (designsView) switcher.appendChild(el('button', { type: 'button', class: 'vs-btn', 'data-view': 'designs' }, 'DESIGN'));
+    switcher.appendChild(el('button', { type: 'button', class: 'vs-btn', 'data-view': 'report' }, 'REPORT'));
+    switcher.appendChild(el('button', { type: 'button', class: 'vs-btn', 'data-view': 'map'    }, 'MAP'));
     switcher.addEventListener('click', (e) => {
       const b = e.target.closest('.vs-btn');
       if (!b) return;
@@ -499,6 +697,7 @@
     panel.innerHTML = '';
     panel.appendChild(switcher);
     panel.appendChild(formView);
+    if (designsView) panel.appendChild(designsView);
     panel.appendChild(reportView);
     panel.appendChild(mapView);
 
@@ -898,6 +1097,7 @@
     if (key === 'leak')     return `${r.location || ''} — ${r.severity || ''}`;
     if (key === 'pressure') return `${r.location || ''} — ${r.pressure ?? ''} ${r.unit || ''}`;
     if (key === 'area')     return `${r.area || ''}${r.ward ? ' / Ward ' + r.ward : ''}`;
+    if (key === 'toilet')   return `${r.wardTole || ''} — ${r.siteConfirmed || ''}`;
     return '';
   }
 
@@ -923,6 +1123,11 @@
       customer:  { label: 'Surveyor',     get: r => r.reportedBy },
       address:   { label: 'Area / Tole',  get: r => r.area },
       condition: { label: 'Ward',         get: r => r.ward != null && r.ward !== '' ? ('Ward ' + r.ward) : '' },
+    },
+    toilet: {
+      customer:  { label: 'Beneficiary',  get: r => r.beneficiaryName },
+      address:   { label: 'Ward / Tole',  get: r => r.wardTole },
+      condition: { label: 'Confirmation', get: r => r.siteConfirmed },
     },
   };
 
@@ -1445,7 +1650,8 @@
       panel._extraRendered = true;
       renderSection(panel, key);
     }
-    view = ['survey','report','map'].includes(view) ? view : 'survey';
+    const known = Array.from(panel.querySelectorAll('.section-view')).map(v => v.dataset.view);
+    view = known.includes(view) ? view : 'survey';
     panel.querySelectorAll('.section-view').forEach(v => {
       v.classList.toggle('active', v.dataset.view === view);
     });
@@ -1462,9 +1668,16 @@
     leak:     'critical',  // red (refined per record below)
     pressure: 'good',      // blue
     area:     'excellent', // green
+    toilet:   'excellent', // green (refined per confirmation status below)
   };
 
   function severityClass(key, r) {
+    if (key === 'toilet') {
+      const s = String(r.siteConfirmed || '').toLowerCase();
+      if (s.includes('not'))         return 'critical';   // red — not suitable
+      if (s.includes('conditional')) return 'fair';       // amber — conditionally suitable
+      return 'excellent';                                 // green — confirmed suitable
+    }
     if (key === 'leak') {
       const s = String(r.severity || '').toUpperCase();
       if (s.includes('EMERG'))  return 'critical';
@@ -1530,22 +1743,27 @@
     if (!map) {
       // Guarantee non-zero height
       if (!host.style.height) host.style.height = '460px';
-      map = L.map(host, { zoomControl: true });
+      // maxZoom 22 lets the user zoom in far past the native tile levels for precise
+      // pin placement; each layer upscales its deepest real tiles (maxNativeZoom).
+      map = L.map(host, { zoomControl: true, maxZoom: 22 });
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19, crossOrigin: true,
+        maxZoom: 22, maxNativeZoom: 19, crossOrigin: true,
         attribution: '© OpenStreetMap contributors',
       });
       const sat = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 19, crossOrigin: true, attribution: 'Tiles © Esri' }
+        // maxNativeZoom: Esri imagery is sparse at high zoom in rural areas — upscale the
+        // deepest real tiles instead of requesting missing ones ("Map data not yet available").
+        { maxZoom: 22, maxNativeZoom: 17, crossOrigin: true, attribution: 'Tiles © Esri' }
       );
       osm.addTo(map);
       L.control.layers({ 'Street': osm, 'Satellite': sat }, null, { position: 'topright', collapsed: true }).addTo(map);
       map._group = L.featureGroup().addTo(map);
       panel._extraMap = map;
       window.addEventListener('resize', () => map.invalidateSize());
-      // DMA overlay (boundaries, pipes, connections, devices)
-      if (window.KUKLDma) {
+      // DMA overlay (boundaries, pipes, connections, devices) — water-network
+      // sections only; skipped where dmaOverlay:false (e.g. toilet site survey).
+      if (window.KUKLDma && SECTIONS[key] && SECTIONS[key].dmaOverlay !== false) {
         try { window.KUKLDma.attach(map); } catch (e) { console.warn('[DMA] attach failed', e); }
       }
     } else {

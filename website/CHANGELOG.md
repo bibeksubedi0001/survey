@@ -1,5 +1,11 @@
 # Changelog
 
+## Toilet Construction — Final Site Survey section
+
+- Added a new **Toilet Survey** section (nav tab + Home hub card) for the final on-site survey that confirms a household site for toilet construction.
+- Schema-driven site-measurement form organised into: beneficiary & location, household context, plot & available space, ground & terrain, building setting-out, leach-pit & disposal, water/rainwater/power, access & material logistics, and site confirmation — capturing full on-site dimensions (setbacks, level difference, excavation depth, pit spacing/clearances, pipe runs, carriage distance, etc.), with high-accuracy GPS, stamped photo capture, offline IndexedDB storage, Excel/JSON/PDF export, records table and location map (markers coloured by confirmation status).
+- Added a **DESIGN** reference view to the section's SURVEY / DESIGN / REPORT / MAP switcher: the single finalized toilet design (issued construction drawing, Fig. 4.1 — stone masonry, RCC roof, SATO pan, wet twin leach-pit — with its design-basis specifications and setting-out targets) and Bhadaure (Dhading) site maps (slope, contour, drainage), all tap-to-enlarge.
+
 ## HydroFlow GIS network editor
 
 - Fixed editor layer targeting so hydraulic tools mutate the persisted pipe, node, and valve GeoJSON layer groups.
