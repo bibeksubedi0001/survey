@@ -115,31 +115,137 @@
     ws[ref] = cell;
   }
 
+  // ---------- Bikram Sambat (Nepali) months ----------
+  // The report period is one Nepali month (1st..last), so the SCADA date
+  // auto-fill must snap to BS month boundaries, never to raw file coverage.
+  // Month lengths transcribed from the standard BS calendar dataset
+  // (verified: Baishakh 2083 = 2026-04-14..2026-05-14, the app's original
+  // default; Ashar 2083 = 2026-06-15..2026-07-16).
+  const BS_MONTH_NAMES = ['Baishakh', 'Jestha', 'Ashar', 'Shrawan', 'Bhadra', 'Ashwin',
+                          'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+  const BS_FIRST_YEAR = 2081;                       // Baishakh 1, 2081 = 2024-04-13
+  const BS_TABLE = {
+    2081: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+    2082: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+    2083: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+    2084: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+    2085: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+    2086: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+    2087: [31, 31, 32, 31, 31, 31, 30, 30, 29, 30, 30, 30],
+    2088: [30, 31, 32, 32, 30, 31, 30, 30, 29, 30, 30, 30],
+    2089: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+    2090: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  };
+  let _bsMonths = null;
+  function bsMonths() {
+    if (_bsMonths) return _bsMonths;
+    const out = [];
+    let s = ymdToSerial({ y: 2024, m: 4, d: 13 });  // Baishakh 1, 2081
+    for (let y = BS_FIRST_YEAR; BS_TABLE[y]; y++) {
+      for (let m = 0; m < 12; m++) {
+        const len = BS_TABLE[y][m];
+        out.push({ label: BS_MONTH_NAMES[m] + ' ' + y, startSerial: s, endSerial: s + len - 1 });
+        s += len;
+      }
+    }
+    return (_bsMonths = out);
+  }
+  // Best BS month for a SCADA coverage window: the LATEST month fully inside
+  // the coverage; if none is complete, the month with the most covered days.
+  function pickBsMonthForCoverage(cov) {
+    const lo = ymdToSerial(cov.min), hi = ymdToSerial(cov.max);
+    let best = null;
+    for (const mo of bsMonths()) {
+      const overlap = Math.min(mo.endSerial, hi) - Math.max(mo.startSerial, lo) + 1;
+      if (overlap <= 0) continue;
+      const complete = mo.startSerial >= lo && mo.endSerial <= hi;
+      if (!best ||
+          (complete && (!best.complete || mo.startSerial > best.mo.startSerial)) ||
+          (!complete && !best.complete && overlap >= best.overlap)) {
+        best = { mo, overlap, complete };
+      }
+    }
+    return best;
+  }
+
   function findDmaCol(sheet, dma, headerRow) {
-    // headerRow is 0-based (typically 7 for Excel row 8)
-    const target = dma.trim().toLowerCase();
+    // headerRow is 0-based (typically 7 for Excel row 8).
+    // Try the name as typed first, then with any "dma " prefix stripped
+    // (Customer File Builder outputs are named "dma 9.1"; SCADA headers
+    // are plain "9.1 (OMU 036)").
+    const raw = String(dma == null ? '' : dma).trim().toLowerCase();
+    const stripped = stripDmaPrefix(dma).toLowerCase();
+    const targets = raw === stripped ? [raw] : [raw, stripped];
     const range = XLSX.utils.decode_range(sheet['!ref']);
-    for (let c = 0; c <= range.e.c; c++) {
-      const v = getCell(sheet, headerRow, c);
-      if (typeof v !== 'string') continue;
-      const s = v.trim().toLowerCase();
-      if (s === target ||
-          s.startsWith(target + ' ') ||
-          s.startsWith(target + '(')) {
-        return c;
+    for (const target of targets) {
+      if (!target) continue;
+      for (let c = 0; c <= range.e.c; c++) {
+        const v = getCell(sheet, headerRow, c);
+        if (typeof v !== 'string') continue;
+        const s = v.trim().toLowerCase();
+        if (s === target ||
+            s.startsWith(target + ' ') ||
+            s.startsWith(target + '(')) {
+          return c;
+        }
       }
     }
     return -1;
   }
 
-  function collectDailyForRange(sheet, dmaCol, startDate, endDate) {
+  // "dma 9.1" / "DMA_9.1" -> "9.1" (Customer File Builder outputs are named
+  // "dma <name>"; SCADA headers are plain "9.1 (OMU 036)").
+  function stripDmaPrefix(s) {
+    const t = String(s == null ? '' : s).trim();
+    const out = t.replace(/^dma[\s_.-]+/i, '').trim();
+    return out || t;
+  }
+
+  // Locate the SCADA header row: the row whose date column is labelled "Day"
+  // (scans the top-left corner so layout shifts between exports don't matter).
+  // Returns { r: headerRowIdx, c: dateColIdx } or null.
+  function findScadaHeader(sheet) {
+    const range = XLSX.utils.decode_range(sheet['!ref']);
+    const maxR = Math.min(range.e.r, 30);
+    const maxC = Math.min(range.e.c, 6);
+    for (let r = 0; r <= maxR; r++) {
+      for (let c = 0; c <= maxC; c++) {
+        const v = getCell(sheet, r, c);
+        if (typeof v === 'string' && v.trim().toLowerCase() === 'day') return { r, c };
+      }
+    }
+    return null;
+  }
+
+  // Overall calendar coverage of a SCADA workbook's date column(s).
+  // Returns { min: ymd, max: ymd } or null when no sheet looks like SCADA data.
+  function scadaCoverage(wb) {
+    let min = null, max = null;
+    for (const name of wb.SheetNames) {
+      const sheet = wb.Sheets[name];
+      if (!sheet || !sheet['!ref']) continue;
+      const pos = findScadaHeader(sheet);
+      if (!pos) continue;
+      const range = XLSX.utils.decode_range(sheet['!ref']);
+      for (let r = pos.r + 1; r <= range.e.r; r++) {
+        const ymd = serialToYMD(getCell(sheet, r, pos.c));
+        if (!ymd) continue;
+        if (min === null || ymdKey(ymd) < ymdKey(min)) min = ymd;
+        if (max === null || ymdKey(ymd) > ymdKey(max)) max = ymd;
+      }
+    }
+    return min ? { min, max } : null;
+  }
+
+  function collectDailyForRange(sheet, dmaCol, startDate, endDate, dataStartRow, dateCol) {
     const out = [];
     const range = XLSX.utils.decode_range(sheet['!ref']);
     const startKey = dateToKey(startDate);
     const endKey   = dateToKey(endDate);
-    // Data rows start at row index 8 (Excel row 9). Date is col 0.
-    for (let r = 8; r <= range.e.r; r++) {
-      const raw = getCell(sheet, r, 0);
+    // Data rows start right below the header row. A trailing "Total" row is
+    // skipped automatically because its date cell is not numeric.
+    for (let r = dataStartRow; r <= range.e.r; r++) {
+      const raw = getCell(sheet, r, dateCol);
       if (typeof raw !== 'number') continue;       // dates kept as Excel serials
       const ymd = serialToYMD(raw);
       if (!ymd) continue;
@@ -183,13 +289,26 @@
       last--;
     }
 
-    // Column layout for source customer sheet (0-based)
-    const CONS_COL = 9;   // J - Consumption
+    // Column layout for source customer sheet (0-based). Located from the
+    // header row so both raw exports and Customer File Builder outputs work;
+    // falls back to the canonical layout (J=Consumption, K=Observation).
+    function findCustomerCol(label, fallback) {
+      for (let c = 0; c <= initialRange.e.c; c++) {
+        const v = getCell(ws, 0, c);
+        if (typeof v !== 'string') continue;
+        if (v.trim().toLowerCase().replace(/[\s.]+/g, '') === label) return c;
+      }
+      return fallback;
+    }
+    let CONS_COL   = findCustomerCol('consumption', 9);   // J
+    const obsSrc   = findCustomerCol('observation', 10);  // K
 
-    // Insert blank "Billable" column at K (index 10); pushes Observation, Gis(Bill), Gis(C) right.
-    insertColumn(ws, 10);
-    const BILL_COL = 10;
-    const OBS_COL  = 11;
+    // Insert blank "Billable" column right before Observation (canonically at
+    // K/index 10); pushes Observation, Gis(Bill), Gis(C) right.
+    insertColumn(ws, obsSrc);
+    const BILL_COL = obsSrc;
+    const OBS_COL  = obsSrc + 1;
+    if (obsSrc <= CONS_COL) CONS_COL += 1;
 
     // Populate billable + aggregate totals + observation counts
     let totalCons = 0;
@@ -221,39 +340,69 @@
 
     // Grand-total row immediately after last customer
     const totalRow = last + 1;
-    setCell(ws, totalRow, 8, 'Total', { bold: true });
+    setCell(ws, totalRow, Math.max(0, CONS_COL - 1), 'Total', { bold: true });
     setCell(ws, totalRow, CONS_COL, totalCons, { bold: true });
     setCell(ws, totalRow, BILL_COL, totalBill, { bold: true });
     extendRange(ws, totalRow, OBS_COL);
 
     // ---------- SCADA extraction ----------
-    // Sheet-name independent: scan every sheet, read its date column (col 0,
-    // rows 9+) and the DMA column (header row 8), and keep the daily values
-    // whose date falls inside [dateStart, dateEnd]. The calendar month comes
-    // from the data itself, so this works whether sheets are named by month
-    // ("April"/"May ") or generically ("OMU - Volumes"). A trailing "Total"
-    // row is ignored automatically because its date cell is not numeric.
+    // Sheet-name independent: scan every sheet, locate its "Day" header row
+    // (falls back to Excel row 8, the standard OMU layout), read the date
+    // column and the DMA column, and keep the daily values whose date falls
+    // inside [dateStart, dateEnd]. The calendar month comes from the data
+    // itself, so this works whether sheets are named by month ("April"/"May ")
+    // or generically ("OMU - Volumes", "July"/"June"). A trailing "Total" row
+    // is ignored automatically because its date cell is not numeric.
     const ds = new Date(dateStart.getFullYear(), dateStart.getMonth(), dateStart.getDate());
     const de = new Date(dateEnd.getFullYear(),   dateEnd.getMonth(),   dateEnd.getDate());
 
     const byDay = new Map();   // dateKey -> [ymd, value]; first sheet to supply a day wins
     let headerSheet = null;
     let headerCol   = -1;
+    let headerRow   = 7;
+    let covMin = null, covMax = null;      // coverage of the sheets holding this DMA
+    const availHeaders = [];               // for the "not found" error message
 
     for (const sheetName of scadaWB.SheetNames) {
       const sheet = scadaWB.Sheets[sheetName];
       if (!sheet || !sheet['!ref']) continue;
-      const dmaCol = findDmaCol(sheet, dmaName, 7);
-      if (dmaCol < 0) continue;
-      if (headerSheet === null) { headerSheet = sheet; headerCol = dmaCol; }
-      for (const entry of collectDailyForRange(sheet, dmaCol, ds, de)) {
+      const pos = findScadaHeader(sheet);
+      const hdrRow  = pos ? pos.r : 7;   // fall back to the classic layout (Excel row 8)
+      const dateCol = pos ? pos.c : 0;
+      const dmaCol = findDmaCol(sheet, dmaName, hdrRow);
+      if (dmaCol < 0) {
+        // Remember what DMA headers this sheet offers (helps the error message).
+        if (pos && availHeaders.length < 60) {
+          const rng = XLSX.utils.decode_range(sheet['!ref']);
+          for (let c = 0; c <= rng.e.c; c++) {
+            const v = getCell(sheet, hdrRow, c);
+            if (typeof v !== 'string') continue;
+            const t = v.trim();
+            if (t && !/^(day|total)$/i.test(t) && availHeaders.indexOf(t) === -1) availHeaders.push(t);
+          }
+        }
+        continue;
+      }
+      if (headerSheet === null) { headerSheet = sheet; headerCol = dmaCol; headerRow = hdrRow; }
+      const rng = XLSX.utils.decode_range(sheet['!ref']);
+      for (let r = hdrRow + 1; r <= rng.e.r; r++) {
+        const ymd = serialToYMD(getCell(sheet, r, dateCol));
+        if (!ymd) continue;
+        if (covMin === null || ymdKey(ymd) < ymdKey(covMin)) covMin = ymd;
+        if (covMax === null || ymdKey(ymd) > ymdKey(covMax)) covMax = ymd;
+      }
+      for (const entry of collectDailyForRange(sheet, dmaCol, ds, de, hdrRow + 1, dateCol)) {
         const k = ymdKey(entry[0]);
         if (!byDay.has(k)) byDay.set(k, entry);
       }
     }
 
     if (headerSheet === null) {
-      throw new Error(`DMA "${dmaName}" not found in any SCADA sheet (DMA names are read from row 8).`);
+      const avail = availHeaders.length
+        ? ' Available DMA columns: ' + availHeaders.join(', ') +
+          (availHeaders.length >= 60 ? ', \u2026' : '') + '.'
+        : '';
+      throw new Error(`DMA "${dmaName}" not found in any SCADA sheet (DMA names are read from the "Day" header row).${avail}`);
     }
 
     // chronological order
@@ -262,7 +411,24 @@
     const dailyTotal = daily.reduce((s, [, v]) => s + (v || 0), 0);
 
     // DMA header label (e.g. "9.1 (OMU 036)")
-    const dmaLabel = (getCell(headerSheet, 7, headerCol) || dmaName).toString();
+    const dmaLabel = (getCell(headerSheet, headerRow, headerCol) || dmaName).toString();
+
+    if (daily.length === 0) {
+      const covText = covMin
+        ? ` This workbook's SCADA data covers ${ymdToISO(covMin)} to ${ymdToISO(covMax)}.`
+        : '';
+      throw new Error(
+        `No SCADA rows for "${dmaLabel}" between ${dateToISO(ds)} and ${dateToISO(de)}.${covText} Adjust the date range.`);
+    }
+
+    // Requested period vs. days actually present in the SCADA workbook.
+    // NRW % is only meaningful when both sides cover the SAME period, so a
+    // shortfall here is surfaced prominently in the preview/log.
+    const dsSerial = ymdToSerial({ y: ds.getFullYear(), m: ds.getMonth() + 1, d: ds.getDate() });
+    const deSerial = ymdToSerial({ y: de.getFullYear(), m: de.getMonth() + 1, d: de.getDate() });
+    const requestedDays = deSerial - dsSerial + 1;
+    const missingDays = requestedDays - daily.length;
+    const bsMatch = bsMonths().find(mo => mo.startSerial === dsSerial && mo.endSerial === deSerial) || null;
 
     // ---------- Daily SCADA block ----------
     const hdr = totalRow + 2; // one blank gap row between total and header
@@ -322,6 +488,11 @@
         nrwPercent: dailyTotal > 0 ? ((dailyTotal - totalBill) / dailyTotal) * 100 : null,
         unmapped,
         dmaLabel,
+        startISO: dateToISO(ds),
+        endISO: dateToISO(de),
+        requestedDays,
+        missingDays,
+        periodLabel: bsMatch ? bsMatch.label : null,   // e.g. "Ashar 2083"
       },
     };
   }
@@ -337,10 +508,15 @@
   function $(id) { return document.getElementById(id); }
 
   function detectDmaFromName(name) {
-    // Strip extension and extract leading dotted-numeric pattern, e.g. "9.1" or "4.1.2"
-    const base = name.replace(/\.[^./\\]+$/, '');
-    const m = base.match(/(\d+(?:\.\d+)+)/);
-    return m ? m[1] : '';
+    // Strip extension and any Customer File Builder "dma " prefix, then extract
+    // a dotted-numeric pattern, e.g. "9.1" or "4.1.2".
+    const base = name.replace(/\.[^./\\]+$/, '').trim();
+    const noPrefix = base.replace(/^dma[\s_.-]+/i, '').trim();
+    const m = noPrefix.match(/(\d+(?:\.\d+)+)/);
+    if (m) return m[1];
+    // "dma 7B-A.xlsx" -> "7B-A" (only when an explicit dma prefix was present)
+    if (noPrefix && noPrefix !== base) return noPrefix;
+    return '';
   }
 
   function parseDateInput(value) {
@@ -370,6 +546,9 @@
     const pad = (v) => String(v).padStart(2, '0');
     return y.y + '-' + pad(y.m) + '-' + pad(y.d);
   }
+  function dateToISO(d) {
+    return ymdToISO({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() });
+  }
 
   function fileFingerprint(f) {
     return f ? (f.name + '|' + f.size + '|' + f.lastModified) : '';
@@ -396,17 +575,28 @@
                  : (s.nrwPercent >= 40 ? 'nrw-kpi-bad'
                  : (s.nrwPercent >= 25 ? 'nrw-kpi-warn' : 'nrw-kpi-good'));
 
+    const periodLine =
+      `<p class="nrw-period">Period: ${s.periodLabel ? '<b>' + escapeHtml(s.periodLabel) + '</b> · ' : ''}` +
+      `${s.startISO} → ${s.endISO} · ${fmtNum(s.requestedDays)} days</p>`;
+    const missingHtml = (s.missingDays > 0)
+      ? `<div class="nrw-warnbox"><b>\u26a0 ${fmtNum(s.missingDays)} day(s) have no SCADA data</b> — ` +
+        `the workbook covers only ${fmtNum(s.dailyCount)} of ${fmtNum(s.requestedDays)} days in this period, ` +
+        `so the SCADA total (and NRW %) under-counts supplied water.</div>`
+      : '';
+
     host.innerHTML =
       `<div class="nrw-preview">
         <h3>Summary preview &mdash; ${escapeHtml(s.dmaLabel)}</h3>
+        ${periodLine}
         <div class="nrw-kpis">
           <div class="nrw-kpi"><span>Customer rows</span><b>${fmtNum(s.customerCount)}</b></div>
           <div class="nrw-kpi"><span>Total consumption</span><b>${fmtNum(s.totalCons)}</b></div>
           <div class="nrw-kpi"><span>Total billable</span><b>${fmtNum(s.totalBill)}</b></div>
-          <div class="nrw-kpi"><span>Daily SCADA total</span><b>${fmtNum(s.dailyTotal)}</b><i>${fmtNum(s.dailyCount)} days</i></div>
+          <div class="nrw-kpi ${s.missingDays > 0 ? 'nrw-kpi-warn' : ''}"><span>Daily SCADA total</span><b>${fmtNum(s.dailyTotal)}</b><i>${fmtNum(s.dailyCount)} of ${fmtNum(s.requestedDays)} days</i></div>
           <div class="nrw-kpi"><span>Meter-status total</span><b>${fmtNum(s.statusTotal)}</b></div>
           <div class="nrw-kpi nrw-kpi-hl ${nrwCls}"><span>NRW %</span><b>${nrwPctText}</b><i>NRW vol: ${fmtNum(s.nrwVolume)}</i></div>
         </div>
+        ${missingHtml}
         <div class="nrw-tables">
           <div class="nrw-table-wrap">
             <h4>Daily SCADA &mdash; ${escapeHtml(s.dmaLabel)}</h4>
@@ -512,11 +702,47 @@
       refreshPreview();
     });
 
+    // When a SCADA workbook is picked, read its date coverage and — if the
+    // current range misses the data entirely (e.g. default Baishakh dates vs.
+    // a June/July "OMU - Volumes" export) — snap to the NEPALI (BS) month the
+    // file covers, never to the raw file span: NRW % must compare one billing
+    // month of consumption against the SAME month of SCADA supply.
+    scadaIn.addEventListener('change', async () => {
+      const f = scadaIn.files && scadaIn.files[0];
+      if (!f || typeof XLSX === 'undefined') return;
+      try {
+        const cov = scadaCoverage(await readWorkbook(f));
+        if (!cov) return;
+        const minISO = ymdToISO(cov.min), maxISO = ymdToISO(cov.max);
+        const ds = parseDateInput(startIn.value);
+        const de = parseDateInput(endIn.value);
+        const outside = !ds || !de ||
+          dateToKey(de) < ymdKey(cov.min) || dateToKey(ds) > ymdKey(cov.max);
+        const pick = outside ? pickBsMonthForCoverage(cov) : null;
+        if (pick) {
+          const mStart = serialToYMD(pick.mo.startSerial);
+          const mEnd   = serialToYMD(pick.mo.endSerial);
+          startIn.value = ymdToISO(mStart);
+          endIn.value   = ymdToISO(mEnd);
+          lastFingerprint = '';   // force preview rebuild with the new dates
+          log(`SCADA data covers ${minISO} to ${maxISO}. Date range set to ` +
+              `${pick.mo.label} (${ymdToISO(mStart)} \u2192 ${ymdToISO(mEnd)})` +
+              (pick.complete ? '' : ' \u2014 note: this month is only PARTLY covered by the file') +
+              ' \u2014 adjust if needed.');
+        } else {
+          log(`SCADA data covers ${minISO} to ${maxISO}.`);
+        }
+        refreshPreview();
+      } catch (e) { /* non-fatal: preview will surface real errors */ }
+    });
+
     resetBtn && resetBtn.addEventListener('click', () => {
       custIn.value = '';
       scadaIn.value = '';
       dmaIn.value = '';
       outIn.value = '';
+      startIn.value = startIn.defaultValue;   // restore HTML default dates
+      endIn.value   = endIn.defaultValue;
       cached = null;
       lastFingerprint = '';
       if (preview) preview.innerHTML = '';
@@ -557,12 +783,18 @@
         const lines = [
           `Saved: ${outputName}`,
           `DMA: ${stats.dmaLabel}`,
+          `Period: ${stats.startISO} \u2192 ${stats.endISO}` +
+            (stats.periodLabel ? ` (${stats.periodLabel})` : '') +
+            ` \u2014 SCADA days found: ${stats.dailyCount}/${stats.requestedDays}`,
           `Customer rows: ${stats.customerCount}`,
           `Total consumption: ${stats.totalCons}    Total billable: ${stats.totalBill}`,
           `Daily SCADA entries: ${stats.dailyCount}    Sum: ${stats.dailyTotal}`,
           `NRW volume: ${stats.nrwVolume}    NRW %: ${stats.nrwPercent == null ? '—' : stats.nrwPercent.toFixed(2) + '%'}`,
           `Meter-status total: ${stats.statusTotal}`,
         ];
+        if (stats.missingDays > 0) {
+          lines.push(`\u26a0 ${stats.missingDays} day(s) in the period have no SCADA data \u2014 NRW % may under-count supplied water.`);
+        }
         if (stats.unmapped && Object.keys(stats.unmapped).length) {
           lines.push('Unmapped observations (not counted in status table):');
           for (const k of Object.keys(stats.unmapped)) {
@@ -589,5 +821,6 @@
   }
 
   // Expose for testing / debugging
-  window.NRWBuilder = { buildReport, computeReport };
+  window.NRWBuilder = { buildReport, computeReport, scadaCoverage, detectDmaFromName,
+                        stripDmaPrefix, bsMonths, pickBsMonthForCoverage };
 })();

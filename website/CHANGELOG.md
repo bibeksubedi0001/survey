@@ -1,5 +1,13 @@
 # Changelog
 
+## NRW Builder — Nepali-month periods and layout-independent SCADA reading
+
+- Picking a SCADA workbook now auto-sets the report period to the **Bikram Sambat month** the file covers (e.g. Ashar 2083 = 2026-06-15 → 2026-07-16) instead of the raw file span, so consumption and supply always span the same billing month.
+- SCADA sheets are located by their `Day` header row rather than a fixed Excel row 8, and customer sheets locate the Consumption / Observation columns by header name, so both raw exports and Customer File Builder outputs parse correctly.
+- DMA lookup now matches `dma 9.1` style names against plain `9.1 (OMU 036)` SCADA headers, and a failed lookup lists the DMA columns the workbook actually offers.
+- The preview shows the period label, days requested vs. days found, and warns when missing SCADA days make the NRW % under-count supplied water.
+- Reset restores the default date range.
+
 ## Toilet Construction — Final Site Survey section
 
 - Added a new **Toilet Survey** section (nav tab + Home hub card) for the final on-site survey that confirms a household site for toilet construction.
